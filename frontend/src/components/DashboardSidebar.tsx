@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Layers,
@@ -12,6 +12,9 @@ import {
   RefreshCw,
   LogOut,
   ShieldCheck,
+  Settings,
+  Sparkles,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -27,6 +30,7 @@ export default function DashboardSidebar({
   onTabChange,
 }: DashboardSidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loginAs, logout } = useAuth();
 
   const handleSwitchRole = async () => {
@@ -46,10 +50,33 @@ export default function DashboardSidebar({
 
   const navItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
+    ...(currentRole === "CLIENT"
+      ? [
+          { id: "assistant", label: "Nexum AI", icon: Sparkles },
+          { id: "freelancers", label: "Freelancers", icon: Users },
+        ]
+      : []),
     { id: "milestones", label: "Milestones", icon: Layers },
     { id: "escrow", label: "PayPal Escrow", icon: CreditCard },
     { id: "audit", label: "Audit Trail", icon: FileText },
+    ...(currentRole === "CLIENT"
+      ? [{ id: "settings", label: "Profile & Settings", icon: Settings }]
+      : []),
   ];
+
+  const handleNavClick = (itemId: string) => {
+    if (itemId === "assistant") {
+      router.push("/client/assistant");
+    } else if (itemId === "freelancers") {
+      router.push("/client/freelancers");
+    } else {
+      if (pathname === "/client/dashboard") {
+        onTabChange(itemId);
+      } else {
+        router.push(`/client/dashboard?tab=${itemId}`);
+      }
+    }
+  };
 
   return (
     <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col justify-between h-screen sticky top-0 z-30 select-none">
@@ -83,12 +110,16 @@ export default function DashboardSidebar({
 
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive =
+            activeTab === item.id ||
+            (item.id === "assistant" && pathname === "/client/assistant") ||
+            (item.id === "freelancers" && pathname === "/client/freelancers");
+
           return (
             <button
               key={item.id}
               type="button"
-              onClick={() => onTabChange(item.id)}
+              onClick={() => handleNavClick(item.id)}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
                 isActive
                   ? "bg-blue-50 text-blue-700 shadow-xs border border-blue-200/80"
@@ -119,11 +150,18 @@ export default function DashboardSidebar({
       </div>
 
       {/* Bottom Profile, Role Switcher & Logout */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50 space-y-2.5">
+      <div className="p-3 pb-6 border-t border-slate-100 bg-slate-50/50 space-y-2.5">
         
         {/* User Card */}
         {user && (
-          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => currentRole === "CLIENT" && onTabChange("settings")}
+            className={`w-full flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-2xs text-left transition ${
+              currentRole === "CLIENT" ? "hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer" : "cursor-default"
+            }`}
+            title={currentRole === "CLIENT" ? "View Profile & Settings" : undefined}
+          >
             <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-200">
               <Image
                 src={user.avatar}
@@ -137,7 +175,7 @@ export default function DashboardSidebar({
               <div className="text-xs font-bold text-slate-900 truncate">{user.name}</div>
               <div className="text-[10px] text-slate-500 truncate">{user.companyOrHandle}</div>
             </div>
-          </div>
+          </button>
         )}
 
         {/* Action Buttons */}

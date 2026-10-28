@@ -143,6 +143,7 @@ model User {
   messages             ConversationMessage[]
   disputesOpened       DisputeHold[]         @relation("DisputeOpener")
   opportunities        Opportunity[]
+  assistantConversations AssistantConversation[]
 }
 
 model FreelancerProfile {
@@ -458,5 +459,36 @@ model AuditEvent {
 
   @@index([objectType, objectId])
   @@index([timestamp])
+}
+
+// ---------------------------------------------------------------------------
+// Nexum AI Persistent Conversation Workspace
+// ---------------------------------------------------------------------------
+
+model AssistantConversation {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title              String
+  messageCount       Int                @default(0)
+  lastMessageSnippet String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  messages           AssistantMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String                // "user", "assistant", "system"
+  content        String
+  status         String                @default("sent")
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
