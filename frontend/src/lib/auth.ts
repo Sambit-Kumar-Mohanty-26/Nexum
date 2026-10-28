@@ -4,11 +4,11 @@ import { UserRole, DemoUser, DEMO_USERS } from "./auth-types";
 export type { UserRole, DemoUser };
 export { DEMO_USERS };
 
-export const AUTH_COOKIE_NAME = "proofloop_session";
+export const AUTH_COOKIE_NAME = "nexum_session";
 
 const SESSION_SECRET =
   process.env.SESSION_SECRET ||
-  "proofloop_default_demo_secret_key_minimum_32_characters_for_hmac_sha256";
+  "nexum_default_demo_secret_key_minimum_32_characters_for_hmac_sha256";
 
 // Helper: base64url encoding
 function base64UrlEncode(str: string): string {

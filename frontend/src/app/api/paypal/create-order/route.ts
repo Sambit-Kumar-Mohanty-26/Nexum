@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const order = await createMilestoneOrder({
       milestoneId,
       amountCents: Number(amountCents),
-      description: description || `Milestone ${milestoneId} Escrow Reservation`,
+      description: description || `Milestone ${milestoneId} funding`,
       idempotencyKey: key,
     });
 

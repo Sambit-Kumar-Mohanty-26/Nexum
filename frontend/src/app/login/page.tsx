@@ -27,8 +27,7 @@ export default function LoginPage() {
   // Selected persona state ("client" | "freelancer")
   const [persona, setPersona] = useState<"client" | "freelancer">("client");
 
-  // Credentials state
-  const [email, setEmail] = useState("alex.rivera@proofloop.demo");
+  const [email, setEmail] = useState("alex.rivera@nexum.demo");
   const [password, setPassword] = useState("demo1234");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -532,7 +531,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="alex.rivera@proofloop.demo"
+                    placeholder="alex.rivera@nexum.demo"
                     required
                     className="w-full border-0 outline-none bg-transparent text-xs sm:text-[12.5px] text-[#0f172a] placeholder:text-[#a4afc5]"
                   />
@@ -679,7 +678,7 @@ export default function LoginPage() {
             N
           </Link>
           <div className="hidden sm:flex items-center gap-6 text-[11px] text-[#64748b]">
-            <span>ProofLoop Global Consensus Rails</span>
+            <span>Nexum Global Consensus Rails</span>
             <span>PayPal Sandbox v1.2</span>
           </div>
         </div>

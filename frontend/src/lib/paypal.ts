@@ -1,5 +1,5 @@
 /**
- * Nexum / ProofLoop PayPal REST API v2 Adapter
+ * Nexum PayPal REST API v2 Adapter
  * Compliant with Specification v1.2 & Phase 1 Spike A (P1-05)
  *
  * Enforces:
@@ -111,7 +111,7 @@ export async function createMilestoneOrder(
       {
         reference_id: params.milestoneId,
         description: params.description.slice(0, 127),
-        custom_id: params.customId || `proofloop_${params.milestoneId}`,
+        custom_id: params.customId || `nexum_${params.milestoneId}`,
         amount: {
           currency_code: currency,
           value: valueFormatted,

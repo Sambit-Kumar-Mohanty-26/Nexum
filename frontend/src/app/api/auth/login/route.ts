@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: email
-            ? `No workspace found for "${email}". Use alex.rivera@proofloop.demo (Client) or rohan.verma@proofloop.demo (Freelancer).`
+            ? `No workspace found for "${email}". Use alex.rivera@nexum.demo (Client) or rohan.verma@nexum.demo (Freelancer).`
             : "Invalid persona or user not found. Select Client or Freelancer A.",
         },
         { status: 400 }

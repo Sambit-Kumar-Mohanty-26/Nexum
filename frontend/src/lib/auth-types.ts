@@ -22,7 +22,7 @@ export const DEMO_USERS: Record<string, DemoUser> = {
   CLIENT: {
     id: "usr_client_alex",
     role: "CLIENT",
-    email: "alex.rivera@proofloop.demo",
+    email: "alex.rivera@nexum.demo",
     name: "Alex Rivera",
     title: "Founder & Lead Merchant",
     companyOrHandle: "Horizon Commerce LLC",
@@ -38,7 +38,7 @@ export const DEMO_USERS: Record<string, DemoUser> = {
   FREELANCER_A: {
     id: "usr_freelancer_rohan",
     role: "FREELANCER",
-    email: "rohan.verma@proofloop.demo",
+    email: "rohan.verma@nexum.demo",
     name: "Rohan Verma",
     title: "Senior Full-Stack & Payment Rails Engineer",
     companyOrHandle: "@rohan_v",
@@ -54,7 +54,7 @@ export const DEMO_USERS: Record<string, DemoUser> = {
   FREELANCER_B: {
     id: "usr_freelancer_priya",
     role: "FREELANCER",
-    email: "priya.sharma@proofloop.demo",
+    email: "priya.sharma@nexum.demo",
     name: "Priya Sharma",
     title: "UI/UX & Design Systems Architect",
     companyOrHandle: "@priya_design",
@@ -70,7 +70,7 @@ export const DEMO_USERS: Record<string, DemoUser> = {
   FREELANCER_C: {
     id: "usr_freelancer_marcus",
     role: "FREELANCER",
-    email: "marcus.chen@proofloop.demo",
+    email: "marcus.chen@nexum.demo",
     name: "Marcus Chen",
     title: "Cloud Infrastructure & Reliability Engineer",
     companyOrHandle: "@marcus_ops",
