@@ -7,7 +7,10 @@ interface AuthContextType {
   user: DemoUser | null;
   isLoading: boolean;
   loginAs: (roleOrKey: "CLIENT" | "FREELANCER_A" | string) => Promise<boolean>;
-  loginWithCredentials: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithCredentials: (
+    email: string,
+    password?: string
+  ) => Promise<{ success: boolean; error?: string; user?: DemoUser }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -88,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithCredentials = async (
     email: string,
     password?: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; user?: DemoUser }> => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
@@ -103,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUser(data.user);
-      return { success: true };
+      return { success: true, user: data.user };
     } catch (err: unknown) {
       console.error("Login with credentials failed:", err);
       const msg = err instanceof Error ? err.message : "Network error during authentication";
