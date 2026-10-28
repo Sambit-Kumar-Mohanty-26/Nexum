@@ -383,11 +383,11 @@ export default function Navbar() {
                   {/* Actions & Logout */}
                   <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <Link
-                      href="/login"
+                      href={user.role === "FREELANCER" ? "/freelancer/dashboard" : "/client/dashboard"}
                       onClick={() => setUserMenuOpen(false)}
-                      className="text-slate-500 hover:text-slate-900 transition-colors"
+                      className="font-bold text-cobalt hover:underline transition-colors flex items-center gap-1"
                     >
-                      Persona details
+                      <span>Dashboard &rarr;</span>
                     </Link>
                     <button
                       type="button"
