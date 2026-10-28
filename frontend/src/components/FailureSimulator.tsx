@@ -4,11 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Zap,
   RotateCcw,
-  Check,
-  Lock,
-  ArrowRight,
-  ShieldCheck,
-  Layers,
 } from "lucide-react";
 
 type SimState = "IDLE" | "TIMEOUT" | "RECONCILING" | "CAPTURED";

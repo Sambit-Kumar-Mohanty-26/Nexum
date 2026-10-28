@@ -70,7 +70,7 @@ export default function Hero() {
           </Link>
 
           <Link
-            href="#launch"
+            href="/login"
             className="inline-flex h-10 items-center justify-center rounded-lg bg-ink px-5 text-xs font-semibold text-white shadow-sm transition hover:bg-ink-light"
           >
             Start for free

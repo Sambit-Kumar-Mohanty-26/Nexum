@@ -34,6 +34,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${manrope.variable} ${inter.variable} ${ibmPlexMono.variable}`}>
       <body className="bg-canvas text-ink selection:bg-cobalt/15 selection:text-cobalt font-sans antialiased">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

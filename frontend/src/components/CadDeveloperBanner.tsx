@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowRight, Terminal, Check, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
 type CodeTab = "ts" | "curl" | "webhook";
 
@@ -56,12 +56,21 @@ export default function CadDeveloperBanner() {
     const ISO_DX = 196;
     const ISO_DY = -138;
 
+    type Vec2 = { x: number; y: number };
+    type Vertex = { id: number; x: number; y: number; key: boolean; layerIdx: number };
+    type RibbonNode = Vertex & { homeX: number; homeY: number; startX: number; startY: number; vx: number; vy: number; scatterAngle: number; scatterSpeed: number };
+    type GradientStop = [number, string];
+    type Hatch = { x1: number; y1: number; x2: number; y2: number; delay: number; alpha: number; color: [number, number, number] };
+    type Contour = { a: number; b: number; order: number; bright: boolean };
+    type RibbonLayerCfg = { name: string; railA: Vec2[]; railB: Vec2[]; hatchCount: number; hatchAlpha: number; hatchColor: [number, number, number]; fillGradient: { x0: number; y0: number; x1: number; y1: number; stops: GradientStop[] }; drawOrderOffset: number; drawOrderSpan: number; keyIndicesA: number[]; keyIndicesB: number[] };
+    type RibbonLayer = RibbonLayerCfg & { poly: Vec2[]; railAIds: number[]; railBIds: number[]; contours: Contour[]; hatches: Hatch[] };
+
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
     const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
 
-    const evalCubicBezier = (p0: any, p1: any, p2: any, p3: any, t: number) => {
+    const evalCubicBezier = (p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 => {
       const mt = 1 - t;
       return {
         x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
@@ -69,7 +78,7 @@ export default function CadDeveloperBanner() {
       };
     };
 
-    const evalQuadBezier = (p0: any, p1: any, p2: any, t: number) => {
+    const evalQuadBezier = (p0: Vec2, p1: Vec2, p2: Vec2, t: number): Vec2 => {
       const mt = 1 - t;
       return {
         x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
@@ -77,14 +86,14 @@ export default function CadDeveloperBanner() {
       };
     };
 
-    const shiftIso = (pt: any, scale = 1.0) => ({
+    const shiftIso = (pt: Vec2, scale = 1.0): Vec2 => ({
       x: pt.x + ISO_DX * scale,
       y: pt.y + ISO_DY * scale,
     });
 
-    let ribbonLayers: any[] = [];
-    let allVertices: any[] = [];
-    let nodes: any[] = [];
+    let ribbonLayers: RibbonLayer[] = [];
+    let allVertices: Vertex[] = [];
+    let nodes: RibbonNode[] = [];
     const symbolBounds = { scale: 1, offsetX: 0, offsetY: 0, cx: 0, cy: 0 };
 
     const buildRibbonGeometry = () => {
@@ -103,20 +112,20 @@ export default function CadDeveloperBanner() {
         return id;
       };
 
-      const createRuledLayer = (cfg: any) => {
+      const createRuledLayer = (cfg: RibbonLayerCfg) => {
         const numSamples = cfg.railA.length;
-        const poly: any[] = [];
+        const poly: Vec2[] = [];
         for (let i = 0; i < numSamples; i++) poly.push(cfg.railA[i]);
         for (let i = numSamples - 1; i >= 0; i--) poly.push(cfg.railB[i]);
 
-        const railAIds = cfg.railA.map((pt: any, idx: number) =>
+        const railAIds = cfg.railA.map((pt: Vec2, idx: number) =>
           addVertex(pt.x, pt.y, cfg.keyIndicesA.includes(idx), ribbonLayers.length)
         );
-        const railBIds = cfg.railB.map((pt: any, idx: number) =>
+        const railBIds = cfg.railB.map((pt: Vec2, idx: number) =>
           addVertex(pt.x, pt.y, cfg.keyIndicesB.includes(idx), ribbonLayers.length)
         );
 
-        const contours: any[] = [];
+        const contours: Contour[] = [];
         for (let i = 0; i < numSamples - 1; i++) {
           const t = i / (numSamples - 1);
           contours.push({ a: railAIds[i], b: railAIds[i + 1], order: cfg.drawOrderOffset + t * cfg.drawOrderSpan, bright: cfg.hatchAlpha > 0.42 });
@@ -125,7 +134,7 @@ export default function CadDeveloperBanner() {
         contours.push({ a: railAIds[0], b: railBIds[0], order: cfg.drawOrderOffset, bright: false });
         contours.push({ a: railAIds[numSamples - 1], b: railBIds[numSamples - 1], order: cfg.drawOrderOffset + cfg.drawOrderSpan, bright: cfg.hatchAlpha > 0.42 });
 
-        const hatches: any[] = [];
+        const hatches: Hatch[] = [];
         for (let i = 1; i < cfg.hatchCount; i++) {
           const u = i / cfg.hatchCount;
           const exactIdx = u * (numSamples - 1);
@@ -143,8 +152,8 @@ export default function CadDeveloperBanner() {
       };
 
       // Layer 0: Left Inner Wall
-      const leftRailA: any[] = [];
-      const leftRailB: any[] = [];
+      const leftRailA: Vec2[] = [];
+      const leftRailB: Vec2[] = [];
       for (let i = 0; i <= 14; i++) {
         const t = i / 14;
         const ptA = t < 0.82 ? { x: 145, y: lerp(330, 625, t / 0.82) } : evalQuadBezier({ x: 145, y: 625 }, { x: 145, y: 678 }, { x: 188, y: 648 }, (t - 0.82) / 0.18);
@@ -154,8 +163,8 @@ export default function CadDeveloperBanner() {
       createRuledLayer({ name: "LEFT_INNER", railA: leftRailA, railB: leftRailB, hatchCount: 22, hatchAlpha: 0.28, hatchColor: [165, 175, 190], fillGradient: { x0: 145, y0: 330, x1: 310, y1: 650, stops: [[0, "rgba(14, 15, 19, 0.96)"], [1, "rgba(24, 26, 32, 0.94)"]] }, drawOrderOffset: 0.02, drawOrderSpan: 0.25, keyIndicesA: [0, 6, 11, 14], keyIndicesB: [0, 6, 11, 14] });
 
       // Layer 1: Center Metallic Drop Wall (Silver highlight)
-      const centerRailA: any[] = [];
-      const centerRailB: any[] = [];
+      const centerRailA: Vec2[] = [];
+      const centerRailB: Vec2[] = [];
       for (let i = 0; i <= 18; i++) {
         const t = i / 18;
         const ptA = t < 0.62 ? { x: 452, y: lerp(420, 725, t / 0.62) } : evalCubicBezier({ x: 452, y: 725 }, { x: 452, y: 805 }, { x: 525, y: 868 }, { x: 625, y: 920 }, (t - 0.62) / 0.38);
@@ -165,8 +174,8 @@ export default function CadDeveloperBanner() {
       createRuledLayer({ name: "CENTER_WALL", railA: centerRailA, railB: centerRailB, hatchCount: 32, hatchAlpha: 0.58, hatchColor: [242, 246, 255], fillGradient: { x0: 452, y0: 460, x1: 660, y1: 880, stops: [[0, "rgba(215, 222, 232, 0.28)"], [0.45, "rgba(160, 170, 184, 0.20)"], [1, "rgba(28, 31, 38, 0.92)"]] }, drawOrderOffset: 0.35, drawOrderSpan: 0.32, keyIndicesA: [4, 11, 15, 18], keyIndicesB: [4, 11, 15, 18] });
 
       // Layer 2: Right Upward Wing
-      const rightRailA: any[] = [];
-      const rightRailB: any[] = [];
+      const rightRailA: Vec2[] = [];
+      const rightRailB: Vec2[] = [];
       for (let i = 0; i <= 16; i++) {
         const t = i / 16;
         const ptA = t < 0.8 ? { x: 706, y: lerp(795, 515, t / 0.8) } : evalQuadBezier({ x: 706, y: 515 }, { x: 706, y: 472 }, { x: 738, y: 450 }, (t - 0.8) / 0.2);
@@ -176,8 +185,8 @@ export default function CadDeveloperBanner() {
       createRuledLayer({ name: "RIGHT_WING", railA: rightRailA, railB: rightRailB, hatchCount: 24, hatchAlpha: 0.32, hatchColor: [185, 195, 210], fillGradient: { x0: 706, y0: 450, x1: 900, y1: 790, stops: [[0, "rgba(18, 20, 25, 0.96)"], [1, "rgba(12, 14, 18, 0.98)"]] }, drawOrderOffset: 0.62, drawOrderSpan: 0.3, keyIndicesA: [0, 6, 12, 16], keyIndicesB: [0, 6, 12, 16] });
 
       // Layer 3: Main Foreground Ribbon
-      const mainRailA: any[] = [];
-      const mainRailB: any[] = [];
+      const mainRailA: Vec2[] = [];
+      const mainRailB: Vec2[] = [];
       for (let i = 0; i <= 32; i++) {
         const t = i / 32;
         let ptA;
@@ -215,7 +224,7 @@ export default function CadDeveloperBanner() {
       symbolBounds.cx = stageCenterX;
       symbolBounds.cy = stageCenterY;
 
-      nodes = allVertices.map((v, idx) => {
+      nodes = allVertices.map((v) => {
         const pos = normToScreen(v.x, v.y);
         return {
           ...v,
@@ -356,7 +365,7 @@ export default function CadDeveloperBanner() {
               const g0 = normToScreen(layer.fillGradient.x0, layer.fillGradient.y0);
               const g1 = normToScreen(layer.fillGradient.x1, layer.fillGradient.y1);
               const grad = ctx.createLinearGradient(g0.x, g0.y, g1.x, g1.y);
-              layer.fillGradient.stops.forEach(([stop, col]: any) => grad.addColorStop(stop, col));
+              layer.fillGradient.stops.forEach(([stop, col]: GradientStop) => grad.addColorStop(stop, col));
               ctx.globalAlpha = easeOutQuart(p3);
               ctx.fillStyle = grad;
               ctx.fill();
@@ -368,7 +377,7 @@ export default function CadDeveloperBanner() {
           if (p3 > 0.001) {
             ctx.save();
             ctx.lineWidth = 1;
-            layer.hatches.forEach((h: any) => {
+            layer.hatches.forEach((h: Hatch) => {
               const lp = easeOutQuart(clamp((p3 - h.delay * 0.6) / 0.4, 0, 1));
               if (lp <= 0.001) return;
               const pA = normToScreen(h.x1, h.y1);
@@ -387,7 +396,7 @@ export default function CadDeveloperBanner() {
           if (p2 > 0.001) {
             ctx.save();
             ctx.lineCap = "round";
-            layer.contours.forEach((c: any) => {
+            layer.contours.forEach((c: Contour) => {
               const lp = easeInOutCubic(clamp((p2 - c.order * 0.55) / 0.45, 0, 1));
               if (lp <= 0.001) return;
               const nA = nodes[c.a];

@@ -5,20 +5,7 @@ import {
   Sparkles,
   GitBranch,
   Lock,
-  RefreshCw,
-  ShieldCheck,
   Check,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  Layers,
-  FileCode,
-  Clock,
-  Terminal,
-  Activity,
-  Bot,
-  User,
-  SlidersHorizontal,
 } from "lucide-react";
 
 const navItems = [

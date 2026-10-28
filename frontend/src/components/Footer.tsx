@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight, ArrowRight, Shield, Terminal, Lock, CheckCircle2, GitBranch } from "lucide-react";
+import { ArrowUpRight, ArrowRight, GitBranch } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function Footer() {
@@ -30,7 +30,7 @@ export default function Footer() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="#launch"
+                href="/login"
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-xs hover:bg-slate-800 transition"
               >
                 <span>Launch Workspace</span>
