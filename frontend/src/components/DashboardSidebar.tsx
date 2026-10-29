@@ -15,6 +15,8 @@ import {
   Settings,
   Sparkles,
   Users,
+  FolderKanban,
+  LayoutGrid,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -52,15 +54,25 @@ export default function DashboardSidebar({
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     ...(currentRole === "CLIENT"
       ? [
-          { id: "assistant", label: "Nexum AI", icon: Sparkles },
-          { id: "freelancers", label: "Freelancers", icon: Users },
+          { id: "projects", label: "My Projects", icon: FolderKanban },
         ]
       : []),
     { id: "milestones", label: "Milestones", icon: Layers },
-    { id: "escrow", label: "PayPal Escrow", icon: CreditCard },
+    ...(currentRole === "CLIENT"
+      ? [
+          { id: "freelancers", label: "Find Freelancers", icon: Users },
+          { id: "workspace", label: "Workspace", icon: LayoutGrid },
+          { id: "payments", label: "Payments", icon: CreditCard },
+        ]
+      : [
+          { id: "payments", label: "PayPal Escrow", icon: CreditCard },
+        ]),
     { id: "audit", label: "Audit Trail", icon: FileText },
     ...(currentRole === "CLIENT"
-      ? [{ id: "settings", label: "Profile & Settings", icon: Settings }]
+      ? [{ id: "settings", label: "Settings", icon: Settings }]
+      : []),
+    ...(currentRole === "CLIENT"
+      ? [{ id: "assistant", label: "Nexum AI", icon: Sparkles }]
       : []),
   ];
 
@@ -79,23 +91,23 @@ export default function DashboardSidebar({
   };
 
   return (
-    <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col justify-between h-screen sticky top-0 z-30 select-none">
+    <aside className="w-[252px] shrink-0 border-r border-[#E3EAF3] bg-white flex flex-col justify-between h-screen sticky top-0 z-30 select-none">
       
       {/* Top Brand & Workspace Identifier */}
-      <div className="p-5 border-b border-slate-100 space-y-4">
+      <div className="p-4 sm:p-5 border-b border-[#E3EAF3] space-y-3.5">
         {/* Nexum Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 text-slate-900 transition hover:opacity-85">
           <svg className="w-7 h-7" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 23L13 6H18L10 23H5Z" fill="#0f172a" />
-            <path d="M14 26L22 9H27L19 26H14Z" fill="#2563eb" />
+            <path d="M5 23L13 6H18L10 23H5Z" fill="#111827" />
+            <path d="M14 26L22 9H27L19 26H14Z" fill="#245BFF" />
           </svg>
-          <span className="font-heading text-xl font-extrabold tracking-tight text-slate-900">nexum</span>
+          <span className="font-heading text-xl font-extrabold tracking-tight text-[#111827]">nexum</span>
         </Link>
 
         {/* Workspace Pill */}
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-[#F8FAFD] border border-[#E3EAF3] text-xs font-semibold text-slate-700">
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${currentRole === "CLIENT" ? "bg-blue-600" : "bg-emerald-500"} animate-pulse`} />
+            <span className={`w-2 h-2 rounded-full ${currentRole === "CLIENT" ? "bg-[#245BFF]" : "bg-emerald-500"} animate-pulse`} />
             <span>{currentRole === "CLIENT" ? "Client Workspace" : "Freelancer Rail"}</span>
           </div>
           <span className="font-mono text-[10px] text-slate-400">v1.2</span>
@@ -103,8 +115,8 @@ export default function DashboardSidebar({
       </div>
 
       {/* Middle Navigation Menu */}
-      <div className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+      <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <div className="px-3 pb-2.5 text-[11px] font-sans font-semibold uppercase tracking-wider text-slate-400">
           Navigation
         </div>
 
@@ -112,6 +124,7 @@ export default function DashboardSidebar({
           const Icon = item.icon;
           const isActive =
             activeTab === item.id ||
+            (activeTab === "escrow" && item.id === "payments") ||
             (item.id === "assistant" && pathname === "/client/assistant") ||
             (item.id === "freelancers" && pathname === "/client/freelancers");
 
@@ -120,89 +133,86 @@ export default function DashboardSidebar({
               key={item.id}
               type="button"
               onClick={() => handleNavClick(item.id)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] leading-5 transition-all duration-150 text-left cursor-pointer ${
                 isActive
-                  ? "bg-blue-50 text-blue-700 shadow-xs border border-blue-200/80"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  ? "bg-blue-50/80 text-[#245BFF] font-semibold border border-blue-200/70 shadow-2xs"
+                  : "text-slate-600 hover:text-[#111827] hover:bg-[#F8FAFD] font-medium"
               }`}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
-              <span>{item.label}</span>
+              <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-[#245BFF]" : "text-slate-400"}`} />
+              <span className="truncate">{item.label}</span>
               {isActive && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#245BFF]" />
               )}
             </button>
           );
         })}
 
         {/* Consensus Verification Notice */}
-        <div className="pt-6 px-3">
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1.5">
+        <div className="pt-4 px-1">
+          <div className="p-3.5 rounded-xl bg-[#F8FAFD] border border-[#E3EAF3] text-slate-600 space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Dual SHA-256</span>
             </div>
-            <p className="text-[11px] text-slate-500 leading-normal">
-              Agreement state locked on canonical hash <code>#9f8c2b7e</code>.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Agreement state locked on canonical hash <code className="font-mono text-[11px] text-slate-700 bg-white px-1.5 py-0.5 rounded border border-[#E3EAF3]">#9f8c2b7e</code>.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Bottom Profile, Role Switcher & Logout */}
-      <div className="p-3 pb-6 border-t border-slate-100 bg-slate-50/50 space-y-2.5">
-        
-        {/* User Card */}
-        {user && (
-          <button
-            type="button"
-            onClick={() => currentRole === "CLIENT" && onTabChange("settings")}
-            className={`w-full flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-2xs text-left transition ${
-              currentRole === "CLIENT" ? "hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer" : "cursor-default"
-            }`}
-            title={currentRole === "CLIENT" ? "View Profile & Settings" : undefined}
-          >
-            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-200">
-              <Image
-                src={user.avatar}
-                alt={user.name}
-                width={36}
-                height={36}
-                className="w-full h-full object-cover"
-              />
+      {/* Bottom Profile & Role Switcher */}
+      <div className="p-3.5 border-t border-[#E3EAF3] bg-white space-y-2.5">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#F8FAFD] border border-[#E3EAF3]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {user?.avatar ? (
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E3EAF3] shrink-0">
+                <Image
+                  src={user.avatar}
+                  alt={user?.name || "User Avatar"}
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs grid place-items-center shrink-0">
+                {user?.name?.[0] || "U"}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-900 truncate">
+                {user?.name || "Alex Rivera"}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                {user?.companyOrHandle || "Horizon Commerce LLC"}
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-slate-900 truncate">{user.name}</div>
-              <div className="text-[10px] text-slate-500 truncate">{user.companyOrHandle}</div>
-            </div>
-          </button>
-        )}
+          </div>
+        </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-1.5">
-          {/* Switch Role */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <button
             type="button"
             onClick={handleSwitchRole}
-            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-700 hover:text-blue-600 transition shadow-2xs cursor-pointer"
-            title={`Switch to ${currentRole === "CLIENT" ? "Freelancer (Rohan)" : "Client (Alex)"}`}
+            className="h-8.5 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border border-[#E3EAF3] text-slate-700 hover:text-slate-900 hover:bg-[#F8FAFD] font-semibold transition cursor-pointer text-xs"
+            title="Switch between Buyer and Freelancer view"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="truncate">Switch Role</span>
+            <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+            <span>Switch Role</span>
           </button>
 
-          {/* Logout */}
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-[11px] font-semibold text-slate-700 hover:text-rose-600 transition shadow-2xs cursor-pointer"
+            className="h-8.5 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border border-[#E3EAF3] text-slate-700 hover:text-rose-600 hover:bg-rose-50 font-semibold transition cursor-pointer text-xs"
             title="Log out of session"
           >
-            <LogOut className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <LogOut className="w-3.5 h-3.5 text-slate-400" />
             <span>Log out</span>
           </button>
         </div>
-
       </div>
     </aside>
   );

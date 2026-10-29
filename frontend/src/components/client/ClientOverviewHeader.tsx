@@ -1,77 +1,57 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, Plus, Search } from "lucide-react";
+import { Sparkles, Users } from "lucide-react";
 
 interface ClientOverviewHeaderProps {
-  clientName: string;
-  companyName: string;
-  projectName: string;
-  agreementHash: string;
-  onFindFreelancer?: () => void;
-  onCreateProject?: () => void;
+  onFindFreelancers?: () => void;
+  onCreateProjectWithAI?: () => void;
+  projectName?: string;
+  agreementHash?: string;
 }
 
 export default function ClientOverviewHeader({
-  clientName,
-  companyName,
-  projectName,
-  agreementHash,
-  onFindFreelancer,
-  onCreateProject,
+  onFindFreelancers,
+  onCreateProjectWithAI,
+  projectName = "Bilateral E-Commerce Payment Rails",
+  agreementHash = "#9f8c2b7e",
 }: ClientOverviewHeaderProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-        
-        {/* Left: Greeting & Active Project Context */}
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Welcome back, {clientName.split(" ")[0]}
-            </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Verified Merchant
-            </span>
-          </div>
-
-          <p className="text-xs sm:text-sm text-slate-600">
-            Active workspace for <strong className="text-slate-900 font-semibold">{companyName}</strong> · Project:{" "}
-            <span className="text-blue-700 font-semibold">{projectName}</span>
-          </p>
-
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>Agreement: <strong>{agreementHash}</strong></span>
-            </span>
-            <span className="text-slate-300 hidden sm:inline">·</span>
-            <span className="text-slate-500 text-[11px]">Bilateral Dual-Approval Locked</span>
-          </div>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pb-6 border-b border-[#E3EAF3]">
+      {/* Left: Spacious Title & Subtitle + Muted Context Line */}
+      <div className="space-y-1.5">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#111827] tracking-tight">
+          Overview
+        </h1>
+        <p className="text-sm text-[#64748B]">
+          Here&apos;s what&apos;s happening across your projects.
+        </p>
+        <div className="flex items-center gap-2 pt-1 text-xs text-slate-500">
+          <span>Active: <strong className="text-slate-800 font-semibold">{projectName}</strong></span>
+          <span>·</span>
+          <span>Agreement: <code className="text-slate-700 font-mono text-[11px] bg-[#F8FAFD] px-2 py-0.5 rounded-md border border-[#E3EAF3]">{agreementHash}</code></span>
         </div>
+      </div>
 
-        {/* Right: Primary & Secondary Actions */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={onFindFreelancer}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm transition shadow-xs cursor-pointer"
-          >
-            <Search className="w-4 h-4" />
-            <span>Find a Freelancer</span>
-          </button>
+      {/* Right: Primary and Secondary Action Buttons */}
+      <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+        <button
+          type="button"
+          onClick={onFindFreelancers}
+          className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-white hover:bg-[#F8FAFD] text-slate-700 font-semibold text-xs sm:text-sm border border-[#E3EAF3] shadow-precision hover:border-slate-300 transition-all duration-150 cursor-pointer active:scale-98"
+        >
+          <Users className="w-4 h-4 text-slate-500" />
+          <span>Find freelancers</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={onCreateProject}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm transition border border-slate-300 shadow-2xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-slate-500" />
-            <span>New Scope</span>
-          </button>
-        </div>
-
+        <button
+          type="button"
+          onClick={onCreateProjectWithAI}
+          className="h-10 inline-flex items-center gap-2 px-4.5 rounded-xl bg-[#245BFF] hover:bg-[#1748E8] text-white font-bold text-xs sm:text-sm shadow-precision hover:shadow-precision-hover transition-all duration-150 cursor-pointer active:scale-98"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Create project with AI</span>
+        </button>
       </div>
     </div>
   );

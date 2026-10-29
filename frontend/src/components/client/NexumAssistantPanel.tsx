@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sparkles, X, Send, Bot, User, ShieldAlert, ExternalLink } from "lucide-react";
 
 interface Message {
@@ -29,6 +29,7 @@ const SUGGESTED_PROMPTS = [
 
 export default function NexumAssistantPanel() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
@@ -99,6 +100,10 @@ export default function NexumAssistantPanel() {
     }, 600);
   };
 
+  if (pathname === "/client/assistant") {
+    return null;
+  }
+
   return (
     <>
       {/* Floating Launcher Button */}
@@ -107,12 +112,13 @@ export default function NexumAssistantPanel() {
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
-          aria-label="Open Nexum AI Project Copilot"
-          className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-slate-900 text-white shadow-xl hover:bg-slate-800 transition transform hover:scale-105 border border-slate-700/80 cursor-pointer"
+          aria-label="Open Nexum AI Copilot"
+          title="Open Nexum AI Copilot"
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-slate-900 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all border border-slate-700/60 cursor-pointer group"
         >
-          <Sparkles className="w-4 h-4 text-blue-400" />
-          <span className="text-xs font-bold tracking-tight">Nexum AI</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <Sparkles className="w-4 h-4 text-blue-400 group-hover:text-white transition-colors" />
+          <span className="text-xs font-semibold tracking-tight">Nexum AI</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </button>
       </div>
 

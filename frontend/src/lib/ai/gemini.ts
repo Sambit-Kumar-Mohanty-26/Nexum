@@ -1,22 +1,26 @@
 import { AssistantMessage } from "./conversation-types";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || "";
-const PRIMARY_MODEL = process.env.AI_MODEL || process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const PRIMARY_MODEL = process.env.AI_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 // Modern Google Gemini model fallback cascade:
-// 1. gemini-2.0-flash (Latest modern generation flagship model)
-// 2. gemini-2.5-flash (Cutting-edge 2.5 series)
-// 3. gemini-2.0-flash-lite (Ultra-fast modern lightweight model)
-// 4. gemini-1.5-pro (Advanced reasoning fallback)
-// 5. gemini-1.5-flash (Reliable standard fallback)
+// 1. gemini-3.8-flash (Latest modern generation flagship model)
+// 2. gemini-3.7-flash (Cutting-edge Gemini 3.7 series)
+// 3. gemini-3.5-flash (High-efficiency Gemini 3.5 series)
+// 4. gemini-flash-latest (Google's rolling latest flash alias)
+// 5. gemini-3.1-pro-preview (Advanced multi-modal reasoning fallback)
+// 6. gemini-pro-latest (Google's rolling latest pro alias)
+// 7. gemini-flash-lite-latest (Ultra-fast lightweight fallback)
 export const MODEL_FALLBACK_CASCADE = Array.from(
   new Set([
     PRIMARY_MODEL,
-    "gemini-2.0-flash",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+    "gemini-3.1-pro-preview",
+    "gemini-pro-latest",
+    "gemini-flash-lite-latest",
   ])
 );
 
@@ -140,7 +144,7 @@ STRICT BEHAVIORAL & SAFETY RULES:
 /**
  * Executes a generation request with the Gemini model using an automatic
  * multi-model fallback cascade:
- * [Primary -> gemini-1.5-pro -> gemini-2.0-flash -> gemini-1.5-flash -> gemini-1.5-flash-8b -> Deterministic Protocol]
+ * [Primary -> gemini-3.8-flash -> gemini-3.7-flash -> gemini-3.5-flash -> gemini-flash-latest -> gemini-3.1-pro-preview -> Deterministic Protocol]
  */
 export async function generateGeminiResponse(
   messages: AssistantMessage[]

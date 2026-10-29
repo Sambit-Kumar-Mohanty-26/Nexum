@@ -2,22 +2,36 @@
 
 @theme {
   --color-canvas: #FFFFFF;
-  --color-ink: #0A0D14;
-  --color-ink-light: #20242D;
+  --color-ink: #111827;
+  --color-ink-light: #1E293B;
   --color-ink-muted: #64748B;
-  --color-cobalt: #425CFB;
-  --color-cobalt-hover: #334be0;
-  --color-mist: #E2E6EF;
-  --color-mist-light: #F0F3FA;
-  --color-verified: #187B62;
-  --color-verified-light: #E8F5F1;
-  --color-attention: #F0B44C;
-  --color-attention-light: #FEF7EC;
+  --color-cobalt: #245BFF;
+  --color-cobalt-hover: #1748E8;
+  --color-mist: #E3EAF3;
+  --color-mist-light: #F8FAFD;
+  --color-verified: #059669;
+  --color-verified-light: #ECFDF5;
+  --color-attention: #D97706;
+  --color-attention-light: #FFFBEB;
+
+  --color-app-bg: #F6F8FC;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F8FAFD;
+  --color-text-primary: #111827;
+  --color-text-secondary: #64748B;
+  --color-border-subtle: #E3EAF3;
+  --color-brand: #245BFF;
+  --color-brand-hover: #1748E8;
+  --color-success: #059669;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
 
   --font-heading: var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), monospace;
 
+  --shadow-precision: 0 1px 2px 0 rgba(15, 23, 42, 0.05), 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+  --shadow-precision-hover: 0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 2px 8px -1px rgba(36, 91, 255, 0.08);
   --shadow-attio: 0 2px 4px rgba(15, 23, 42, 0.04), 0 24px 60px -12px rgba(15, 23, 42, 0.16), 0 40px 90px -24px rgba(15, 23, 42, 0.12);
   --shadow-terminal: 0 25px 60px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1);
   --shadow-floating: 0 16px 40px -8px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.05);
@@ -25,21 +39,40 @@
 
 :root {
   --background: #FFFFFF;
-  --foreground: #0A0D14;
+  --foreground: #111827;
+  --app-bg: #F6F8FC;
+  --surface: #FFFFFF;
+  --surface-subtle: #F8FAFD;
+  --text-primary: #111827;
+  --text-secondary: #64748B;
+  --border-subtle: #E3EAF3;
+  --brand: #245BFF;
+  --brand-hover: #1748E8;
+  --success: #059669;
+  --warning: #D97706;
+  --danger: #DC2626;
 }
 
 body {
-  background-color: #FFFFFF;
+  background-color: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals for precision financial figures */
+.tnum,
+[data-tabular-nums] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 /* Attio Exact Periwinkle-Blue Background with Crisp White Pinstripes*/
 .bg-attio-vibrant-periwinkle {
   background-color: #D6E3FC;
   background-image: 
-    /* LAYER 1: Subtle, tight 1px white pinstripes */
     repeating-linear-gradient(
       to right,
       rgba(255, 255, 255, 0.36) 0px,
@@ -47,7 +80,6 @@ body {
       transparent 1px,
       transparent 9px
     ),
-    /* LAYER 2: Luminous Periwinkle Radial Gradient */
     radial-gradient(
       ellipse 90% 70% at 50% 45%,
       #ECF3FE 0%,
@@ -86,6 +118,7 @@ body {
   background: #CBD5E1;
   border-radius: 9999px;
 }
+
 /* Traveling Laser Beam Animation */
 @keyframes laserSweep {
   0% {
@@ -99,6 +132,7 @@ body {
 .animate-laser-sweep {
   animation: laserSweep 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+
 /* Seamless Silk Marquee */
 @keyframes marquee {
   0% {
@@ -193,6 +227,7 @@ body {
   animation: radarSweep 8s linear infinite;
   transform-origin: center center;
 }
+
 /* Smooth Editorial Text Crossfade */
 @keyframes textCrossfade {
   0% {
@@ -212,15 +247,8 @@ body {
 }
 
 /* Attio High-Contrast Dotted Background Grid */
-/* Attio Crisp Visible Dotted Background */
 .bg-attio-dots {
   background-color: #FFFFFF;
   background-image: radial-gradient(#64748B 1.5px, transparent 1.5px);
   background-size: 24px 24px;
-}
-body {
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  overflow-x: clip; /* Allows sticky curtain reveal to work smoothly */
 }

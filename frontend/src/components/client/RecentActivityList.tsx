@@ -1,116 +1,110 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, CreditCard, Send, CheckCircle2, ArrowRight } from "lucide-react";
+import { ArrowRight, FileCheck, Send, ShieldCheck } from "lucide-react";
 
 interface ActivityItem {
   id: string;
-  type: "DELIVERABLE_SUBMITTED" | "PAYPAL_ORDER_CREATED" | "AGREEMENT_LOCKED" | "PAYMENT_CAPTURED";
-  title: string;
+  description: string;
+  projectOrMilestone: string;
   actor: string;
   timestamp: string;
-  hash: string;
+  reference: string;
   icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
 }
 
-const ACTIVITIES: ActivityItem[] = [
+const RECENT_EVENTS: (ActivityItem & { color: string })[] = [
   {
-    id: "act_1",
-    type: "DELIVERABLE_SUBMITTED",
-    title: "Milestone 2 deliverable artifacts submitted for review",
+    id: "evt_1",
+    description: "Milestone 2 deliverable artifacts submitted for client review",
+    projectOrMilestone: "Milestone 2 · Webhook Ingestion Engine",
     actor: "Rohan Verma",
-    timestamp: "Nov 28, 2026 · 14:32 UTC",
-    hash: "0x9f8c2b7e19a4",
+    timestamp: "2 hours ago",
+    reference: "PR #42",
     icon: Send,
-    iconColor: "text-blue-600 bg-blue-50 border-blue-200",
+    color: "bg-amber-50 text-amber-700 ring-1 ring-amber-500/20",
   },
   {
-    id: "act_2",
-    type: "PAYPAL_ORDER_CREATED",
-    title: "PayPal Sandbox Order #6DE714998H998261C created ($1,500.00 USD)",
+    id: "evt_2",
+    description: "PayPal Sandbox Order created & pre-funded before kickoff",
+    projectOrMilestone: "Milestone 2 pre-funding",
     actor: "Alex Rivera",
-    timestamp: "Nov 27, 2026 · 09:15 UTC",
-    hash: "0x812d4a19cf7b",
-    icon: CreditCard,
-    iconColor: "text-amber-600 bg-amber-50 border-amber-200",
+    timestamp: "Yesterday",
+    reference: "#6DE714998",
+    icon: FileCheck,
+    color: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20",
   },
   {
-    id: "act_3",
-    type: "PAYMENT_CAPTURED",
-    title: "Milestone 1 captured and funds released to contractor ($1,200.00 USD)",
-    actor: "Alex Rivera",
-    timestamp: "Oct 26, 2026 · 18:40 UTC",
-    hash: "0x4ab912048c88",
-    icon: CheckCircle2,
-    iconColor: "text-emerald-600 bg-emerald-50 border-emerald-200",
-  },
-  {
-    id: "act_4",
-    type: "AGREEMENT_LOCKED",
-    title: "Bilateral agreement dual-approved & locked on canonical hash",
+    id: "evt_3",
+    description: "Dual approval confirmed and agreement state locked",
+    projectOrMilestone: "Contract v1.2",
     actor: "Alex Rivera & Rohan Verma",
-    timestamp: "Oct 24, 2026 · 11:05 UTC",
-    hash: "0x24ff9001ee32",
+    timestamp: "Oct 25, 2026",
+    reference: "hash #9f8c2b",
     icon: ShieldCheck,
-    iconColor: "text-emerald-600 bg-emerald-50 border-emerald-200",
+    color: "bg-blue-50 text-[#245BFF] ring-1 ring-blue-500/20",
   },
 ];
 
 interface RecentActivityListProps {
-  onViewAuditTrail: () => void;
+  onViewAuditTrail?: () => void;
 }
 
 export default function RecentActivityList({ onViewAuditTrail }: RecentActivityListProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-            Recent consensus activity & payment events
+          <h2 className="text-lg font-bold text-[#111827] tracking-tight">
+            Recent activity
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Cryptographic audit log of dual approvals, order authorizations, and deliverable handoffs.
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
+            Key state transitions and authorizations across your projects.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onViewAuditTrail}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-        >
-          <span>View Audit Trail</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+
+        {onViewAuditTrail && (
+          <button
+            type="button"
+            onClick={onViewAuditTrail}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#245BFF] hover:text-[#1748E8] transition cursor-pointer self-start sm:self-auto"
+          >
+            <span>View audit trail</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
-      {/* Activity Timeline */}
-      <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100 shadow-xs overflow-hidden">
-        {ACTIVITIES.map((act) => {
-          const Icon = act.icon;
+      {/* Full-Width Calm Activity List */}
+      <div className="bg-white rounded-2xl border border-[#E3EAF3] divide-y divide-[#E3EAF3] shadow-precision overflow-hidden">
+        {RECENT_EVENTS.map((evt) => {
+          const Icon = evt.icon;
           return (
             <div
-              key={act.id}
-              className="p-3.5 sm:p-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition"
+              key={evt.id}
+              className="p-5 sm:px-6 sm:py-4 flex items-center justify-between gap-4 hover:bg-[#F8FAFD] transition-colors duration-150"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-8 h-8 rounded-full border grid place-items-center shrink-0 ${act.iconColor}`}>
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 shadow-2xs ${evt.color}`}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs sm:text-[13px] font-semibold text-slate-900 truncate">
-                    {act.title}
+                  <div className="text-sm sm:text-base font-semibold text-[#111827] truncate">
+                    {evt.description}
                   </div>
-                  <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2 mt-0.5">
-                    <span>Actor: <strong className="text-slate-700">{act.actor}</strong></span>
-                    <span className="text-slate-300">·</span>
-                    <span>{act.timestamp}</span>
+                  <div className="text-xs sm:text-sm text-[#64748B] truncate mt-1">
+                    <span className="text-slate-800 font-medium">{evt.projectOrMilestone}</span>
+                    <span className="mx-2 text-slate-300">·</span>
+                    <span>{evt.actor}</span>
+                    <span className="mx-2 text-slate-300">·</span>
+                    <span className="text-slate-400">{evt.timestamp}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="shrink-0 text-right font-mono text-[11px] text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                hash: {act.hash}
+              <div className="shrink-0 font-mono text-xs text-slate-600 bg-[#F8FAFD] px-2.5 py-1 rounded-md border border-[#E3EAF3]">
+                {evt.reference}
               </div>
             </div>
           );

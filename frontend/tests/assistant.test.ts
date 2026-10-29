@@ -117,8 +117,8 @@ describe("Nexum AI Assistant & Persistent Conversation Store", () => {
 
   it("defines a resilient multi-model fallback cascade using latest modern Gemini models", () => {
     expect(MODEL_FALLBACK_CASCADE.length).toBeGreaterThanOrEqual(4);
-    expect(MODEL_FALLBACK_CASCADE).toContain("gemini-2.0-flash");
-    expect(MODEL_FALLBACK_CASCADE).toContain("gemini-2.5-flash");
-    expect(MODEL_FALLBACK_CASCADE).toContain("gemini-1.5-pro");
+    expect(MODEL_FALLBACK_CASCADE).toContain("gemini-3.8-flash");
+    expect(MODEL_FALLBACK_CASCADE).toContain("gemini-3.7-flash");
+    expect(MODEL_FALLBACK_CASCADE).toContain("gemini-flash-latest");
   });
 });
