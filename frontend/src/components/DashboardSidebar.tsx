@@ -32,12 +32,14 @@ interface DashboardSidebarProps {
   currentRole: "CLIENT" | "FREELANCER";
   activeTab: string;
   onTabChange: (tab: string) => void;
+  onHelpClick?: () => void;
 }
 
 export default function DashboardSidebar({
   currentRole,
   activeTab,
   onTabChange,
+  onHelpClick,
 }: DashboardSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -54,32 +56,38 @@ export default function DashboardSidebar({
       id: "overview",
       label: "Overview",
       icon: Home,
+      href: "/client/dashboard",
     },
     {
       id: "projects",
       label: "My Projects",
       icon: FolderKanban,
+      href: "/client/dashboard?tab=projects",
     },
     {
       id: "milestones",
       label: "Milestones",
       icon: Layers,
       badge: 2,
+      href: "/client/dashboard?tab=milestones",
     },
     {
       id: "freelancers",
       label: "Find Freelancers",
       icon: Users,
+      href: "/client/freelancers",
     },
     {
       id: "workspace",
       label: "Workspace",
       icon: Cpu,
+      href: "/client/workspace",
     },
     {
       id: "payments",
       label: "Payments",
       icon: CreditCard,
+      href: "/client/dashboard?tab=payments",
     },
   ];
 
@@ -89,11 +97,20 @@ export default function DashboardSidebar({
       id: "settings",
       label: "Settings",
       icon: Settings,
+      href: "/client/dashboard?tab=settings",
     },
   ];
 
   const handleNavClick = (item: NavItemConfig) => {
     if (item.href) {
+      if (item.id === "workspace" && pathname === "/client/workspace") {
+        onTabChange("workspace");
+        return;
+      }
+      if (item.id === "overview" && pathname === "/client/dashboard" && !window.location.search) {
+        onTabChange("overview");
+        return;
+      }
       router.push(item.href);
       return;
     }
@@ -168,11 +185,12 @@ export default function DashboardSidebar({
           {secondaryNavItems.map(renderNavButton)}
         </div>
 
-        {/* Need Help? Box at bottom of nav (exactly matching image 1) */}
+        {/* Need Help? Box at bottom of nav (opens Mode 3 or Help Center) */}
         <div className="mt-auto pt-6">
-          <Link
-            href="#help"
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-[#f5f6ff] to-[#eef2ff] hover:from-[#eef2ff] hover:to-[#e0e7ff] border border-[#4f46e5]/10 text-slate-800 transition-all duration-200 group cursor-pointer shadow-2xs"
+          <button
+            type="button"
+            onClick={onHelpClick || (() => router.push("/client/workspace?help=mediation"))}
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-[#f5f6ff] to-[#eef2ff] hover:from-[#eef2ff] hover:to-[#e0e7ff] border border-[#4f46e5]/10 text-slate-800 transition-all duration-200 group cursor-pointer shadow-2xs text-left"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -186,7 +204,7 @@ export default function DashboardSidebar({
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#4f46e5] group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
-          </Link>
+          </button>
         </div>
       </div>
 

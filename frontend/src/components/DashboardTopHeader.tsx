@@ -16,6 +16,9 @@ interface DashboardTopHeaderProps {
   subtitle?: string;
   roleLabel?: string;
   onSearch?: (query: string) => void;
+  centerSlot?: React.ReactNode;
+  onHelpClick?: () => void;
+  placeholder?: string;
 }
 
 export type TeamsStatus = "available" | "busy" | "away" | "offline";
@@ -65,10 +68,10 @@ const TEAMS_STATUSES: StatusOption[] = [
 ];
 
 export default function DashboardTopHeader({
-  title,
-  subtitle,
-  roleLabel,
   onSearch,
+  centerSlot,
+  onHelpClick,
+  placeholder = "Search projects, freelancers, messages...",
 }: DashboardTopHeaderProps) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,30 +104,40 @@ export default function DashboardTopHeader({
   return (
     <header className="h-16 border-b border-slate-100 bg-white px-5 sm:px-7 flex items-center justify-between sticky top-0 z-20 select-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
       {/* ==============================================================
-          LEFT: SEARCH BAR (Matching Reference Image 2)
+          LEFT: SEARCH BAR (Matching Reference Image 1 & 2)
          ============================================================== */}
-      <div className="flex-1 max-w-[420px] mr-4">
+      <div className="flex-1 max-w-[340px] lg:max-w-[380px] mr-3">
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none stroke-[2]" />
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearchChange}
-            placeholder="Search projects, clients, messages..."
+            placeholder={placeholder}
             className="w-full h-9.5 pl-10 pr-4 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-50 focus:bg-white text-xs sm:text-[13px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5] transition-all"
           />
         </div>
       </div>
 
       {/* ==============================================================
-          RIGHT: ICONS, USER PROFILE & TEAMS-STYLE AVAILABILITY PILL
+          CENTER: OPTIONAL CENTER SLOT (Segmented Toggle for Workspace)
+         ============================================================== */}
+      {centerSlot && (
+        <div className="flex-1 flex justify-center px-2">
+          {centerSlot}
+        </div>
+      )}
+
+      {/* ==============================================================
+          RIGHT: ICONS, USER PROFILE & PRESENCE STATUS
          ============================================================== */}
       <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-        {/* Help Center Icon Button */}
+        {/* Help Center Icon Button (Opens Mode 3: How Mediation Works) */}
         <button
           type="button"
+          onClick={onHelpClick}
           className="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          title="Help & Documentation"
+          title="How Nexum Works (Mediation & Safety Guide)"
         >
           <HelpCircle className="w-[18px] h-[18px] stroke-[1.9]" />
         </button>
@@ -142,20 +155,25 @@ export default function DashboardTopHeader({
           )}
         </button>
 
-        {/* User Avatar & Name */}
+        {/* User Avatar & Name (Alex Rivera matching Ref 1 & 2) */}
         <div className="flex items-center gap-2.5 pl-1 sm:pl-2 border-l border-slate-100">
           <div className="relative w-9 h-9 shrink-0">
-            {/* Avatar Circle */}
-            <div className="w-full h-full rounded-full overflow-hidden border border-slate-200">
-              <Image
-                src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80"}
-                alt={user?.name || "User"}
-                width={36}
-                height={36}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {/* Compact Microsoft Teams status badge positioned on the bottom-right border */}
+            {user?.avatar ? (
+              <div className="w-full h-full rounded-full overflow-hidden border border-slate-200">
+                <Image
+                  src={user.avatar}
+                  alt={user.name}
+                  width={36}
+                  height={36}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full rounded-full bg-[#4f46e5]/10 text-[#4f46e5] font-bold text-xs flex items-center justify-center border border-[#4f46e5]/20">
+                AR
+              </div>
+            )}
+            {/* Status indicator */}
             <span
               className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-1.5 ring-white z-10 shadow-2xs ${activeStatusConfig.iconBg}`}
             />
@@ -163,20 +181,18 @@ export default function DashboardTopHeader({
 
           <div className="hidden sm:block">
             <span className="text-[13px] font-bold text-slate-900 leading-tight">
-              {user?.name || "Sambit Kumar"}
+              {user?.name || "Alex Rivera"}
             </span>
           </div>
         </div>
 
-        {/* ==============================================================
-            TEAMS-STYLE AVAILABILITY PILL & STATUS SELECTOR DROPDOWN
-           ============================================================== */}
+        {/* Presence Selector Dropdown */}
         <div className="relative" ref={statusMenuRef}>
           <button
             type="button"
             onClick={() => setIsStatusMenuOpen((prev) => !prev)}
             className={`flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full border text-[11.5px] font-semibold transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs active:scale-98 ${activeStatusConfig.bgColor} ${activeStatusConfig.borderColor} ${activeStatusConfig.color}`}
-            title="Set Microsoft Teams presence status"
+            title="Set presence status"
           >
             <span className={`w-2 h-2 rounded-full shrink-0 ${activeStatusConfig.iconBg}`} />
             <span>{activeStatusConfig.label}</span>
@@ -187,7 +203,6 @@ export default function DashboardTopHeader({
             />
           </button>
 
-          {/* Teams Status Selector Dropdown */}
           {isStatusMenuOpen && (
             <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-xl z-50 text-slate-800 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">

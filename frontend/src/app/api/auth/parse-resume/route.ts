@@ -18,6 +18,7 @@ export async function POST(request: Request) {
 
         // 1. Primary Universal Extractor: unpdf (Mozilla PDF.js standards)
         try {
+          // @ts-expect-error unpdf is an optional runtime dependency
           const { extractText } = await import("unpdf");
           const result = await extractText(uint8);
           extractedText = Array.isArray(result.text) ? result.text.join("\n") : (result.text || "");
@@ -61,23 +62,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: parsedData,
       fileName,
+      parsed: parsedData,
+      rawExtractedLength: extractedText.length,
     });
   } catch (error) {
-    console.error("Parse resume route error:", error);
+    console.error("Resume parse API error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to parse resume.",
-        data: {
-          fullName: "Candidate",
-          email: "",
-          workExperience: "",
-          suggestedSkills: ["Web development"],
-          suggestedProfileType: "Freelancer",
-        },
-      },
+      { success: false, error: "Failed to parse resume payload" },
       { status: 500 }
     );
   }
