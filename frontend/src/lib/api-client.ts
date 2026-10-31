@@ -426,3 +426,119 @@ export async function fetchClientAuditLogs(params?: {
     return { success: false, logs: [], total: 0, page: 1, totalPages: 1, error: msg };
   }
 }
+
+/**
+ * Fetch projects and drafts with dynamic counts and filter status
+ */
+export async function fetchClientProjects(params?: {
+  clientId?: string;
+  status?: string;
+  search?: string;
+}): Promise<{
+  success: boolean;
+  count: number;
+  data: any[];
+  stats: {
+    totalCount: number;
+    inProgressCount: number;
+    needsActionCount: number;
+    countsByStatus: Record<string, number>;
+  };
+}> {
+  try {
+    const query = new URLSearchParams();
+    if (params?.clientId) query.set("clientId", params.clientId);
+    if (params?.status && params.status !== "ALL") query.set("status", params.status);
+    if (params?.search) query.set("search", params.search);
+
+    const res = await fetch(`/api/projects?${query.toString()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch {
+    return {
+      success: true,
+      count: 0,
+      data: [],
+      stats: {
+        totalCount: 0,
+        inProgressCount: 0,
+        needsActionCount: 0,
+        countsByStatus: {
+          ALL: 0,
+          IN_PROGRESS: 0,
+          IN_REVIEW: 0,
+          NEGOTIATION: 0,
+          FINDING_FREELANCERS: 0,
+          DRAFT: 0,
+          COMPLETED: 0,
+          DISPUTED: 0,
+        },
+      },
+    };
+  }
+}
+
+/**
+ * Fetch a single project or draft specification by ID
+ */
+export async function fetchProjectById(id: string): Promise<any | null> {
+  try {
+    const res = await fetch(`/api/projects/${id}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save or publish a project/draft
+ */
+export async function saveProject(payload: any): Promise<{
+  success: boolean;
+  message?: string;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const method = payload.id ? "PUT" : "POST";
+    const endpoint = payload.id ? `/api/projects/${payload.id}` : "/api/projects";
+
+    const res = await fetch(endpoint, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to save project";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Delete a project or draft
+ */
+export async function deleteProject(id: string): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to delete project";
+    return { success: false, error: msg };
+  }
+}

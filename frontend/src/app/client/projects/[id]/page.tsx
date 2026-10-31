@@ -31,11 +31,13 @@ import {
   Lock,
   ChevronRight,
   TrendingUp,
+  FolderKanban,
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopHeader from "@/components/DashboardTopHeader";
 import { useAuth } from "@/context/AuthContext";
 import { getProjectById, ProjectDetailData } from "@/lib/mock-projects";
+import { fetchProjectById } from "@/lib/api-client";
 
 type ProjectTab =
   | "overview"
@@ -60,6 +62,65 @@ function ProjectWorkspaceContent() {
   const [projectData, setProjectData] = useState<ProjectDetailData>(() =>
     getProjectById(projectId)
   );
+  const [isLiveLoaded, setIsLiveLoaded] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  // Fetch live project data from database/backend API
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadLiveProject() {
+      try {
+        const live = await fetchProjectById(projectId);
+        if (live && isMounted) {
+          setIsLiveLoaded(true);
+          const proposal = live.proposals?.[0];
+          const freelancer = proposal?.freelancer;
+          const milestones = proposal?.milestones || [];
+
+          setProjectData((prev) => ({
+            ...prev,
+            id: live.id,
+            name: live.title || live.name || prev.name,
+            description: live.description || prev.description,
+            totalBudget: live.budgetCents ? `$${((live.budgetCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD` : prev.totalBudget,
+            freelancer: freelancer
+              ? {
+                  name: freelancer.name,
+                  role: freelancer.freelancerProfile?.title || "Contractor",
+                  avatar: freelancer.preferences?.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
+                  rating: "5.0",
+                  completedJobs: 14,
+                  hourlyRate: "$75/hr",
+                  status: "ACTIVE",
+                }
+              : prev.freelancer,
+            milestones: milestones.length > 0
+              ? milestones.map((m: any, idx: number) => ({
+                  id: m.id || `ms_${idx + 1}`,
+                  orderIndex: idx + 1,
+                  title: m.title,
+                  amount: `$${((m.amountCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`,
+                  deadline: m.deadline ? new Date(m.deadline).toLocaleDateString() : "Scheduled",
+                  status: m.state === "CAPTURED" ? ("RELEASED" as const) : m.state === "APPROVED" || m.state === "SUBMITTED" ? ("IN_REVIEW" as const) : ("NOT_STARTED" as const),
+                  statusLabel: m.state === "CAPTURED" ? "Released" : m.state === "APPROVED" || m.state === "SUBMITTED" ? "In Review" : "Upcoming",
+                  deliverables: m.deliverables || ["Milestone deliverable package"],
+                }))
+              : prev.milestones,
+          }));
+        } else if (!getProjectById(projectId) && isMounted) {
+          setNotFound(true);
+        }
+      } catch {
+        if (!getProjectById(projectId) && isMounted) {
+          setNotFound(true);
+        }
+      }
+    }
+    loadLiveProject();
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
 
   // Milestone 2 approval / release simulation state
   const [isCapturing, setIsCapturing] = useState(false);
@@ -190,13 +251,48 @@ function ProjectWorkspaceContent() {
   const tabs: { id: ProjectTab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: "overview", label: "Overview", icon: Layers },
     { id: "brief", label: "Brief & PRD", icon: FileText },
-    { id: "proposals", label: "Proposals", icon: Users, count: projectData.proposals.length },
-    { id: "milestones", label: "Milestones", icon: CheckCircle2, count: projectData.milestones.length },
-    { id: "workspace", label: "Workspace", icon: MessageSquare, count: projectData.workspaceQuestions.length },
-    { id: "changes", label: "Changes", icon: GitPullRequest, count: projectData.changes.filter(c => c.status === "PENDING_CLIENT_APPROVAL").length || undefined },
+    { id: "proposals", label: "Proposals", icon: Users, count: projectData?.proposals?.length || 0 },
+    { id: "milestones", label: "Milestones", icon: CheckCircle2, count: projectData?.milestones?.length || 0 },
+    { id: "workspace", label: "Workspace", icon: MessageSquare, count: projectData?.workspaceQuestions?.length || 0 },
+    { id: "changes", label: "Changes", icon: GitPullRequest, count: projectData?.changes?.filter(c => c.status === "PENDING_CLIENT_APPROVAL").length || undefined },
     { id: "payments", label: "Payments", icon: CreditCard },
     { id: "activity", label: "Activity", icon: Activity },
   ];
+
+  if (notFound && !projectData) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex font-sans selection:bg-[#4f46e5] selection:text-white">
+        <DashboardSidebar
+          currentRole="CLIENT"
+          activeTab="projects"
+          onTabChange={(tab) => {
+            router.push(`/client/dashboard?tab=${tab}`);
+          }}
+        />
+        <div className="flex-1 flex flex-col min-w-0">
+          <DashboardTopHeader />
+          <main className="flex-1 px-4 sm:px-8 py-20 max-w-md w-full mx-auto text-center space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <FolderKanban className="w-8 h-8" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">Project Not Found</h1>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              We couldn&apos;t find a project with ID &ldquo;{projectId}&rdquo;. It may have been deleted or does not exist.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/client/dashboard?tab=projects"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4f46e5] text-white text-xs font-bold shadow-xs hover:bg-[#4338ca] transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to My Projects</span>
+              </Link>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex font-sans selection:bg-[#4f46e5] selection:text-white">

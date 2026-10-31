@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   Filter,
@@ -26,7 +26,11 @@ import {
   HelpCircle,
   ExternalLink,
   FolderKanban,
+  Trash2,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
+import { fetchClientProjects, deleteProject } from "@/lib/api-client";
 
 export type ProjectLifecycleStatus =
   | "ALL"
@@ -71,224 +75,6 @@ export interface ProjectCardData {
   hasDeltaChange?: boolean;
 }
 
-const STABLE_NOW = 1793365200000;
-
-const INITIAL_PROJECTS: ProjectCardData[] = [
-  {
-    id: "proj_1",
-    name: "Bilateral E-Commerce Payment Rails",
-    description: "Milestone-governed PayPal Orders v2 integration with Dual SHA-256 state machine and reconciliation retry engine.",
-    status: "IN_REVIEW",
-    statusLabel: "In Review",
-    statusColor: "bg-amber-50 text-amber-800 border-amber-200/80",
-    stageSummary: "Milestone 2 deliverable package submitted with full test assert logs.",
-    nextAction: {
-      label: "Review Deliverable & Release Funds",
-      description: "Review automated tests & approve release of $1,500.00 from Sandbox escrow.",
-      type: "ACTION_REQUIRED",
-      urgent: true,
-    },
-    lastUpdated: "2 hours ago",
-    updatedTimestamp: STABLE_NOW - 2 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 14 * 86400 * 1000,
-    nextMilestoneDueTimestamp: STABLE_NOW + 1 * 86400 * 1000,
-    freelancer: {
-      name: "Rohan Verma",
-      role: "Payment Rails Specialist",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
-    },
-    nextMilestone: {
-      title: "M2: PayPal Webhook Ingestion Engine",
-      dueDate: "Submitted (Review Due Today)",
-      amount: "$1,500.00",
-    },
-    totalBudget: "$4,500.00",
-    needsAction: true,
-  },
-  {
-    id: "proj_2",
-    name: "CloudMesh AI Gateway Unification",
-    description: "Unified streaming API across 4 LLM providers with semantic pgvector caching, row-level isolation & rate limiters.",
-    status: "IN_PROGRESS",
-    statusLabel: "In Progress",
-    statusColor: "bg-blue-50 text-blue-700 border-blue-200/80",
-    stageSummary: "M1 active. Elena Rostova proposed PRD #3 scope delta for streaming circuit breaker.",
-    nextAction: {
-      label: "Review Scope Change Delta",
-      description: "Approve proposed +$400 scope addition to maintain consensus lock.",
-      type: "ACTION_REQUIRED",
-      urgent: true,
-    },
-    lastUpdated: "5 hours ago",
-    updatedTimestamp: STABLE_NOW - 5 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 7 * 86400 * 1000,
-    nextMilestoneDueTimestamp: STABLE_NOW + 3 * 86400 * 1000,
-    freelancer: {
-      name: "Elena Rostova",
-      role: "Full-Stack AI Architect",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
-    },
-    nextMilestone: {
-      title: "M1: AI Provider Gateway Isolation",
-      dueDate: "Nov 02, 2026",
-      amount: "$1,200.00",
-    },
-    totalBudget: "$3,600.00",
-    needsAction: true,
-    hasDeltaChange: true,
-  },
-  {
-    id: "proj_3",
-    name: "Autonomous PRD Generation & Spec Engine",
-    description: "LLM-assisted requirements intake engine generating canonical acceptance criteria and bilateral deliverable boundaries.",
-    status: "NEGOTIATION",
-    statusLabel: "Negotiation",
-    statusColor: "bg-purple-50 text-purple-700 border-purple-200/80",
-    stageSummary: "Counter-offer v1.3 submitted by Marcus Chen ($2,800 total across 3 milestones).",
-    nextAction: {
-      label: "Review Proposed Terms & Sign Off",
-      description: "Both parties must digitally sign canonical agreement v1.3.",
-      type: "ACTION_REQUIRED",
-      urgent: false,
-    },
-    lastUpdated: "Yesterday, 3:30 PM",
-    updatedTimestamp: STABLE_NOW - 26 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 4 * 86400 * 1000,
-    nextMilestoneDueTimestamp: STABLE_NOW + 10 * 86400 * 1000,
-    freelancer: {
-      name: "Marcus Chen",
-      role: "Cloud Reliability & DevOps",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
-    },
-    nextMilestone: {
-      title: "M1: Intake & Scope Extraction",
-      dueDate: "Nov 12, 2026",
-      amount: "$900.00",
-    },
-    totalBudget: "$2,800.00",
-    needsAction: false,
-  },
-  {
-    id: "proj_4",
-    name: "Enterprise Multi-Tenant Design System",
-    description: "Accessible Figma component kit with Tailwind CSS & Radix UI code mappings for cross-platform consistency.",
-    status: "FINDING_FREELANCERS",
-    statusLabel: "Finding Freelancers",
-    statusColor: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
-    stageSummary: "Approved brief published. 4 verified candidate profiles invited for review.",
-    nextAction: {
-      label: "Evaluate Candidate Proposals",
-      description: "3 proposals received from verified UI/UX design architects.",
-      type: "VIEW",
-      urgent: false,
-    },
-    lastUpdated: "2 days ago",
-    updatedTimestamp: STABLE_NOW - 48 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 5 * 86400 * 1000,
-    nextMilestoneDueTimestamp: null,
-    totalBudget: "$2,500.00",
-    needsAction: false,
-  },
-  {
-    id: "proj_5",
-    name: "Zero-Knowledge KYC Verification Module",
-    description: "Client privacy module proving accreditation without revealing sensitive tax identification documents.",
-    status: "DRAFT",
-    statusLabel: "Draft",
-    statusColor: "bg-slate-100 text-slate-700 border-slate-200",
-    stageSummary: "AI intake 60% complete. Resume prompt session to generate acceptance criteria.",
-    nextAction: {
-      label: "Resume AI Project Intake",
-      description: "Complete 3 remaining technical questions to lock milestone scope.",
-      type: "RESUME",
-      urgent: false,
-    },
-    lastUpdated: "3 days ago",
-    updatedTimestamp: STABLE_NOW - 72 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 3 * 86400 * 1000,
-    nextMilestoneDueTimestamp: null,
-    needsAction: false,
-  },
-  {
-    id: "proj_6",
-    name: "Cross-Border Tax & VAT Engine Integration",
-    description: "Automated real-time European VAT calculator & invoice generation adhering to EU DAC7 reporting standards.",
-    status: "COMPLETED",
-    statusLabel: "Completed",
-    statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-    stageSummary: "All 4 milestones accepted, verified & released via PayPal Order captures.",
-    nextAction: {
-      label: "View Final Proof & Audit Trail",
-      description: "Cryptographic consensus report and tax receipts are archived.",
-      type: "VIEW",
-      urgent: false,
-    },
-    lastUpdated: "1 week ago",
-    updatedTimestamp: STABLE_NOW - 168 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 30 * 86400 * 1000,
-    nextMilestoneDueTimestamp: null,
-    freelancer: {
-      name: "Priya Sharma",
-      role: "FinTech Compliance Engineer",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
-    },
-    totalBudget: "$5,200.00",
-    needsAction: false,
-  },
-  {
-    id: "proj_7",
-    name: "High-Frequency WebSocket Auction Relay",
-    description: "Real-time bidding pipeline over Redis Pub/Sub with millisecond timestamp ordering.",
-    status: "IN_PROGRESS",
-    statusLabel: "In Progress",
-    statusColor: "bg-blue-50 text-blue-700 border-blue-200/80",
-    stageSummary: "Milestone 1 completed. Milestone 2 in engineering progress.",
-    nextAction: {
-      label: "Track Milestone Progress",
-      description: "Sprint review scheduled for Nov 06.",
-      type: "VIEW",
-      urgent: false,
-    },
-    lastUpdated: "4 days ago",
-    updatedTimestamp: STABLE_NOW - 96 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 12 * 86400 * 1000,
-    nextMilestoneDueTimestamp: STABLE_NOW + 6 * 86400 * 1000,
-    freelancer: {
-      name: "David K.",
-      role: "Distributed Systems Architect",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&q=80",
-    },
-    nextMilestone: {
-      title: "M2: Socket.IO Server Sharding",
-      dueDate: "Nov 06, 2026",
-      amount: "$1,800.00",
-    },
-    totalBudget: "$3,600.00",
-    needsAction: false,
-  },
-  {
-    id: "proj_8",
-    name: "Mobile React Native Sandbox Client",
-    description: "Cross-platform iOS and Android interface with biometric sign-in and push notifications.",
-    status: "DISPUTED",
-    statusLabel: "Disputed",
-    statusColor: "bg-rose-50 text-rose-700 border-rose-200/80",
-    stageSummary: "Deliverable rejected for missing offline sync requirement. Resolution mediation active.",
-    nextAction: {
-      label: "Review Mediation Terms",
-      description: "Compare delivered criteria vs approved PRD to resolve dispute.",
-      type: "ACTION_REQUIRED",
-      urgent: true,
-    },
-    lastUpdated: "5 days ago",
-    updatedTimestamp: STABLE_NOW - 120 * 3600 * 1000,
-    createdAtTimestamp: STABLE_NOW - 20 * 86400 * 1000,
-    nextMilestoneDueTimestamp: null,
-    totalBudget: "$2,200.00",
-    needsAction: true,
-  },
-];
-
 interface ClientProjectsViewProps {
   onOpenProjectWorkspace?: (projectId: string, initialTab?: string) => void;
   onCreateNewProject?: () => void;
@@ -299,6 +85,86 @@ export default function ClientProjectsView({
   onCreateNewProject,
 }: ClientProjectsViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlFilter = searchParams.get("filter") as ProjectLifecycleStatus | null;
+
+  // Real projects and dynamic stats
+  const [projects, setProjects] = useState<ProjectCardData[]>([]);
+  const [stats, setStats] = useState({
+    totalCount: 0,
+    inProgressCount: 0,
+    needsActionCount: 0,
+    countsByStatus: {
+      ALL: 0,
+      IN_PROGRESS: 0,
+      IN_REVIEW: 0,
+      NEGOTIATION: 0,
+      FINDING_FREELANCERS: 0,
+      DRAFT: 0,
+      COMPLETED: 0,
+      DISPUTED: 0,
+    } as Record<string, number>,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Search & Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<ProjectLifecycleStatus>(urlFilter || "ALL");
+  const [onlyNeedsAction, setOnlyNeedsAction] = useState(false);
+  const [sortBy, setSortBy] = useState<"recently_updated" | "recently_created" | "next_due">("recently_updated");
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Sync url filter param if changed
+  useEffect(() => {
+    if (urlFilter) {
+      setActiveFilter(urlFilter);
+    }
+  }, [urlFilter]);
+
+  // Load live projects from backend
+  const loadProjects = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetchClientProjects();
+      if (res && Array.isArray(res.data)) {
+        setProjects(res.data);
+        if (res.stats) {
+          setStats(res.stats);
+        } else {
+          const inProg = res.data.filter((p: any) => p.status === "IN_PROGRESS" || p.status === "IN_REVIEW").length;
+          const needsAct = res.data.filter((p: any) => p.needsAction).length;
+          setStats({
+            totalCount: res.data.length,
+            inProgressCount: inProg,
+            needsActionCount: needsAct,
+            countsByStatus: {
+              ALL: res.data.length,
+              IN_PROGRESS: res.data.filter((p: any) => p.status === "IN_PROGRESS").length,
+              IN_REVIEW: res.data.filter((p: any) => p.status === "IN_REVIEW").length,
+              NEGOTIATION: res.data.filter((p: any) => p.status === "NEGOTIATION").length,
+              FINDING_FREELANCERS: res.data.filter((p: any) => p.status === "FINDING_FREELANCERS").length,
+              DRAFT: res.data.filter((p: any) => p.status === "DRAFT").length,
+              COMPLETED: res.data.filter((p: any) => p.status === "COMPLETED").length,
+              DISPUTED: res.data.filter((p: any) => p.status === "DISPUTED").length,
+            },
+          });
+        }
+      }
+    } catch {
+      setProjects([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const handleOpenProject = (id: string) => {
     if (onOpenProjectWorkspace) {
@@ -316,20 +182,51 @@ export default function ClientProjectsView({
     }
   };
 
-  // Search & Filter States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<ProjectLifecycleStatus>("ALL");
-  const [onlyNeedsAction, setOnlyNeedsAction] = useState(false);
-  const [sortBy, setSortBy] = useState<"recently_updated" | "recently_created" | "next_due">("recently_updated");
+  const handleResumeDraft = (draftId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    router.push(`/client/post-project?draftId=${draftId}`);
+  };
 
-  // Summary counts matching your image stats
-  const totalCount = INITIAL_PROJECTS.length;
-  const inProgressCount = INITIAL_PROJECTS.filter((p) => p.status === "IN_PROGRESS" || p.status === "IN_REVIEW").length;
-  const needsActionCount = INITIAL_PROJECTS.filter((p) => p.needsAction).length;
+  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const target = projects.find((p) => p.id === projectId);
+    const title = target?.name || "Project";
+
+    // Optimistically remove from state
+    const nextList = projects.filter((p) => p.id !== projectId);
+    setProjects(nextList);
+
+    // Recompute local counts
+    const inProg = nextList.filter((p) => p.status === "IN_PROGRESS" || p.status === "IN_REVIEW").length;
+    const needsAct = nextList.filter((p) => p.needsAction).length;
+    setStats({
+      totalCount: nextList.length,
+      inProgressCount: inProg,
+      needsActionCount: needsAct,
+      countsByStatus: {
+        ALL: nextList.length,
+        IN_PROGRESS: nextList.filter((p) => p.status === "IN_PROGRESS").length,
+        IN_REVIEW: nextList.filter((p) => p.status === "IN_REVIEW").length,
+        NEGOTIATION: nextList.filter((p) => p.status === "NEGOTIATION").length,
+        FINDING_FREELANCERS: nextList.filter((p) => p.status === "FINDING_FREELANCERS").length,
+        DRAFT: nextList.filter((p) => p.status === "DRAFT").length,
+        COMPLETED: nextList.filter((p) => p.status === "COMPLETED").length,
+        DISPUTED: nextList.filter((p) => p.status === "DISPUTED").length,
+      },
+    });
+
+    showToast(`"${title}" deleted successfully.`);
+
+    try {
+      await deleteProject(projectId);
+    } catch {
+      // Ignore background error
+    }
+  };
 
   // Filter & Search Logic
   const filteredProjects = useMemo(() => {
-    return INITIAL_PROJECTS.filter((proj) => {
+    return projects.filter((proj) => {
       // 1. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -364,21 +261,29 @@ export default function ClientProjectsView({
       }
       return 0;
     });
-  }, [searchQuery, activeFilter, onlyNeedsAction, sortBy]);
+  }, [projects, searchQuery, activeFilter, onlyNeedsAction, sortBy]);
 
   const filterTabs: { id: ProjectLifecycleStatus; label: string; count?: number }[] = [
-    { id: "ALL", label: "All Projects", count: totalCount },
-    { id: "IN_PROGRESS", label: "In Progress" },
-    { id: "IN_REVIEW", label: "In Review" },
-    { id: "NEGOTIATION", label: "Negotiation" },
-    { id: "FINDING_FREELANCERS", label: "Finding Freelancers" },
-    { id: "DRAFT", label: "Drafts" },
-    { id: "COMPLETED", label: "Completed" },
-    { id: "DISPUTED", label: "Disputed" },
+    { id: "ALL", label: "All Projects", count: stats.countsByStatus.ALL ?? stats.totalCount },
+    { id: "IN_PROGRESS", label: "In Progress", count: stats.countsByStatus.IN_PROGRESS },
+    { id: "IN_REVIEW", label: "In Review", count: stats.countsByStatus.IN_REVIEW },
+    { id: "NEGOTIATION", label: "Negotiation", count: stats.countsByStatus.NEGOTIATION },
+    { id: "FINDING_FREELANCERS", label: "Finding Freelancers", count: stats.countsByStatus.FINDING_FREELANCERS },
+    { id: "DRAFT", label: "Drafts", count: stats.countsByStatus.DRAFT },
+    { id: "COMPLETED", label: "Completed", count: stats.countsByStatus.COMPLETED },
+    { id: "DISPUTED", label: "Disputed", count: stats.countsByStatus.DISPUTED },
   ];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-xl border border-slate-700/80 flex items-center gap-2 animate-in slide-in-from-bottom-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* ==============================================================
           TOP STATS SUMMARY BAR (Exactly matching reference image)
          ============================================================== */}
@@ -397,7 +302,7 @@ export default function ClientProjectsView({
               All Projects
             </div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-heading mt-0.5">
-              {totalCount}
+              {stats.totalCount}
             </div>
           </button>
 
@@ -414,7 +319,7 @@ export default function ClientProjectsView({
               In Progress
             </div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-heading mt-0.5">
-              {inProgressCount}
+              {stats.inProgressCount}
             </div>
           </button>
 
@@ -426,14 +331,16 @@ export default function ClientProjectsView({
           >
             <div className="text-xs font-semibold text-slate-500 group-hover:text-slate-800 transition-colors flex items-center gap-1.5">
               <span>Needs Action</span>
-              {needsActionCount > 0 && (
+              {stats.needsActionCount > 0 && (
                 <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
               )}
             </div>
-            <div className={`text-2xl sm:text-3xl font-black tracking-tight font-heading mt-0.5 ${
-              onlyNeedsAction ? "text-[#4f46e5]" : "text-slate-900"
-            }`}>
-              {needsActionCount}
+            <div
+              className={`text-2xl sm:text-3xl font-black tracking-tight font-heading mt-0.5 ${
+                onlyNeedsAction ? "text-[#4f46e5]" : "text-slate-900"
+              }`}
+            >
+              {stats.needsActionCount}
             </div>
           </button>
         </div>
@@ -469,7 +376,7 @@ export default function ClientProjectsView({
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer font-bold"
               >
                 Clear
               </button>
@@ -488,7 +395,7 @@ export default function ClientProjectsView({
               }`}
             >
               <span className={`w-2 h-2 rounded-full ${onlyNeedsAction ? "bg-rose-500" : "bg-slate-300"}`} />
-              <span>Needs Attention ({needsActionCount})</span>
+              <span>Needs Attention ({stats.needsActionCount})</span>
             </button>
 
             {/* Sort Dropdown */}
@@ -528,7 +435,7 @@ export default function ClientProjectsView({
                 }`}
               >
                 <span>{tab.label}</span>
-                {tab.count !== undefined && (
+                {tab.count !== undefined && tab.count > 0 && (
                   <span
                     className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
                       isSelected ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"
@@ -544,57 +451,232 @@ export default function ClientProjectsView({
       </div>
 
       {/* ==============================================================
-          PROJECT CARDS LIST (Answers the 5 core client questions)
+          PROJECT CARDS LIST & RESILIENT EMPTY STATES
          ============================================================== */}
-      {filteredProjects.length === 0 ? (
-        /* Empty State */
-        <div className="p-10 rounded-2xl border border-dashed border-slate-200 bg-white text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#eef2ff] text-[#4f46e5] flex items-center justify-center mx-auto font-bold">
-            <FolderKanban className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-bold text-slate-900">
-            {searchQuery || activeFilter !== "ALL" || onlyNeedsAction
-              ? "No projects match these filters"
-              : "Your next project starts with an idea"}
-          </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            {searchQuery || activeFilter !== "ALL" || onlyNeedsAction
-              ? "Try adjusting your search query, clearing status filters, or turning off the needs-action filter."
-              : "Describe what you want to build and Nexum's AI Intake will generate a binding PRD and milestone breakdown for you."}
-          </p>
+      {isLoading ? (
+        <div className="space-y-3.5 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5 rounded-2xl bg-white border border-slate-200/90 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <div className="h-5 bg-slate-200 rounded w-1/3" />
+                  <div className="h-3.5 bg-slate-100 rounded w-2/3" />
+                </div>
+                <div className="h-5 bg-slate-200 rounded w-20" />
+              </div>
+              <div className="h-10 bg-slate-50 rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : filteredProjects.length === 0 ? (
+        /* Contextual Truthful Empty State */
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 sm:p-12 text-center space-y-6">
+          {/* CASE A: 0 total projects in entire workspace */}
+          {stats.totalCount === 0 ? (
+            <div className="max-w-xl mx-auto space-y-5">
+              <div className="w-16 h-16 rounded-3xl bg-linear-to-tr from-[#4f46e5]/10 via-[#6366f1]/15 to-indigo-100 text-[#4f46e5] flex items-center justify-center mx-auto shadow-inner border border-indigo-200/50">
+                <FolderKanban className="w-8 h-8" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                  No projects in your workspace yet
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                  Launch your first milestone-governed project with Dual SHA-256 state consensus and automated PayPal escrow protection.
+                </p>
+              </div>
 
-          <div className="pt-2">
-            {searchQuery || activeFilter !== "ALL" || onlyNeedsAction ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setActiveFilter("ALL");
-                  setOnlyNeedsAction(false);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#4f46e5] bg-[#eef2ff] hover:bg-[#e0e7ff] transition"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset all filters</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handlePostProject}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] shadow-xs transition"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Post a New Project</span>
-              </button>
-            )}
-          </div>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handlePostProject}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] shadow-md hover:shadow-indigo-500/25 transition cursor-pointer active:scale-98"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Post a New Project</span>
+                </button>
+              </div>
+
+              {/* Starter Templates */}
+              <div className="pt-6 border-t border-slate-100">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  Or kickstart with an instant template
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                  <div
+                    onClick={() => router.push("/client/post-project?template=web")}
+                    className="p-3.5 rounded-xl border border-slate-200 hover:border-[#4f46e5]/40 hover:bg-slate-50/80 transition cursor-pointer space-y-1 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-[#4f46e5]">Full-Stack Web App</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-[#4f46e5] transition" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2">
+                      Next.js, Node.js & PostgreSQL architecture with verified milestone gates.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => router.push("/client/post-project?template=ai")}
+                    className="p-3.5 rounded-xl border border-slate-200 hover:border-[#4f46e5]/40 hover:bg-slate-50/80 transition cursor-pointer space-y-1 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-[#4f46e5]">AI Provider Gateway</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-[#4f46e5] transition" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2">
+                      Multi-LLM streaming circuit breakers with pgvector semantic caching.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => router.push("/client/post-project?template=design")}
+                    className="p-3.5 rounded-xl border border-slate-200 hover:border-[#4f46e5]/40 hover:bg-slate-50/80 transition cursor-pointer space-y-1 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-[#4f46e5]">Design System</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-[#4f46e5] transition" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2">
+                      Figma token synchronization with accessible Radix UI component library.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : searchQuery.trim() ? (
+            /* CASE B: Search query has 0 matches */
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto font-bold">
+                <Search className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  No projects match &ldquo;{searchQuery}&rdquo;
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  We couldn&apos;t find any project specifications, descriptions, or assigned contractors matching your search.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#4f46e5] bg-[#eef2ff] hover:bg-[#e0e7ff] transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Clear Search Query</span>
+                </button>
+              </div>
+            </div>
+          ) : onlyNeedsAction ? (
+            /* CASE C: Needs action filter is on and zero items need attention */
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto font-bold">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  All caught up! Zero actions required
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  None of your active projects currently have pending milestone approvals, scope deltas, or blockers awaiting your sign-off.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setOnlyNeedsAction(false)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  <span>Show All Projects</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* CASE D: Specific tab has 0 projects */
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#4f46e5] flex items-center justify-center mx-auto font-bold">
+                {activeFilter === "DRAFT" ? (
+                  <FileText className="w-6 h-6" />
+                ) : activeFilter === "IN_REVIEW" ? (
+                  <CheckCircle2 className="w-6 h-6" />
+                ) : activeFilter === "DISPUTED" ? (
+                  <ShieldCheck className="w-6 h-6" />
+                ) : activeFilter === "COMPLETED" ? (
+                  <Layers className="w-6 h-6" />
+                ) : activeFilter === "NEGOTIATION" ? (
+                  <MessageSquare className="w-6 h-6" />
+                ) : activeFilter === "FINDING_FREELANCERS" ? (
+                  <User className="w-6 h-6" />
+                ) : (
+                  <FolderKanban className="w-6 h-6" />
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  {activeFilter === "DRAFT" && "No draft projects found"}
+                  {activeFilter === "IN_REVIEW" && "No deliverables awaiting review"}
+                  {activeFilter === "DISPUTED" && "Zero disputes on record"}
+                  {activeFilter === "COMPLETED" && "No completed projects yet"}
+                  {activeFilter === "NEGOTIATION" && "No active contract negotiations"}
+                  {activeFilter === "FINDING_FREELANCERS" && "No open listings seeking talent"}
+                  {activeFilter === "IN_PROGRESS" && "No active projects in engineering"}
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                  {activeFilter === "DRAFT" &&
+                    "All your project specifications are active or published. You can save any project draft during intake to resume it anytime."}
+                  {activeFilter === "IN_REVIEW" &&
+                    "You're all caught up! When contractors submit deliverable packages for verification, they'll appear here for your sign-off."}
+                  {activeFilter === "DISPUTED" &&
+                    "Clean consensus record — all projects are operating cleanly within Dual SHA-256 consensus tolerances."}
+                  {activeFilter === "COMPLETED" &&
+                    "Projects with all milestones delivered, verified, and released via PayPal Orders v2 will be archived here."}
+                  {activeFilter === "NEGOTIATION" &&
+                    "Counter-offers and contract adjustments currently under bilateral negotiation will be listed here."}
+                  {activeFilter === "FINDING_FREELANCERS" &&
+                    "Publish a project or brief to start receiving candidate proposals from verified specialists."}
+                  {activeFilter === "IN_PROGRESS" &&
+                    "Projects with active engineering milestones underway will be tracked here with live telemetry."}
+                </p>
+              </div>
+
+              <div className="pt-1 flex items-center justify-center gap-2">
+                {activeFilter === "DRAFT" ? (
+                  <button
+                    type="button"
+                    onClick={handlePostProject}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] transition cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Start a New Draft</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActiveFilter("ALL")}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#4f46e5] bg-[#eef2ff] hover:bg-[#e0e7ff] transition cursor-pointer"
+                  >
+                    <span>View All Projects</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3.5">
           {filteredProjects.map((project) => (
             <div
               key={project.id}
-              onClick={() => handleOpenProject(project.id)}
+              onClick={() => {
+                if (project.status === "DRAFT") {
+                  handleResumeDraft(project.id);
+                } else {
+                  handleOpenProject(project.id);
+                }
+              }}
               className="p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-[#4f46e5]/40 hover:shadow-xs transition-all duration-200 cursor-pointer space-y-4 group"
             >
               {/* Row 1: Title, Status Badge, Budget & Last Activity */}
@@ -668,22 +750,28 @@ export default function ClientProjectsView({
                       </div>
                     </>
                   ) : (
-                    <span className="text-slate-400 text-[11px] italic">No contractor assigned yet</span>
+                    <span className="text-slate-400 text-[11px] italic">
+                      {project.status === "DRAFT" ? "Draft spec (no contractor)" : "No contractor assigned yet"}
+                    </span>
                   )}
                 </div>
               </div>
 
-              {/* Row 3: What Needs To Happen Next (One Clear Action Callout) */}
+              {/* Row 3: What Needs To Happen Next (Action Callout & CTA Buttons) */}
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-2.5 min-w-0">
                   <div
                     className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                       project.nextAction.urgent
                         ? "bg-rose-100 text-rose-700"
+                        : project.status === "DRAFT"
+                        ? "bg-slate-200 text-slate-700"
                         : "bg-indigo-100 text-[#4f46e5]"
                     }`}
                   >
-                    {project.nextAction.urgent ? (
+                    {project.status === "DRAFT" ? (
+                      <FileText className="w-3.5 h-3.5" />
+                    ) : project.nextAction.urgent ? (
                       <AlertTriangle className="w-3.5 h-3.5" />
                     ) : (
                       <Sparkles className="w-3.5 h-3.5" />
@@ -699,22 +787,48 @@ export default function ClientProjectsView({
                   </div>
                 </div>
 
-                {/* Action CTA Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenProject(project.id);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition shrink-0 flex items-center justify-center gap-1.5 shadow-2xs ${
-                    project.nextAction.urgent
-                      ? "bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-xs"
-                      : "bg-white hover:bg-slate-100 text-slate-800 border border-slate-200"
-                  }`}
-                >
-                  <span>Open Workspace</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                {/* Action CTA Buttons */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {project.status === "DRAFT" ? (
+                    <>
+                      {/* Delete Draft Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteProject(project.id, e)}
+                        title="Delete this draft"
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-500 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Resume Draft Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleResumeDraft(project.id, e)}
+                        className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-98"
+                      >
+                        <span>Resume Draft</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenProject(project.id);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer ${
+                        project.nextAction.urgent
+                          ? "bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-xs"
+                          : "bg-white hover:bg-slate-100 text-slate-800 border border-slate-200"
+                      }`}
+                    >
+                      <span>Open Workspace</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

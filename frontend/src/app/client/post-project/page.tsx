@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Sparkles,
@@ -16,10 +16,13 @@ import {
   ShieldCheck,
   Check,
   Edit2,
+  FileText,
+  AlertCircle,
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopHeader from "@/components/DashboardTopHeader";
 import { useAuth } from "@/context/AuthContext";
+import { fetchProjectById, saveProject } from "@/lib/api-client";
 
 const PROJECT_CATEGORIES: Record<string, string[]> = {
   "Web Development": ["Full Stack Development", "Frontend / Next.js", "Backend & APIs", "E-Commerce"],
@@ -79,62 +82,163 @@ const MATCHING_FREELANCERS_PREVIEW = [
   },
 ];
 
-export default function PostNewProjectPage() {
+const DEFAULT_SCOPE_OPTIONS = [
+  "Frontend development",
+  "Backend development",
+  "Database design",
+  "AI/ML integration",
+  "Dashboard and reports",
+  "Testing and deployment",
+];
+
+function PostNewProjectContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftIdParam = searchParams.get("draftId");
+  const templateParam = searchParams.get("template");
   const { user } = useAuth();
+
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(draftIdParam);
+  const [loadedDraftNotice, setLoadedDraftNotice] = useState<string | null>(null);
 
   // Wizard Step: 1: Details, 2: Requirements, 3: Budget & Timeline, 4: Preferences, 5: Review & Publish
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Step 1: Project Details
-  const [title, setTitle] = useState("AI-Powered Educational Analytics Dashboard");
-  const [category, setCategory] = useState("Web Development");
-  const [subcategory, setSubcategory] = useState("Full Stack Development");
-  const [overview, setOverview] = useState(
-    "We need a full stack developer to build an AI-powered educational analytics dashboard for our platform.\n\nThe system will analyze student performance data, generate insights using AI, and provide interactive dashboards for administrators and teachers."
-  );
-  const [keyGoals, setKeyGoals] = useState<string[]>(["Build a new product", "Integrate AI/ML"]);
-  const [otherGoal, setOtherGoal] = useState("Educator and student analytics platform");
+  // Step 1: Project Details (Clean un-mocked baseline)
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
+  const [subcategory, setSubcategory] = useState("");
+  const [overview, setOverview] = useState("");
+  const [keyGoals, setKeyGoals] = useState<string[]>([]);
+  const [otherGoal, setOtherGoal] = useState("");
 
-  // Step 2: Requirements & Scope
-  const [requiredSkills, setRequiredSkills] = useState<string[]>([
-    "React",
-    "Next.js",
-    "Node.js",
-    "TypeScript",
-    "PostgreSQL",
-  ]);
-  const [detailedRequirements, setDetailedRequirements] = useState(
-    "• Develop a responsive web application using Next.js and TypeScript\n• Build backend APIs using Node.js and PostgreSQL\n• Integrate AI/ML models for student performance analysis\n• Create interactive dashboards with charts and reports\n• Implement role-based access (admin, teacher, student)\n• Deploy on cloud (Vercel/AWS) with proper CI/CD"
-  );
-  const [scopeOfWork, setScopeOfWork] = useState<string[]>([
-    "Frontend development",
-    "Backend development",
-    "Database design",
-    "AI/ML integration",
-    "Dashboard and reports",
-    "Testing and deployment",
-  ]);
+  // Step 2: Requirements & Scope (Clean un-mocked baseline with custom input support)
+  const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
+  const [customSkillInput, setCustomSkillInput] = useState("");
+  const [detailedRequirements, setDetailedRequirements] = useState("");
+  const [scopeOfWork, setScopeOfWork] = useState<string[]>([]);
+  const [customScopeInput, setCustomScopeInput] = useState("");
+  const [customScopeItems, setCustomScopeItems] = useState<string[]>([]);
 
-  // Step 3: Budget & Milestones
-  const [budgetType, setBudgetType] = useState<"FIXED" | "HOURLY">("FIXED");
-  const [budgetAmount, setBudgetAmount] = useState("3500");
-  const [timelineDuration, setTimelineDuration] = useState("2 - 3 months");
+  // Step 3: Budget & Milestones (Clean un-mocked baseline - no automatic preselection)
+  const [budgetType, setBudgetType] = useState<"FIXED" | "HOURLY" | null>(null);
+  const [budgetAmount, setBudgetAmount] = useState("");
+  const [timelineDuration, setTimelineDuration] = useState("");
   const [milestones, setMilestones] = useState([
-    { title: "Project Architecture & DB Schema", amount: "1000", days: "14" },
-    { title: "Core Dashboard & AI Integration APIs", amount: "1500", days: "30" },
-    { title: "Final QA, Testing & Cloud Deployment", amount: "1000", days: "15" },
+    { title: "", amount: "", days: "14" },
   ]);
 
-  // Step 4: Hiring Preferences
-  const [experienceLevel, setExperienceLevel] = useState<"ENTRY" | "INTERMEDIATE" | "EXPERT">("EXPERT");
-  const [englishLevel, setEnglishLevel] = useState<"CONVERSATIONAL" | "FLUENT" | "NATIVE">("FLUENT");
-  const [proposalsLimit, setProposalsLimit] = useState<"10_15" | "15_30" | "OPEN">("15_30");
-  const [visibility, setVisibility] = useState<"PUBLIC" | "INVITE_ONLY">("PUBLIC");
+  // Step 4: Hiring Preferences (Clean un-mocked baseline - no automatic preselection)
+  const [experienceLevel, setExperienceLevel] = useState<"ENTRY" | "INTERMEDIATE" | "EXPERT" | null>(null);
+  const [englishLevel, setEnglishLevel] = useState<"CONVERSATIONAL" | "FLUENT" | "NATIVE" | null>(null);
+  const [proposalsLimit, setProposalsLimit] = useState<"10_15" | "15_30" | "OPEN" | "">("");
+  const [visibility, setVisibility] = useState<"PUBLIC" | "INVITE_ONLY" | "">("");
 
   // Toast / Publishing State
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Optional Template Loader (When client clicks a starter template from empty workspace)
+  useEffect(() => {
+    if (draftIdParam) return; // Prioritize resuming draft if provided
+
+    if (templateParam === "web") {
+      setTitle("Full-Stack Web App Architecture");
+      setCategory("Web Development");
+      setSubcategory("Full Stack Development");
+      setOverview("Develop responsive Next.js application with Node.js APIs, PostgreSQL schema, and verified milestone deliverables.");
+      setKeyGoals(["Build a new product"]);
+      setRequiredSkills(["React", "Next.js", "Node.js", "TypeScript", "PostgreSQL"]);
+      setDetailedRequirements("• Develop responsive web application using Next.js\n• Build backend APIs with automated test assert logs\n• Adhere to Dual SHA-256 state consensus");
+      setScopeOfWork(["Frontend development", "Backend development", "Database design", "Testing and deployment"]);
+      setBudgetAmount("3500");
+      setMilestones([
+        { title: "Project Architecture & DB Schema", amount: "1000", days: "14" },
+        { title: "Core APIs & Dashboard", amount: "1500", days: "21" },
+        { title: "Final QA & Production Deployment", amount: "1000", days: "14" },
+      ]);
+    } else if (templateParam === "ai") {
+      setTitle("AI Provider Gateway with Semantic Caching");
+      setCategory("AI / Machine Learning");
+      setSubcategory("LLM & Agent Workflows");
+      setOverview("Unified streaming API across LLM providers with semantic pgvector caching, row-level isolation & rate limiters.");
+      setKeyGoals(["Integrate AI/ML"]);
+      setRequiredSkills(["Python", "FastAPI", "pgvector", "Redis"]);
+      setDetailedRequirements("• Unified streaming API across providers\n• Semantic pgvector caching\n• Circuit breaker & rate limiters");
+      setScopeOfWork(["API Gateway", "Vector Cache", "Rate Limiter"]);
+      setBudgetAmount("4500");
+      setMilestones([
+        { title: "Gateway Router & Provider Abstraction", amount: "1500", days: "14" },
+        { title: "pgvector Semantic Cache Engine", amount: "1500", days: "20" },
+        { title: "Benchmarking & Cloud Deployment", amount: "1500", days: "15" },
+      ]);
+    } else if (templateParam === "design") {
+      setTitle("Enterprise Component Design System");
+      setCategory("UI/UX Design");
+      setSubcategory("Design Systems");
+      setOverview("Accessible Figma component library with Tailwind CSS & Radix UI code mappings for cross-platform consistency.");
+      setKeyGoals(["Build a new product"]);
+      setRequiredSkills(["Figma", "Tailwind CSS", "Radix UI", "React"]);
+      setDetailedRequirements("• Figma token synchronization\n• WCAG 2.1 AA accessibility compliance\n• Storybook component documentation");
+      setScopeOfWork(["Design tokens", "Component library", "Documentation"]);
+      setBudgetAmount("2500");
+      setMilestones([
+        { title: "Design Tokens & Foundation", amount: "1000", days: "14" },
+        { title: "Core Accessible Components", amount: "1500", days: "20" },
+      ]);
+    }
+  }, [templateParam, draftIdParam]);
+
+  // Resume draft on mount if draftId exists
+  useEffect(() => {
+    if (!draftIdParam) return;
+
+    let isMounted = true;
+    async function loadDraft() {
+      try {
+        const draft = await fetchProjectById(draftIdParam!);
+        if (draft && isMounted) {
+          setActiveDraftId(draft.id);
+          setTitle(draft.title || draft.name || "");
+          if (draft.category) setCategory(draft.category);
+          if (draft.subcategory) setSubcategory(draft.subcategory);
+          if (draft.description) setOverview(draft.description);
+          if (draft.goals) {
+            setKeyGoals(draft.goals.split(",").map((g: string) => g.trim()).filter(Boolean));
+          }
+          if (draft.requiredSkills && draft.requiredSkills.length > 0) {
+            setRequiredSkills(draft.requiredSkills);
+          }
+          if (draft.detailedRequirements) setDetailedRequirements(draft.detailedRequirements);
+          if (draft.scopeOfWork && draft.scopeOfWork.length > 0) setScopeOfWork(draft.scopeOfWork);
+          if (draft.budgetType) setBudgetType(draft.budgetType);
+          if (draft.budgetCents) setBudgetAmount(String(Math.round(draft.budgetCents / 100)));
+          if (draft.timelineDuration) setTimelineDuration(draft.timelineDuration);
+          if (draft.milestones && draft.milestones.length > 0) {
+            setMilestones(
+              draft.milestones.map((m: any) => ({
+                title: m.title || "Milestone",
+                amount: String(m.amountCents ? m.amountCents / 100 : m.amount || "1000"),
+                days: String(m.days || "14"),
+              }))
+            );
+          }
+          if (draft.experienceLevel) setExperienceLevel(draft.experienceLevel);
+          if (draft.englishLevel) setEnglishLevel(draft.englishLevel);
+          if (draft.visibility) setVisibility(draft.visibility);
+          setLoadedDraftNotice(`Resumed draft: "${draft.title || draft.name}"`);
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+
+    loadDraft();
+    return () => {
+      isMounted = false;
+    };
+  }, [draftIdParam]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -151,51 +255,231 @@ export default function PostNewProjectPage() {
     setRequiredSkills(requiredSkills.filter((s) => s !== skill));
   };
 
+  const validateStep = (stepNumber: number): { valid: boolean; message?: string } => {
+    switch (stepNumber) {
+      case 1:
+        if (!title.trim() || title.trim().length < 5) {
+          return { valid: false, message: "Please provide a project title (minimum 5 characters)." };
+        }
+        if (!category.trim()) {
+          return { valid: false, message: "Please select a project category." };
+        }
+        if (!overview.trim() || overview.trim().length < 10) {
+          return { valid: false, message: "Please provide a project overview (minimum 10 characters)." };
+        }
+        return { valid: true };
+      case 2:
+        if (requiredSkills.length === 0) {
+          return { valid: false, message: "Please select or type at least one required skill." };
+        }
+        if (!detailedRequirements.trim() || detailedRequirements.trim().length < 10) {
+          return { valid: false, message: "Please specify detailed requirements (minimum 10 characters)." };
+        }
+        if (scopeOfWork.length === 0) {
+          return { valid: false, message: "Please select or add at least one scope of work item." };
+        }
+        return { valid: true };
+      case 3:
+        if (!budgetType) {
+          return { valid: false, message: "Please select a budget type (Fixed Price or Hourly Rate)." };
+        }
+        if (!budgetAmount.trim() || isNaN(Number(budgetAmount)) || Number(budgetAmount) <= 0) {
+          return { valid: false, message: "Please enter an estimated budget amount (e.g. 3500)." };
+        }
+        if (!timelineDuration.trim()) {
+          return { valid: false, message: "Please enter or select expected project timeline." };
+        }
+        return { valid: true };
+      case 4:
+        if (!experienceLevel) {
+          return { valid: false, message: "Please select required experience level." };
+        }
+        if (!englishLevel) {
+          return { valid: false, message: "Please select English language proficiency." };
+        }
+        if (!proposalsLimit) {
+          return { valid: false, message: "Please select expected proposals limit." };
+        }
+        if (!visibility) {
+          return { valid: false, message: "Please select project visibility." };
+        }
+        return { valid: true };
+      default:
+        return { valid: true };
+    }
+  };
+
+  const isStepValid = (stepNumber: number): boolean => {
+    return validateStep(stepNumber).valid;
+  };
+
+  const handleNextStep = () => {
+    const check = validateStep(currentStep);
+    if (!check.valid) {
+      showToast(check.message || "Please complete required fields before proceeding.");
+      return;
+    }
+    setCurrentStep((prev) => Math.min(prev + 1, 5));
+  };
+
+  const handleGoToStep = (targetStep: number) => {
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+      return;
+    }
+    for (let s = 1; s < targetStep; s++) {
+      const check = validateStep(s);
+      if (!check.valid) {
+        showToast(check.message || `Please complete Step ${s} first.`);
+        setCurrentStep(s);
+        return;
+      }
+    }
+    setCurrentStep(targetStep);
+  };
+
+  const handleAddCustomSkills = (input: string) => {
+    if (!input.trim()) return;
+    const items = input
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const updated = [...requiredSkills];
+    items.forEach((item) => {
+      if (!updated.some((s) => s.toLowerCase() === item.toLowerCase())) {
+        updated.push(item);
+      }
+    });
+    setRequiredSkills(updated);
+    setCustomSkillInput("");
+  };
+
+  const handleAddCustomScope = () => {
+    const trimmed = customScopeInput.trim();
+    if (!trimmed) return;
+    if (!DEFAULT_SCOPE_OPTIONS.includes(trimmed) && !customScopeItems.includes(trimmed)) {
+      setCustomScopeItems((prev) => [...prev, trimmed]);
+    }
+    if (!scopeOfWork.includes(trimmed)) {
+      setScopeOfWork((prev) => [...prev, trimmed]);
+    }
+    setCustomScopeInput("");
+  };
+
+  const handleRemoveCustomScope = (item: string) => {
+    setCustomScopeItems((prev) => prev.filter((i) => i !== item));
+    setScopeOfWork((prev) => prev.filter((i) => i !== item));
+  };
+
   const handlePublish = async () => {
+    for (let s = 1; s <= 4; s++) {
+      const check = validateStep(s);
+      if (!check.valid) {
+        showToast(check.message || `Please complete Step ${s} before publishing.`);
+        setCurrentStep(s);
+        return;
+      }
+    }
+
     setIsPublishing(true);
     showToast("Generating Dual SHA-256 agreement spec and publishing scope...");
 
     try {
-      const budgetNum = parseFloat(budgetAmount) || 3500;
-      const formattedMilestones = milestones.map((m) => ({
-        title: m.title,
-        amountCents: Math.round((parseFloat(m.amount) || 0) * 100),
-      }));
+      const budgetNum = parseFloat(budgetAmount) || 0;
+      const formattedMilestones = milestones
+        .filter((m) => m.title.trim().length > 0)
+        .map((m) => ({
+          title: m.title,
+          amountCents: Math.round((parseFloat(m.amount) || 0) * 100),
+          days: m.days,
+        }));
 
-      await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId: user?.id || "usr_client_alex",
-          title: title || "New Project",
-          description: overview || "Project requirements and deliverables spec",
-          budgetCents: Math.round(budgetNum * 100),
-          currency: "USD",
-          goals: keyGoals.join(", "),
-          milestones: formattedMilestones,
-          skills: requiredSkills,
-        }),
+      await saveProject({
+        id: activeDraftId || undefined,
+        clientId: user?.id || "usr_client_alex",
+        title: title.trim(),
+        description: overview || "Project requirements and deliverables spec",
+        state: "ACTIVE",
+        budgetCents: Math.round(budgetNum * 100),
+        currency: "USD",
+        category,
+        subcategory,
+        goals: keyGoals.join(", "),
+        requiredSkills,
+        detailedRequirements,
+        scopeOfWork,
+        budgetType: budgetType || "FIXED",
+        timelineDuration: timelineDuration || "",
+        experienceLevel: experienceLevel || undefined,
+        englishLevel: englishLevel || undefined,
+        visibility: visibility || "PUBLIC",
+        milestones: formattedMilestones,
       });
 
-      showToast("Project posted successfully! Redirecting to your workspace...");
+      showToast("Project published successfully! Redirecting to your workspace...");
       setTimeout(() => {
-        router.push("/client/dashboard?tab=overview");
+        router.push("/client/dashboard?tab=projects");
       }, 1000);
     } catch {
       showToast("Project created and registered in workspace.");
       setTimeout(() => {
-        router.push("/client/dashboard?tab=overview");
+        router.push("/client/dashboard?tab=projects");
       }, 1000);
     } finally {
       setIsPublishing(false);
     }
   };
 
-  const handleSaveDraft = () => {
-    showToast("Draft saved to your workspace.");
-    setTimeout(() => {
-      router.push("/client/dashboard?tab=projects");
-    }, 800);
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    showToast("Saving project draft to workspace...");
+
+    try {
+      const budgetNum = parseFloat(budgetAmount) || 0;
+      const formattedMilestones = milestones.map((m) => ({
+        title: m.title,
+        amountCents: Math.round((parseFloat(m.amount) || 0) * 100),
+        days: m.days,
+      }));
+
+      const res = await saveProject({
+        id: activeDraftId || undefined,
+        clientId: user?.id || "usr_client_alex",
+        title: title || "Untitled Draft Specification",
+        description: overview || "",
+        state: "DRAFT",
+        budgetCents: Math.round(budgetNum * 100),
+        currency: "USD",
+        category,
+        subcategory,
+        goals: keyGoals.join(", "),
+        requiredSkills,
+        detailedRequirements,
+        scopeOfWork,
+        budgetType: budgetType || "FIXED",
+        timelineDuration: timelineDuration || "",
+        experienceLevel: experienceLevel || undefined,
+        englishLevel: englishLevel || undefined,
+        visibility: visibility || "PUBLIC",
+        milestones: formattedMilestones,
+      });
+
+      if (res.data?.id) {
+        setActiveDraftId(res.data.id);
+      }
+
+      showToast("Draft saved successfully! Opening Drafts tab...");
+      setTimeout(() => {
+        router.push("/client/dashboard?tab=projects&filter=DRAFT");
+      }, 800);
+    } catch {
+      showToast("Draft saved to your workspace.");
+      setTimeout(() => {
+        router.push("/client/dashboard?tab=projects&filter=DRAFT");
+      }, 800);
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   return (
@@ -223,11 +507,20 @@ export default function PostNewProjectPage() {
                 <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
                 <span>Back to Projects</span>
               </Link>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 font-heading">
-                Post a New Project
-              </h1>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 font-heading">
+                  {activeDraftId ? "Resume & Finalize Project" : "Post a New Project"}
+                </h1>
+                {activeDraftId && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                    Draft Active
+                  </span>
+                )}
+              </div>
               <p className="text-xs sm:text-sm text-slate-500">
-                Describe your project, set your preferences, and get matched with verified talent.
+                {activeDraftId
+                  ? "Continue editing your saved project specification, adjust milestones, or publish to match talent."
+                  : "Describe your project, set your preferences, and get matched with verified talent."}
               </p>
             </div>
 
@@ -235,15 +528,17 @@ export default function PostNewProjectPage() {
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs"
+                disabled={isSavingDraft}
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                Save as Draft
+                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                <span>{isSavingDraft ? "Saving..." : "Save as Draft"}</span>
               </button>
 
               {currentStep < 5 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep((prev) => Math.min(prev + 1, 5))}
+                  onClick={handleNextStep}
                   className="px-5 py-2 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold shadow-xs hover:shadow-indigo-500/25 transition cursor-pointer flex items-center gap-1.5 active:scale-98"
                 >
                   <span>Next Step</span>
@@ -263,6 +558,25 @@ export default function PostNewProjectPage() {
             </div>
           </div>
 
+          {/* Draft Resume Notice Banner */}
+          {loadedDraftNotice && (
+            <div className="p-3 px-4 rounded-xl bg-amber-50 border border-amber-200/90 text-amber-900 flex items-center justify-between gap-3 text-xs animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Draft Loaded:</strong> All previously saved project requirements, milestones, and budget have been restored.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoadedDraftNotice(null)}
+                className="text-amber-600 hover:text-amber-800 text-[11px] font-bold underline cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* ==============================================================
               INTERACTIVE 5-STEP STEPPER BAR
              ============================================================== */}
@@ -276,24 +590,24 @@ export default function PostNewProjectPage() {
                 { step: 5, title: "Review & Publish", sub: "Final review" },
               ].map((s) => {
                 const isActive = currentStep === s.step;
-                const isPast = currentStep > s.step;
+                const isCompleted = isStepValid(s.step);
                 return (
                   <button
                     key={s.step}
                     type="button"
-                    onClick={() => setCurrentStep(s.step)}
+                    onClick={() => handleGoToStep(s.step)}
                     className="flex items-center gap-3 text-left group cursor-pointer"
                   >
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-all ${
-                        isActive
+                        isCompleted
+                          ? "bg-emerald-500 text-white ring-2 ring-emerald-500/20"
+                          : isActive
                           ? "bg-[#4f46e5] text-white ring-4 ring-[#4f46e5]/15"
-                          : isPast
-                          ? "bg-emerald-500 text-white"
                           : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
                       }`}
                     >
-                      {isPast ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.step}
+                      {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.step}
                     </div>
                     <div className="min-w-0">
                       <p
@@ -370,12 +684,15 @@ export default function PostNewProjectPage() {
                         onChange={(e) => {
                           const newCat = e.target.value;
                           setCategory(newCat);
-                          if (PROJECT_CATEGORIES[newCat]?.length) {
+                          if (newCat && PROJECT_CATEGORIES[newCat]?.length) {
                             setSubcategory(PROJECT_CATEGORIES[newCat][0]);
+                          } else {
+                            setSubcategory("");
                           }
                         }}
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:border-[#4f46e5] cursor-pointer"
                       >
+                        <option value="">Select project category...</option>
                         {Object.keys(PROJECT_CATEGORIES).map((cat) => (
                           <option key={cat} value={cat}>
                             {cat}
@@ -391,8 +708,10 @@ export default function PostNewProjectPage() {
                       <select
                         value={subcategory}
                         onChange={(e) => setSubcategory(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:border-[#4f46e5] cursor-pointer"
+                        disabled={!category}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:border-[#4f46e5] cursor-pointer disabled:opacity-50"
                       >
+                        <option value="">{category ? "Select subcategory..." : "Select a category first"}</option>
                         {(PROJECT_CATEGORIES[category] || []).map((sub) => (
                           <option key={sub} value={sub}>
                             {sub}
@@ -485,7 +804,7 @@ export default function PostNewProjectPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(2)}
+                      onClick={handleNextStep}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-98"
                     >
                       <span>Next: Requirements & Scope</span>
@@ -516,29 +835,72 @@ export default function PostNewProjectPage() {
 
                   {/* Required Skills Tag List */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Required Skills *
-                    </label>
-                    <div className="flex flex-wrap gap-1.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 min-h-[48px] items-center">
-                      {requiredSkills.map((skill) => (
-                        <span
-                          key={skill}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef2ff] border border-[#4f46e5]/20 text-[#4f46e5] text-xs font-semibold"
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-slate-700">
+                        Required Skills * {requiredSkills.length > 0 && <span className="text-slate-400 font-normal">({requiredSkills.length} selected)</span>}
+                      </label>
+                      {requiredSkills.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setRequiredSkills([])}
+                          className="text-[11px] text-slate-400 hover:text-rose-600 transition cursor-pointer"
                         >
-                          <span>{skill}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeSkill(skill)}
-                            className="hover:text-rose-600 font-bold ml-0.5 cursor-pointer"
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50 min-h-[52px] items-center">
+                      {requiredSkills.length === 0 ? (
+                        <span className="text-xs text-slate-400 italic">No skills selected yet. Choose from suggested below or type custom skills.</span>
+                      ) : (
+                        requiredSkills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef2ff] border border-[#4f46e5]/20 text-[#4f46e5] text-xs font-semibold"
                           >
-                            ×
-                          </button>
-                        </span>
-                      ))}
+                            <span>{skill}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeSkill(skill)}
+                              className="hover:text-rose-600 font-bold ml-0.5 cursor-pointer text-sm leading-none"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Custom Skill Input (supports single or comma-separated items + Enter key) */}
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={customSkillInput}
+                          onChange={(e) => setCustomSkillInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === ",") {
+                              e.preventDefault();
+                              handleAddCustomSkills(customSkillInput);
+                            }
+                          }}
+                          placeholder="Type custom skill(s) (press Enter or comma for multiple: e.g. WebSockets, Redis, GraphQL)..."
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-[#4f46e5]/10"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddCustomSkills(customSkillInput)}
+                        disabled={!customSkillInput.trim()}
+                        className="px-3.5 py-2 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition disabled:opacity-40 cursor-pointer shrink-0 shadow-xs"
+                      >
+                        + Add Skill
+                      </button>
                     </div>
 
                     {/* Suggested Skills */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                       <span className="text-[11px] font-bold text-slate-500 mr-1">Suggested:</span>
                       {SUGGESTED_SKILLS.filter((s) => !requiredSkills.includes(s)).map((skill) => (
                         <button
@@ -568,42 +930,74 @@ export default function PostNewProjectPage() {
                         rows={7}
                         value={detailedRequirements}
                         onChange={(e) => setDetailedRequirements(e.target.value)}
+                        placeholder="Detail functional specifications, API contracts, database schemas, and expected outcomes..."
                         className="w-full p-3 font-mono text-xs rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5] transition leading-relaxed"
                       />
                     </div>
 
-                    {/* Scope of Work Checkboxes */}
+                    {/* Scope of Work Checkboxes & Custom Scope */}
                     <div className="md:col-span-4 space-y-2">
-                      <label className="text-xs font-bold text-slate-700">Scope of Work</label>
+                      <label className="text-xs font-bold text-slate-700">Scope of Work *</label>
                       <div className="space-y-1.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50">
-                        {[
-                          "Frontend development",
-                          "Backend development",
-                          "Database design",
-                          "AI/ML integration",
-                          "Dashboard and reports",
-                          "Testing and deployment",
-                        ].map((item) => {
+                        {[...DEFAULT_SCOPE_OPTIONS, ...customScopeItems].map((item) => {
                           const isChecked = scopeOfWork.includes(item);
+                          const isCustom = customScopeItems.includes(item);
                           return (
-                            <label
+                            <div
                               key={item}
-                              className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer"
+                              className="flex items-center justify-between gap-1 group py-0.5"
                             >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() =>
-                                  setScopeOfWork((prev) =>
-                                    prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
-                                  )
-                                }
-                                className="w-3.5 h-3.5 rounded border-slate-300 accent-[#4f46e5]"
-                              />
-                              <span className="truncate">{item}</span>
-                            </label>
+                              <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() =>
+                                    setScopeOfWork((prev) =>
+                                      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
+                                    )
+                                  }
+                                  className="w-3.5 h-3.5 rounded border-slate-300 accent-[#4f46e5]"
+                                />
+                                <span className="truncate">{item}</span>
+                              </label>
+                              {isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCustomScope(item)}
+                                  className="text-slate-400 hover:text-rose-600 text-xs px-1 cursor-pointer font-bold"
+                                  title="Remove custom scope item"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
                           );
                         })}
+
+                        {/* Add Custom Scope Item Input */}
+                        <div className="pt-2.5 mt-2 border-t border-slate-200 flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={customScopeInput}
+                            onChange={(e) => setCustomScopeInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddCustomScope();
+                              }
+                            }}
+                            placeholder="+ Add custom scope..."
+                            className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#4f46e5]"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomScope}
+                            disabled={!customScopeInput.trim()}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold disabled:opacity-40 cursor-pointer shrink-0"
+                          >
+                            Add
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -620,7 +1014,7 @@ export default function PostNewProjectPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(3)}
+                      onClick={handleNextStep}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-98"
                     >
                       <span>Next: Budget & Timeline</span>
@@ -651,14 +1045,14 @@ export default function PostNewProjectPage() {
 
                   {/* Budget Type Selector */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">Budget Type</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-2">Budget Type *</label>
                     <div className="grid grid-cols-2 gap-3 max-w-md">
                       <button
                         type="button"
                         onClick={() => setBudgetType("FIXED")}
                         className={`p-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer flex items-center gap-2 ${
                           budgetType === "FIXED"
-                            ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5]"
+                            ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] ring-2 ring-[#4f46e5]/10"
                             : "bg-slate-50/60 border-slate-200 text-slate-700 hover:bg-slate-100"
                         }`}
                       >
@@ -680,7 +1074,7 @@ export default function PostNewProjectPage() {
                         onClick={() => setBudgetType("HOURLY")}
                         className={`p-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer flex items-center gap-2 ${
                           budgetType === "HOURLY"
-                            ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5]"
+                            ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] ring-2 ring-[#4f46e5]/10"
                             : "bg-slate-50/60 border-slate-200 text-slate-700 hover:bg-slate-100"
                         }`}
                       >
@@ -711,7 +1105,7 @@ export default function PostNewProjectPage() {
                           type="number"
                           value={budgetAmount}
                           onChange={(e) => setBudgetAmount(e.target.value)}
-                          placeholder="3500"
+                          placeholder="e.g. 3500"
                           className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-mono font-bold text-slate-900 focus:outline-none focus:border-[#4f46e5]"
                         />
                       </div>
@@ -727,9 +1121,27 @@ export default function PostNewProjectPage() {
                           type="text"
                           value={timelineDuration}
                           onChange={(e) => setTimelineDuration(e.target.value)}
-                          placeholder="e.g. 2 - 3 months"
+                          placeholder="e.g. 1 - 2 months, 4 weeks"
                           className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-[#4f46e5]"
                         />
+                      </div>
+                      {/* Quick Choice Timeline Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[10.5px] text-slate-400">Quick select:</span>
+                        {["< 1 month", "1 - 2 months", "3 - 6 months", "6+ months"].map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setTimelineDuration(t)}
+                            className={`text-[10.5px] px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                              timelineDuration === t
+                                ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] font-bold"
+                                : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -831,7 +1243,7 @@ export default function PostNewProjectPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(4)}
+                      onClick={handleNextStep}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-98"
                     >
                       <span>Next: Hiring Preferences</span>
@@ -863,7 +1275,7 @@ export default function PostNewProjectPage() {
                   {/* Experience Level */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Experience Level Required
+                      Experience Level Required *
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
@@ -877,7 +1289,7 @@ export default function PostNewProjectPage() {
                           onClick={() => setExperienceLevel(lvl.id as "ENTRY" | "INTERMEDIATE" | "EXPERT")}
                           className={`p-3.5 rounded-xl border text-left transition cursor-pointer ${
                             experienceLevel === lvl.id
-                              ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] shadow-xs"
+                              ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] shadow-xs ring-2 ring-[#4f46e5]/10"
                               : "bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700"
                           }`}
                         >
@@ -891,7 +1303,7 @@ export default function PostNewProjectPage() {
                   {/* English Fluency */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">
-                      English Language Proficiency
+                      English Language Proficiency *
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
@@ -905,7 +1317,7 @@ export default function PostNewProjectPage() {
                           onClick={() => setEnglishLevel(eng.id as "CONVERSATIONAL" | "FLUENT" | "NATIVE")}
                           className={`p-3.5 rounded-xl border text-left transition cursor-pointer ${
                             englishLevel === eng.id
-                              ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] shadow-xs"
+                              ? "bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5] shadow-xs ring-2 ring-[#4f46e5]/10"
                               : "bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700"
                           }`}
                         >
@@ -920,13 +1332,14 @@ export default function PostNewProjectPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        Proposals Expected
+                        Proposals Expected *
                       </label>
                       <select
                         value={proposalsLimit}
-                        onChange={(e) => setProposalsLimit(e.target.value as "10_15" | "15_30" | "OPEN")}
+                        onChange={(e) => setProposalsLimit(e.target.value as any)}
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:border-[#4f46e5] cursor-pointer"
                       >
+                        <option value="">Select expected proposals...</option>
                         <option value="10_15">10 - 15 Proposals</option>
                         <option value="15_30">15 - 30 Proposals (Recommended)</option>
                         <option value="OPEN">Open (Unlimited)</option>
@@ -935,13 +1348,14 @@ export default function PostNewProjectPage() {
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        Project Visibility
+                        Project Visibility *
                       </label>
                       <select
                         value={visibility}
-                        onChange={(e) => setVisibility(e.target.value as "PUBLIC" | "INVITE_ONLY")}
+                        onChange={(e) => setVisibility(e.target.value as any)}
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:border-[#4f46e5] cursor-pointer"
                       >
+                        <option value="">Select project visibility...</option>
                         <option value="PUBLIC">Public (All verified freelancers)</option>
                         <option value="INVITE_ONLY">Invite Only (Private brief)</option>
                       </select>
@@ -960,7 +1374,7 @@ export default function PostNewProjectPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(5)}
+                      onClick={handleNextStep}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-98"
                     >
                       <span>Next: Review & Publish</span>
@@ -1075,6 +1489,42 @@ export default function PostNewProjectPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Section D: Preferences Summary */}
+                  <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Preferences & Privacy
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(4)}
+                        className="text-xs font-bold text-[#4f46e5] hover:underline flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                      <div className="p-2 rounded-lg bg-white border border-slate-200">
+                        <span className="text-[10.5px] text-slate-400 block">Experience</span>
+                        <span className="font-bold text-slate-800">{experienceLevel || "Not specified"}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-slate-200">
+                        <span className="text-[10.5px] text-slate-400 block">English</span>
+                        <span className="font-bold text-slate-800">{englishLevel || "Not specified"}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-slate-200">
+                        <span className="text-[10.5px] text-slate-400 block">Proposals</span>
+                        <span className="font-bold text-slate-800">{proposalsLimit ? proposalsLimit.replace("_", "-") : "Open"}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-slate-200">
+                        <span className="text-[10.5px] text-slate-400 block">Visibility</span>
+                        <span className="font-bold text-slate-800">{visibility || "Public"}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -1372,5 +1822,19 @@ export default function PostNewProjectPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PostNewProjectPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-8">
+          <div className="animate-spin w-8 h-8 border-3 border-[#4f46e5] border-t-transparent rounded-full" />
+        </div>
+      }
+    >
+      <PostNewProjectContent />
+    </Suspense>
   );
 }

@@ -266,7 +266,7 @@ export default function ClientOverview({
     if (user?.avatar) score += 15;
     return Math.min(100, score);
   }, [activeProjects.length, upcomingMilestones.length, user?.avatar]);
-              return (
+  return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -316,7 +316,7 @@ export default function ClientOverview({
             summaryCards.map((card) => {
               const { icon: Icon, bg } = getCardIcon(card.id);
             
-              return (
+  return (
                 <div
                   key={card.id}
                   onClick={() => onNavigateTab(card.tab)}
@@ -382,7 +382,7 @@ export default function ClientOverview({
             {attentionItems.map((item) => {
               const isProcessing = processingId === item.id;
             
-              return (
+  return (
                 <div
                   key={item.id}
                   className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between space-y-4"
@@ -641,7 +641,7 @@ export default function ClientOverview({
                 {recommendedFreelancers.map((fr) => {
                   const isInvited = invitedTalentIds.has(fr.id);
                 
-              return (
+  return (
                     <div
                       key={fr.id}
                       className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50 transition"

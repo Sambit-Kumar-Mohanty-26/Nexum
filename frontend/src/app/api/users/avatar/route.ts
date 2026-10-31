@@ -102,8 +102,20 @@ export async function POST(req: NextRequest) {
       folder: "avatars",
     });
 
-    // Update HMAC session cookie
+    // 1. Update HMAC session cookie
     const updatedUser = await updateSessionAvatar(uploadResult.url);
+
+    // 2. Persist avatar to persistent database via backend
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:4000";
+    try {
+      await fetch(`${backendUrl}/api/users/${user.id}/avatar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: uploadResult.url }),
+      });
+    } catch (e) {
+      console.warn("Backend user avatar sync non-blocking error:", e);
+    }
 
     return NextResponse.json({
       success: true,
