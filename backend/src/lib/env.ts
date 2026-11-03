@@ -6,9 +6,9 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.string().default("4000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL environment variable is required"),
+  DATABASE_URL: z.string().default("postgresql://user:password@localhost:5432/nexum"),
   CORS_ORIGIN: z.string().default("http://localhost:3000,http://127.0.0.1:3000"),
-  SESSION_SECRET: z.string().min(16, "SESSION_SECRET must be at least 16 characters"),
+  SESSION_SECRET: z.string().min(16, "SESSION_SECRET must be at least 16 characters").default("nexum-platform-session-secret-default-key-32chars"),
   PAYPAL_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   PAYPAL_CLIENT_ID: z.string().optional(),
   PAYPAL_CLIENT_SECRET: z.string().optional(),
@@ -38,3 +38,4 @@ export function validateEnv(customEnv?: Record<string, string | undefined>): Env
 }
 
 export const env = validateEnv();
+

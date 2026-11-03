@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Nexum API Client
  * Provides typed connectivity between the Next.js frontend and the Express/Prisma backend.
  */

@@ -162,8 +162,6 @@ app.use("/api/client", clientRouter);
 app.use("/api/workspace", workspaceRouter);
 app.use("/api/telegram", telegramRouter);
 
-
-
 // Root fallback
 app.get("/", (_req: express.Request, res: express.Response) => {
   res.json({
@@ -199,6 +197,7 @@ if (env.NODE_ENV !== "test") {
     backgroundWorker.start(2000);
     console.log("⚙️  PostgreSQL background worker started (polling interval: 2000ms)");
   }
+
   // Start automated Telegram Mobile Gateway polling
   if (process.env.TELEGRAM_BOT_TOKEN) {
     telegramService.startPolling();

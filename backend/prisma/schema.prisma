@@ -298,6 +298,7 @@ model User {
 
   notifications              Notification[]
   notificationPrefs          NotificationPref[]
+
   telegramChatId        String?
   telegramUsername      String?
   telegramNotifications Boolean               @default(true)
@@ -1687,8 +1688,6 @@ model NotificationPref {
   @@unique([userId, type])
   @@map("notification_prefs")
 }
-
-
 
 model NotificationDeadLetter {
   id              String   @id @default(cuid())
