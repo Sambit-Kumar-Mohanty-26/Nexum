@@ -101,3 +101,4 @@ describe("Microsoft OAuth 2.0 & Role Selection Suite", () => {
     expect(location).toContain("/login?error=missing_authorization_code");
   });
 });
+
