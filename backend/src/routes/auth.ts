@@ -20,6 +20,8 @@ import {
 } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { Role } from "@prisma/client";
+import crypto from "crypto";
+import { env } from "../lib/env.js";
 
 const router = Router();
 
@@ -347,6 +349,252 @@ router.post(
           email: updated.email,
           role: updated.role,
         },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+const googleCallbackSchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  simulated: z.boolean().optional(),
+});
+
+// GET /api/auth/google/url - Get authorization URL for Google OAuth
+router.get("/google/url", (req: Request, res: Response) => {
+  if (env.GOOGLE_CLIENT_ID) {
+    const state = crypto.randomBytes(24).toString("hex");
+    res.cookie("nexum_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60 * 1000,
+    });
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      env.GOOGLE_CLIENT_ID
+    )}&redirect_uri=${encodeURIComponent(
+      env.GOOGLE_CALLBACK_URL
+    )}&response_type=code&scope=openid%20email%20profile&state=${state}&access_type=offline&prompt=select_account`;
+    res.json({ url, simulated: false });
+  } else {
+    // Development simulation fallback when credentials are not yet configured
+    res.json({
+      url: `${env.CORS_ORIGIN.split(",")[0]}/api/auth/google/callback?simulated=true`,
+      simulated: true,
+    });
+  }
+});
+
+// GET /api/auth/google - Direct browser initiation redirect
+router.get("/google", (req: Request, res: Response) => {
+  if (env.GOOGLE_CLIENT_ID) {
+    const state = crypto.randomBytes(24).toString("hex");
+    res.cookie("nexum_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60 * 1000,
+    });
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      env.GOOGLE_CLIENT_ID
+    )}&redirect_uri=${encodeURIComponent(
+      env.GOOGLE_CALLBACK_URL
+    )}&response_type=code&scope=openid%20email%20profile&state=${state}&access_type=offline&prompt=select_account`;
+    res.redirect(url);
+  } else {
+    // Development fallback
+    res.redirect(
+      `${env.CORS_ORIGIN.split(",")[0]}/api/auth/google/callback?simulated=true`
+    );
+  }
+});
+
+// POST /api/auth/google/callback - Process Google authorization code or simulated login
+router.post(
+  "/google/callback",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const parsed = googleCallbackSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError("Invalid Google callback parameters");
+      }
+
+      const { code, state, simulated } = parsed.data;
+
+      // Handle simulated OAuth in development
+      if (simulated) {
+        if (env.NODE_ENV === "production") {
+          throw new ValidationError("Simulation is not permitted in production");
+        }
+
+        const simulatedEmail = "alex.google@nexum.demo";
+        let user = await prisma.user.findFirst({
+          where: { email: simulatedEmail },
+          include: { freelancerProfile: true },
+        });
+
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email: simulatedEmail,
+              name: "Alex Rivera (Google)",
+              googleId: "google_oauth_sub_demo_001",
+              avatarUrl:
+                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=faces",
+              role: null, // role is intentionally null so user is redirected to role selection!
+              status: "ACTIVE",
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+
+        await appendAuditEvent({
+          actorId: user.id,
+          action: "USER_AUTHENTICATED_GOOGLE",
+          objectType: "USER",
+          objectId: user.id,
+          metadata: { simulated: true, role: user.role },
+        });
+
+        const { rawToken, expiresAt } = await createSession(user.id, req);
+        setSessionCookie(res, rawToken, expiresAt);
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatarUrl: user.avatarUrl,
+          },
+          requiresRole: !user.role,
+        });
+        return;
+      }
+
+      // Live Google OAuth 2.0 flow
+      if (!code) {
+        throw new ValidationError("Authorization code is required");
+      }
+
+      // Validate CSRF state cookie if present
+      const expectedState = req.cookies?.nexum_oauth_state;
+      if (expectedState && state && expectedState !== state) {
+        throw new ValidationError("OAuth state mismatch (potential CSRF attempt)");
+      }
+      res.clearCookie("nexum_oauth_state", { path: "/" });
+
+      if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+        throw new ValidationError("Google OAuth is not configured on the server");
+      }
+
+      // Exchange authorization code for tokens
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: env.GOOGLE_CLIENT_ID,
+          client_secret: env.GOOGLE_CLIENT_SECRET,
+          redirect_uri: env.GOOGLE_CALLBACK_URL,
+          grant_type: "authorization_code",
+        }).toString(),
+      });
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text().catch(() => "");
+        throw new UnauthorizedError(`Google token exchange failed: ${tokenRes.statusText}`);
+      }
+
+      const tokens = (await tokenRes.json()) as { access_token: string; id_token?: string };
+
+      // Fetch user profile from Google UserInfo endpoint
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+
+      if (!userInfoRes.ok) {
+        throw new UnauthorizedError("Failed to retrieve user profile from Google");
+      }
+
+      const profile = (await userInfoRes.json()) as {
+        sub: string;
+        email: string;
+        name?: string;
+        picture?: string;
+        email_verified?: boolean;
+      };
+
+      if (!profile.email) {
+        throw new ValidationError("Google account did not provide a valid email");
+      }
+
+      const normalizedEmail = profile.email.trim().toLowerCase();
+
+      // Find user by Google ID or normalized email
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { googleId: profile.sub },
+            { email: { equals: normalizedEmail, mode: "insensitive" } },
+          ],
+        },
+        include: { freelancerProfile: true },
+      });
+
+      if (user) {
+        // Link googleId or avatar if not yet attached
+        if (!user.googleId || !user.avatarUrl) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleId: user.googleId || profile.sub,
+              avatarUrl: user.avatarUrl || profile.picture || null,
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+      } else {
+        // Create new user without a role (requires role selection)
+        user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: profile.name?.trim() || normalizedEmail.split("@")[0],
+            googleId: profile.sub,
+            avatarUrl: profile.picture || null,
+            role: null, // User must choose a role on the role-selection screen
+            status: "ACTIVE",
+          },
+          include: { freelancerProfile: true },
+        });
+      }
+
+      await appendAuditEvent({
+        actorId: user.id,
+        action: "USER_AUTHENTICATED_GOOGLE",
+        objectType: "USER",
+        objectId: user.id,
+        metadata: { googleId: profile.sub, role: user.role },
+      });
+
+      const { rawToken, expiresAt } = await createSession(user.id, req);
+      setSessionCookie(res, rawToken, expiresAt);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+        },
+        requiresRole: !user.role,
       });
     } catch (err) {
       next(err);

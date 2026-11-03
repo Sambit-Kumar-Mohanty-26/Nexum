@@ -404,10 +404,7 @@ export default function LoginPage() {
               {/* Google */}
               <button
                 type="button"
-                onClick={() => {
-                  handleSelectPersona("client");
-                  showToast("Simulating Google login for Alex Rivera...");
-                }}
+                onClick={() => { window.location.href = "/api/auth/google"; }}
                 className="h-9 sm:h-9.5 border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 rounded-xl text-slate-700 flex items-center justify-center gap-2 text-xs font-semibold transition hover:-translate-y-0.5 hover:shadow-xs cursor-pointer"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">

@@ -22,6 +22,9 @@ const envSchema = z.object({
   EMAILJS_TEMPLATE_ID: z.string().optional().default(""),
   EMAILJS_PUBLIC_KEY: z.string().optional().default(""),
   EMAILJS_PRIVATE_KEY: z.string().optional().default(""),
+  GOOGLE_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
+  GOOGLE_CALLBACK_URL: z.string().optional().default("http://localhost:4000/api/auth/google/callback"),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

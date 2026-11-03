@@ -12,6 +12,8 @@ export default function DashboardRouterPage() {
     if (!isLoading) {
       if (!user) {
         router.replace("/login");
+      } else if (!user.role) {
+        router.replace("/choose-role");
       } else if (user.role === "FREELANCER") {
         router.replace("/freelancer/dashboard");
       } else {
