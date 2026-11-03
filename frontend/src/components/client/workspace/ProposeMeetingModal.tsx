@@ -7,7 +7,7 @@ interface ProposeMeetingModalProps {
   isOpen: boolean;
   onClose: () => void;
   freelancerName?: string;
-  onScheduleMeeting?: (details: { date: string; time: string; topic: string }) => void;
+  onScheduleMeeting?: (details: { date: string; time: string; topic: string; duration?: string }) => void;
 }
 
 export default function ProposeMeetingModal({
@@ -30,7 +30,7 @@ export default function ProposeMeetingModal({
     setTimeout(() => {
       setIsSubmitting(false);
       if (onScheduleMeeting) {
-        onScheduleMeeting({ date, time, topic: `${topic} (${duration})` });
+        onScheduleMeeting({ date, time, topic: `${topic} (${duration})`, duration });
       }
       onClose();
     }, 600);
@@ -157,4 +157,3 @@ export default function ProposeMeetingModal({
     </div>
   );
 }
-

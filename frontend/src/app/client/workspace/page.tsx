@@ -21,8 +21,13 @@ function WorkspaceContent() {
   const helpParam = searchParams.get("help");
   const isStandalone = searchParams.get("standalone") === "true";
 
-  // Derive mode directly from URL searchParams
-  const mode: WorkspaceMode = modeParam === "ai" ? "ai" : "chats";
+  // Reactive state synced with searchParams for instantaneous UI tab response
+  const [mode, setMode] = useState<WorkspaceMode>(modeParam === "ai" ? "ai" : "chats");
+
+  useEffect(() => {
+    setMode(modeParam === "ai" ? "ai" : "chats");
+  }, [modeParam]);
+
   const [isMediationHelpOpen, setIsMediationHelpOpen] = useState(
     helpParam === "mediation"
   );
@@ -40,17 +45,20 @@ function WorkspaceContent() {
   }, [user, isLoading, router]);
 
   const handleModeSwitch = (newMode: WorkspaceMode) => {
+    setMode(newMode);
     const standaloneQuery = isStandalone ? "&standalone=true" : "";
     router.replace(`/client/workspace?mode=${newMode}${standaloneQuery}`, { scroll: false });
   };
 
   const handleOpenInChatsFromAI = () => {
+    setMode("chats");
     const standaloneQuery = isStandalone ? "&standalone=true" : "";
     router.replace(`/client/workspace?mode=chats${standaloneQuery}`, { scroll: false });
   };
 
   const handleSwitchToAIModeWithScope = (scope?: string) => {
     if (scope) setAiScope(scope);
+    setMode("ai");
     const standaloneQuery = isStandalone ? "&standalone=true" : "";
     router.replace(`/client/workspace?mode=ai${standaloneQuery}`, { scroll: false });
   };

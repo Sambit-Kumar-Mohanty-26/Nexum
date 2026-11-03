@@ -14,6 +14,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   MessageSquare,
+  Trash2,
 } from "lucide-react";
 import {
   PrivateAIChatEntry,
@@ -22,9 +23,9 @@ import {
 } from "@/lib/workspace-types";
 import {
   INITIAL_AI_CHAT_HISTORY,
-  INITIAL_WORKSPACE_PROJECTS,
   BASED_ON_CHIPS,
 } from "@/lib/workspace-data";
+import { fetchWorkspaceProjects } from "@/lib/api-client";
 import ReviewVersionModal from "./ReviewVersionModal";
 import { useAuth } from "@/context/AuthContext";
 
@@ -50,15 +51,16 @@ export default function WorkspaceNexumAIMode({
   const { user } = useAuth();
 
   // Chat History State
-  const [chatHistory, setChatHistory] = useState<PrivateAIChatEntry[]>(INITIAL_AI_CHAT_HISTORY);
-  const [selectedChatId, setSelectedChatId] = useState<string>("chat_approval");
+  const [chatHistory, setChatHistory] = useState<PrivateAIChatEntry[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isHistoryLoading] = useState(false);
   const [isRealHistoryConnected, setIsRealHistoryConnected] = useState(false);
 
   // Projects & Scope State
-  const [projects, setProjects] = useState<WorkspaceProject[]>(INITIAL_WORKSPACE_PROJECTS);
+  const [projects, setProjects] = useState<WorkspaceProject[]>([]);
   const [activeScope, setActiveScope] = useState<string>(initialScope);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
   // Live messages for current conversation session
   const [liveMessages, setLiveMessages] = useState<LiveMessage[]>([]);
@@ -67,11 +69,29 @@ export default function WorkspaceNexumAIMode({
   // Based-on record detail modal
   const [selectedChip, setSelectedChip] = useState<BasedOnChip | null>(null);
 
-  // Draft editing state
-  const [draftMessage, setDraftMessage] = useState(
-    "Hi Sambit, could you share a timeline for Milestone 3 (Backend Integration, due Dec 10)? Thanks, Alex"
-  );
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  // Fetch real client projects from API
+  useEffect(() => {
+    let isMounted = true;
+    async function loadProjects() {
+      try {
+        const clientId = user?.id || "usr_client_alex";
+        const res = await fetchWorkspaceProjects(clientId, "CLIENT");
+        if (isMounted) {
+          if (res.success && Array.isArray(res.data)) {
+            setProjects(res.data);
+          }
+          setIsLoadingProjects(false);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch real workspace projects for AI mode:", err);
+        if (isMounted) setIsLoadingProjects(false);
+      }
+    }
+    loadProjects();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   // AI Composer
   const [inputValue, setInputValue] = useState("");
@@ -90,10 +110,31 @@ export default function WorkspaceNexumAIMode({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSelectChat = (id: string) => {
+  const handleSelectChat = async (id: string) => {
     setSelectedChatId(id);
     if (!id || id.startsWith("chat_")) {
       setLiveMessages([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/assistant/conversations/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        const conv = data.conversation;
+        if (conv?.messages && Array.isArray(conv.messages)) {
+          setLiveMessages(
+            conv.messages.map((m: any) => ({
+              id: m.id || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              role: m.role,
+              content: m.content,
+              createdAt: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now",
+              model: m.model || "Gemini 2.5",
+            }))
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch conversation detail:", err);
     }
   };
 
@@ -176,6 +217,32 @@ export default function WorkspaceNexumAIMode({
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, canSee: !p.canSee } : p))
     );
+  };
+
+  
+  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await fetch(`/api/assistant/conversations/${encodeURIComponent(chatId)}`, {
+        method: "DELETE",
+      });
+      setChatHistory((prev) => prev.filter((c) => c.id !== chatId));
+      if (selectedChatId === chatId) {
+        setChatHistory((prev) => {
+          const remaining = prev.filter((c) => c.id !== chatId);
+          if (remaining.length > 0) {
+            handleSelectChat(remaining[0].id);
+          } else {
+            setSelectedChatId("");
+            setLiveMessages([]);
+          }
+          return remaining;
+        });
+      }
+      showToast("Conversation deleted.");
+    } catch {
+      showToast("Failed to delete conversation.");
+    }
   };
 
   const handleNewChat = async () => {
@@ -288,6 +355,10 @@ export default function WorkspaceNexumAIMode({
   const todayChats = filteredHistory.filter((c) => c.dateGroup === "TODAY");
   const yesterdayChats = filteredHistory.filter((c) => c.dateGroup === "YESTERDAY");
 
+  const activeProject = projects.find(
+    (p) => activeScope.includes(p.shortName) || activeScope.includes(p.name) || p.id === activeScope
+  );
+
   return (
     <div className="flex-1 flex overflow-hidden bg-slate-50/50 select-none w-full">
       {/* ==============================================================
@@ -370,14 +441,24 @@ export default function WorkspaceNexumAIMode({
                       <div
                         key={c.id}
                         onClick={() => handleSelectChat(c.id)}
-                        className={`p-2.5 rounded-xl transition cursor-pointer text-left border ${
+                        className={`group p-2.5 rounded-xl transition cursor-pointer text-left border relative ${
                           isSelected
                             ? "bg-indigo-50/70 border-indigo-200/90 text-indigo-900 font-semibold shadow-2xs"
                             : "bg-white hover:bg-slate-50 border-transparent text-slate-700"
                         }`}
                       >
-                        <div className="text-xs font-bold truncate leading-snug">
-                          {c.title}
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="text-xs font-bold truncate leading-snug flex-1">
+                            {c.title}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteChat(c.id, e)}
+                            title="Delete chat"
+                            className={`p-1 rounded-lg transition shrink-0 cursor-pointer ${isSelected ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50"}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                         <div className="text-[10px] text-slate-400 truncate mt-0.5">
                           {c.projectTag}
@@ -400,14 +481,24 @@ export default function WorkspaceNexumAIMode({
                       <div
                         key={c.id}
                         onClick={() => handleSelectChat(c.id)}
-                        className={`p-2.5 rounded-xl transition cursor-pointer text-left border ${
+                        className={`group p-2.5 rounded-xl transition cursor-pointer text-left border relative ${
                           isSelected
                             ? "bg-indigo-50/70 border-indigo-200/90 text-indigo-900 font-semibold shadow-2xs"
                             : "bg-white hover:bg-slate-50 border-transparent text-slate-700"
                         }`}
                       >
-                        <div className="text-xs font-bold truncate leading-snug">
-                          {c.title}
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="text-xs font-bold truncate leading-snug flex-1">
+                            {c.title}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteChat(c.id, e)}
+                            title="Delete chat"
+                            className={`p-1 rounded-lg transition shrink-0 cursor-pointer ${isSelected ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50"}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                         <div className="text-[10px] text-slate-400 truncate mt-0.5">
                           {c.projectTag}
@@ -436,231 +527,222 @@ export default function WorkspaceNexumAIMode({
          ============================================================== */}
       <main className="flex-1 flex flex-col min-w-0 border-r border-slate-200/80 bg-slate-50/40 overflow-hidden">
         
-        {/* Top Scope Pills Bar - Compact & Sleek */}
+        {/* Top Scope Pills Bar - Dynamic & Sleek */}
         <div className="px-4 sm:px-5 py-2.5 border-b border-slate-200/80 bg-white shrink-0 shadow-2xs flex items-center gap-2 overflow-x-auto">
           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">
             Scope
           </span>
 
-          {/* Scope Pills */}
-          {[
-            { id: "all", label: "All my projects (3)", match: "All my projects" },
-            { id: "techkart", label: "TechKart", match: "TechKart" },
-            { id: "horizon_loyalty", label: "Horizon Loyalty App", match: "Horizon Loyalty App" },
-            { id: "analytics_dashboard", label: "Analytics Dashboard", match: "Analytics Dashboard" },
-          ].map((scope) => {
-            const isActive = activeScope.includes(scope.match);
+          <button
+            type="button"
+            onClick={() => {
+              setActiveScope("All my projects");
+              showToast(`Scope switched to: All my projects (${projects.length})`);
+            }}
+            className={`py-1 px-3 rounded-full text-xs font-semibold transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
+              activeScope.includes("All my projects")
+                ? "bg-indigo-50 border-indigo-200/90 text-indigo-700 shadow-2xs"
+                : "bg-white border-slate-200/90 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {activeScope.includes("All my projects") && <Check className="w-3 h-3 stroke-[3]" />}
+            <span>All my projects ({projects.length})</span>
+          </button>
+
+          {projects.map((p) => {
+            const isMatch = activeScope.includes(p.shortName) || activeScope.includes(p.name);
             return (
               <button
-                key={scope.id}
+                key={p.id}
                 type="button"
                 onClick={() => {
-                  setActiveScope(scope.match);
-                  showToast(`Scope switched to: ${scope.label}`);
+                  setActiveScope(p.shortName || p.name);
+                  showToast(`Scope switched to: ${p.shortName || p.name}`);
                 }}
                 className={`py-1 px-3 rounded-full text-xs font-semibold transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
-                  isActive
+                  isMatch
                     ? "bg-indigo-50 border-indigo-200/90 text-indigo-700 shadow-2xs"
                     : "bg-white border-slate-200/90 text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                {isActive && <Check className="w-3 h-3 stroke-[3]" />}
-                <span>{scope.label}</span>
+                {isMatch && <Check className="w-3 h-3 stroke-[3]" />}
+                <span>{p.shortName || p.name}</span>
               </button>
             );
           })}
+
+          {selectedChatId && (
+            <button
+              type="button"
+              onClick={(e) => handleDeleteChat(selectedChatId, e)}
+              className="ml-auto py-1 px-2.5 rounded-full text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition shrink-0 flex items-center gap-1.5 cursor-pointer"
+              title="Delete current conversation"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-600" />
+              <span className="hidden sm:inline">Delete chat</span>
+            </button>
+          )}
         </div>
 
         {/* Scrollable Response Cards Stream */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          
-          {/* ============================================================
-              CARD 1: PENDING QUOTE CARD (CR-2 Best Selling Products Section)
-             ============================================================ */}
-          <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-3.5">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                Quote v4: best-selling products section
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                TechKart · Change request CR-2 · from Sambit Kumar
-              </p>
-            </div>
-
-            {/* 3 Metrics Box */}
-            <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50/80 border border-slate-100 text-xs">
-              <div>
-                <div className="font-extrabold text-slate-900 text-sm">+$600</div>
-                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Price change</div>
+          {liveMessages.length === 0 && (
+            isLoadingProjects ? (
+              <div className="p-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                <span>Loading workspace projects...</span>
               </div>
-              <div>
-                <div className="font-extrabold text-slate-900 text-sm">+4 days</div>
-                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Schedule change</div>
+            ) : projects.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-slate-200/80 bg-white text-center flex flex-col items-center justify-center max-w-lg mx-auto my-8">
+                <Sparkles className="w-8 h-8 text-indigo-500 mb-2" />
+                <h3 className="text-sm font-bold text-slate-900 mb-1">Nexum AI Private Consultation</h3>
+                <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
+                  No active client contracts found. Once you initiate a project agreement, Nexum AI will privately assist you with milestone verification, scope creep protection, and amendment drafting.
+                </p>
               </div>
-              <div>
-                <div className="font-extrabold text-slate-900 text-sm">v3 to v4</div>
-                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Agreement version</div>
+            ) : activeProject ? (
+              <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4 max-w-2xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-indigo-50 text-indigo-700 border border-indigo-100 mb-1">
+                      Consensus Baseline · {activeProject.agreementVersion}
+                    </div>
+                    <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                      {activeProject.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Collaborating with {activeProject.freelancerName} · Started {activeProject.startDate}
+                    </p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${activeProject.statusColor || "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                    {activeProject.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50/80 border border-slate-100 text-xs">
+                  <div>
+                    <div className="font-extrabold text-slate-900 text-sm font-mono">{activeProject.budget}</div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Total Escrow</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-slate-900 text-sm">{activeProject.milestones?.length || 0} Milestones</div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Milestones</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-slate-900 text-sm">{activeProject.duration}</div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Duration</div>
+                  </div>
+                </div>
+
+                {/* Milestones Preview */}
+                {activeProject.milestones && activeProject.milestones.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Contract Milestones Breakdown
+                    </span>
+                    <div className="space-y-1">
+                      {activeProject.milestones.map((m) => (
+                        <div key={m.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-800">
+                            {m.number}. {m.title}
+                          </span>
+                          <span className="font-mono font-bold text-slate-700 text-[11px]">
+                            {m.amount} · {m.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suggested Inquiries */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Suggested Inquiries for {activeProject.shortName}
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      `Review acceptance criteria for ${activeProject.shortName}`,
+                      `Draft a milestone status check message to ${activeProject.freelancerName}`,
+                      `Verify PayPal Orders REST v2 pre-funding escrow status`,
+                      `Check next scheduled sync meeting with ${activeProject.freelancerName}`,
+                    ].map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setInputValue(prompt);
+                          showToast("Inquiry populated into composer.");
+                        }}
+                        className="text-left p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 hover:bg-indigo-50/60 hover:border-indigo-200 text-xs text-slate-700 hover:text-indigo-900 font-medium transition cursor-pointer"
+                      >
+                        {prompt} →
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4 max-w-2xl">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900">Multi-Project Private Intelligence</h3>
+                    <p className="text-xs text-slate-500 font-normal">Active monitoring across {projects.length} project workspace{projects.length === 1 ? "" : "s"}</p>
+                  </div>
+                </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2.5 pt-0.5">
-              <button
-                type="button"
-                onClick={() => setIsReviewModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
-              >
-                Review version 4
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setInputValue("Could Sambit reduce the quote to $500 if we keep the same timeline?");
-                  showToast("Draft question populated in composer.");
-                }}
-                className="px-3.5 py-2 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
-              >
-                Draft a question for Sambit
-              </button>
-            </div>
-          </div>
-
-          {/* ============================================================
-              CARD 2: COUNTEROFFER CARD (Horizon Loyalty App)
-             ============================================================ */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                  Counteroffer v2 from Meera Nair
-                </h4>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                  Negotiation
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Horizon Loyalty App · $9,500 · 6 weeks
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => showToast("Opening Counteroffer v2 version diff...")}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0 self-start sm:self-auto"
-            >
-              Compare with v1
-            </button>
-          </div>
-
-          {/* ============================================================
-              CARD 3: PAYMENT STATUS CARD (Verified Provider Record)
-             ============================================================ */}
-          <div className="p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
-            <div>
-              <div className="font-bold text-slate-900">
-                TechKart · Milestone 1 · $2,000
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                Recipient bank credit not verified. Sandbox: no real funds move.
-              </div>
-            </div>
-
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto shadow-2xs">
-              PayPal confirms capture
-            </span>
-          </div>
-
-          {/* ============================================================
-              BASED ON SECTION (Clickable Authorized Project Records)
-             ============================================================ */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-            <span className="text-slate-400 font-medium">Based on</span>
-            {BASED_ON_CHIPS.map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => setSelectedChip(chip)}
-                className="py-1 px-2.5 rounded-lg border border-slate-200/80 bg-white hover:border-indigo-500/40 hover:bg-indigo-50/30 text-slate-700 text-[11px] font-medium transition cursor-pointer shadow-2xs flex items-center gap-1"
-              >
-                <span>{chip.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* ============================================================
-              CLIENT PROMPT BUBBLE
-             ============================================================ */}
-          <div className="flex justify-end pt-2">
-            <div className="max-w-[80%] px-4 py-3 rounded-2xl rounded-tr-xs bg-indigo-600 text-white text-xs sm:text-[13px] leading-relaxed shadow-xs font-normal">
-              Draft a reply to Sambit asking for the Backend Integration timeline.
-            </div>
-          </div>
-
-          {/* ============================================================
-              AI RESPONSE: STRUCTURED DRAFT MESSAGE CARD
-             ============================================================ */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-              <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5" />
-              </div>
-              <span>Nexum AI</span>
-            </div>
-
-            <p className="text-xs sm:text-[13px] text-slate-700 pl-8 leading-relaxed">
-              Here is a draft. It stays in this private chat until you send it through Chats.
-            </p>
-
-            {/* Inner Draft Message Card */}
-            <div className="ml-8 p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-3 max-w-xl">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800">Draft message to Sambit Kumar</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                  Not sent
-                </span>
-              </div>
-
-              {isEditingDraft ? (
                 <div className="space-y-2">
-                  <textarea
-                    rows={3}
-                    value={draftMessage}
-                    onChange={(e) => setDraftMessage(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-indigo-500 text-xs text-slate-800 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingDraft(false)}
-                    className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold"
-                  >
-                    Save draft
-                  </button>
+                  {projects.map((p) => (
+                    <div key={p.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/70 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-slate-900">{p.name}</span>
+                        <span className="text-[11px] text-slate-500 block">With {p.freelancerName} · {p.budget}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveScope(p.shortName || p.name);
+                          showToast(`Switched scope to: ${p.shortName || p.name}`);
+                        }}
+                        className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
+                      >
+                        Consult →
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 text-xs sm:text-[13px] text-slate-800 leading-relaxed font-sans">
-                  {draftMessage}
-                </div>
-              )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-2.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => onOpenInChats("techkart", draftMessage)}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
-                >
-                  Open in Chats to send
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingDraft((prev) => !prev)}
-                  className="px-3.5 py-2 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                >
-                  {isEditingDraft ? "Done" : "Edit draft"}
-                </button>
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Cross-Project Suggested Inquiries
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      "Summarize all pending deliverables across my projects",
+                      "Which milestones are currently awaiting client sign-off?",
+                      "Check PayPal pre-funding status across all active agreements",
+                      "List all upcoming sync calls and scheduled meetings",
+                    ].map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setInputValue(prompt);
+                          showToast("Inquiry populated into composer.");
+                        }}
+                        className="text-left p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 hover:bg-indigo-50/60 hover:border-indigo-200 text-xs text-slate-700 hover:text-indigo-900 font-medium transition cursor-pointer"
+                      >
+                        {prompt} →
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )
+          )}
 
           {/* Live Session Messages Stream (when user submits prompts) */}
           {liveMessages.map((m) => (
@@ -783,38 +865,44 @@ export default function WorkspaceNexumAIMode({
               </button>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Only projects owned by Horizon Commerce LLC. Switch any project off to remove it from this chat.
+              Only projects authorized for your account. Switch any project off to remove it from this chat.
             </p>
           </div>
 
           {/* Project Context Toggles */}
           <div className="space-y-2">
-            {projects.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => handleToggleProject(p.id)}
-                className={`p-3 rounded-xl border transition cursor-pointer flex items-start gap-2.5 ${
-                  p.canSee
-                    ? "bg-indigo-50/30 border-indigo-200/80 shadow-2xs"
-                    : "bg-slate-50 border-slate-200 opacity-60"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={p.canSee}
-                  onChange={() => handleToggleProject(p.id)}
-                  className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-200"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-slate-900 truncate">
-                    {p.name}
-                  </div>
-                  <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                    {p.freelancerName || "No freelancer yet"} · {p.status}
+            {projects.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                No active projects found.
+              </div>
+            ) : (
+              projects.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => handleToggleProject(p.id)}
+                  className={`p-3 rounded-xl border transition cursor-pointer flex items-start gap-2.5 ${
+                    p.canSee
+                      ? "bg-indigo-50/30 border-indigo-200/80 shadow-2xs"
+                      : "bg-slate-50 border-slate-200 opacity-60"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={p.canSee}
+                    onChange={() => handleToggleProject(p.id)}
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-200"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-slate-900 truncate">
+                      {p.name}
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">
+                      {p.freelancerName || "No freelancer yet"} · {p.status}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* INCLUDED Section */}

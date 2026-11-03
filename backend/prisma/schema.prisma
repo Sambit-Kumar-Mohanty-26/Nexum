@@ -298,6 +298,11 @@ model User {
 
   notifications              Notification[]
   notificationPrefs          NotificationPref[]
+  telegramChatId        String?
+  telegramUsername      String?
+  telegramNotifications Boolean               @default(true)
+  workspaceMessages     WorkspaceMessage[]
+  assignedWorkspaceTasks WorkspaceTask[]      @relation("AssignedWorkspaceTasks")
 }
 
 model FreelancerProfile {
@@ -384,6 +389,7 @@ model Project {
   opportunities  Opportunity[]
   messages       ConversationMessage[]
   changeRequests ChangeRequest[]
+
   savedProjects  SavedProject[]        @relation("SavedProjects")
 
   category        String?
@@ -409,6 +415,7 @@ model Project {
   @@index([state, visibility])
   @@index([budgetCents])
   @@index([category])
+  workspaceConversation WorkspaceConversation?
 }
 
 model ProjectBriefVersion {
@@ -1379,21 +1386,29 @@ model ProjectFile {
 }
 
 model WorkspaceTask {
-  id          String              @id @default(cuid())
-  projectId   String
-  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  milestoneId String?
-  title       String
-  description String?
-  status      WorkspaceTaskStatus @default(TODO)
-  dueDate     DateTime?
-  visibility  TaskVisibility      @default(PRIVATE)
-  createdBy   String
-  creator     User                @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  createdAt   DateTime            @default(now())
-  completedAt DateTime?
+  id             String              @id @default(cuid())
+  projectId      String
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   WorkspaceConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  milestoneId    String?
+  title          String
+  description    String?             @db.Text
+  status         WorkspaceTaskStatus @default(TODO)
+  priority       String              @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  dueDate        DateTime?
+  visibility     TaskVisibility      @default(PRIVATE)
+  createdBy      String?
+  creator        User?               @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  assignedToId   String?
+  assignedTo     User?               @relation("AssignedWorkspaceTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+  origin         String              @default("MANUAL") // MANUAL | AI_MEETING_EXTRACTED
+  meetingId      String?
+  createdAt      DateTime            @default(now())
+  completedAt    DateTime?
 
   @@index([projectId, visibility])
+  @@index([conversationId])
   @@map("workspace_tasks")
 }
 
@@ -1673,3 +1688,100 @@ model NotificationPref {
   @@map("notification_prefs")
 }
 
+
+
+model NotificationDeadLetter {
+  id              String   @id @default(cuid())
+  originalJobId   String
+  eventName       String
+  recipientUserId String?
+  recipientRole   String?
+  payload         Json
+  errorReason     String
+  stackTrace      String?
+  attempts        Int
+  failedAt        DateTime @default(now())
+  replayedAt      DateTime?
+  replayedBy      String?
+
+  @@index([eventName])
+  @@index([failedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Workspace Collaboration, Cryptographic Timeline, Meetings & Tasks
+// ---------------------------------------------------------------------------
+
+model WorkspaceConversation {
+  id             String                @id @default(cuid())
+  projectId      String                @unique
+  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agreementHash  String                @default("canonical_v1.0_pending")
+  messages       WorkspaceMessage[]
+  decisions      WorkspaceDecision[]
+  meetings       WorkspaceMeeting[]
+  tasks          WorkspaceTask[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+}
+
+model WorkspaceMessage {
+  id                String                 @id @default(cuid())
+  conversationId    String
+  conversation      WorkspaceConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId          String
+  sender            User                   @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  senderRole        Role                   // CLIENT | FREELANCER | OPERATOR
+  type              String                 // client_bubble | freelancer_bubble | draft_counteroffer_card | sent_card | system_alert
+  origin            String                 @default("WEB") // WEB | TELEGRAM
+  telegramMessageId String?
+  originalContent   String                 @db.Text
+  mediatedContent   String?                @db.Text
+  wasMediated       Boolean                @default(false)
+  sha256Seal        String                 @default("")
+  metadata          Json?                  // Action payloads, counteroffer deltas, linked milestones
+  createdAt         DateTime               @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model WorkspaceDecision {
+  id                 String                 @id @default(cuid())
+  conversationId     String
+  conversation       WorkspaceConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  title              String
+  description        String                 @db.Text
+  signedByClient     Boolean                @default(false)
+  signedByFreelancer Boolean                @default(false)
+  status             String                 @default("PROPOSED") // PROPOSED | SEALED | REJECTED
+  sha256Hash         String                 @default("")
+  origin             String                 @default("MANUAL") // MANUAL | AI_MEETING_EXTRACTED
+  meetingId          String?
+  createdAt          DateTime               @default(now())
+
+  @@index([conversationId, status])
+}
+
+model WorkspaceMeeting {
+  id                    String                 @id @default(cuid())
+  conversationId        String
+  conversation          WorkspaceConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  title                 String
+  agenda                String                 @db.Text
+  durationMinutes       Int                    @default(30)
+  status                String                 @default("PROPOSED") // PROPOSED | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED
+  proposedSlots         Json                   // Array of ISO timestamps [{ id, startTime, endTime, votes: [] }]
+  confirmedSlot         DateTime?
+  proposedByUserId      String
+  roomUrl               String                 // e.g. /workspace/meetings/room-[id]
+  googleCalendarEventId String?
+  googleCalendarHtmlLink String?
+  executiveSummary      String?                @db.Text
+  actionItems           Json?                  // Extracted action items [{ id, task, assignee, dueDate }]
+  decisions             Json?                  // Extracted agreed points [{ id, decision, context }]
+  transcriptJson        Json?                  // Multilingual speaker-attributed transcript segments
+  audioRecordingUrl     String?
+  createdAt             DateTime               @default(now())
+
+  @@index([conversationId, status])
+}

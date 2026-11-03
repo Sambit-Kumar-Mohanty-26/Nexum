@@ -19,8 +19,8 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Configure Multer for disk storage with 5MB limit
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
+  destination: (_req: any, _file: any, cb: any) => cb(null, UPLOAD_DIR),
+  filename: (_req: any, file: any, cb: any) => {
     const ext = path.extname(file.originalname);
     const uniqueKey = `${Date.now()}_${crypto.randomBytes(8).toString("hex")}${ext}`;
     cb(null, uniqueKey);

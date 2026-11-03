@@ -1,9 +1,18 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { clientOverviewService } from "../src/services/clientOverviewService.js";
+import { prisma } from "../src/prisma.js";
 
 describe("Client Workspace Settings Service & End-to-End Suite", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     clientOverviewService.reset();
+    try {
+      await prisma.user.updateMany({
+        where: { id: "usr_client_alex" },
+        data: { name: "Alex Rivera", passwordHash: null, preferences: null },
+      });
+    } catch {
+      // Ignore if DB offline
+    }
   });
 
   it("should fetch complete, well-formed settings for Alex Rivera", async () => {

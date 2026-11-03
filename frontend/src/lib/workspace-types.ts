@@ -4,7 +4,7 @@ export interface ProjectMilestone {
   title: string;
   amount: string;
   dueDate: string;
-  status: "Accepted" | "In progress" | "Upcoming";
+  status: "Accepted" | "In progress" | "Upcoming" | "CAPTURED" | "READY_FOR_WORK" | "PENDING_FUNDING" | string;
   statusColor: string;
 }
 
@@ -12,10 +12,13 @@ export interface WorkspaceProject {
   id: string;
   name: string;
   shortName: string;
-  iconType: "cart" | "mobile" | "chart";
+  iconType: "cart" | "mobile" | "chart" | string;
   freelancerName: string;
   freelancerAvatar: string;
-  status: "Active project" | "Negotiation" | "Draft brief";
+  clientName?: string;
+  clientAvatar?: string;
+  clientCompany?: string;
+  status: "Active project" | "Negotiation" | "Draft brief" | string;
   statusColor: string;
   budget: string;
   duration: string;
@@ -49,9 +52,56 @@ export interface MediationMetric {
 export type TimelineItemType =
   | "freelancer_reply_card"
   | "client_bubble"
+  | "freelancer_bubble"
   | "draft_counteroffer_card"
   | "sent_to_freelancer_card"
-  | "agreement_comparison_card";
+  | "agreement_comparison_card"
+  | "meeting_proposal_card"
+  | "meeting_confirmed_card"
+  | "deliverable_card"
+  | "notetaker_summary_card"
+  | "system_event_card";
+
+export interface WorkspaceTaskItem {
+  id: string;
+  title: string;
+  description?: string;
+  status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  dueDate?: string;
+  assignedToName?: string;
+  assignedToRole?: string;
+}
+
+export interface WorkspaceMeetingItem {
+  id: string;
+  title: string;
+  agenda?: string;
+  durationMinutes: number;
+  status: "PROPOSED" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  proposedSlots: string[];
+  acceptedSlot?: string;
+  roomUrl: string;
+  googleCalendarUrl?: string;
+  icsContent?: string;
+  notetakerSummary?: {
+    summary: string;
+    actionItems?: string[];
+    keyDecisions?: string[];
+    verbalScopeCreep?: string[];
+    transcriptionUrl?: string;
+  };
+}
+
+export interface WorkspaceDecisionItem {
+  id: string;
+  title: string;
+  context: string;
+  resolution: string;
+  status: "DRAFT" | "ACCEPTED" | "REJECTED";
+  sha256Seal: string;
+  createdAt: string;
+}
 
 export interface TimelineItem {
   id: string;
@@ -63,12 +113,37 @@ export interface TimelineItem {
   bubbleText?: string;
   badgeText?: string;
   badgeType?: "amber" | "gray" | "green" | "purple";
+  sha256Seal?: string;
   metrics?: MediationMetric;
   counterofferDetails?: {
     title: string;
     priceChange: string;
     schedule: string;
     expires: string;
+  };
+  meetingDetails?: {
+    meetingId: string;
+    title: string;
+    durationMinutes: number;
+    proposedSlots: string[];
+    acceptedSlot?: string;
+    roomUrl: string;
+    googleCalendarUrl?: string;
+  };
+  deliverableDetails?: {
+    milestoneId: string;
+    milestoneTitle?: string;
+    repoUrl?: string;
+    previewUrl?: string;
+    reviewDeadline?: string;
+    sha256Seal?: string;
+  };
+  notetakerDetails?: {
+    meetingId: string;
+    summary: string;
+    actionItems: string[];
+    keyDecisions: string[];
+    verbalScopeDetections?: string[];
   };
   actions?: {
     primaryLabel?: string;
@@ -96,4 +171,3 @@ export interface BasedOnChip {
   recordType: "agreement" | "cr" | "quote" | "milestone" | "chat";
   detail: string;
 }
-

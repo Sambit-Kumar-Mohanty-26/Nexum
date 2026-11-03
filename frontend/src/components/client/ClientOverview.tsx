@@ -584,7 +584,7 @@ export default function ClientOverview({
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs divide-y divide-slate-100 flex-1 flex flex-col">
-              {upcomingMilestones.map((ms) => (
+              {upcomingMilestones.slice(0, 4).map((ms) => (
                 <div
                   key={ms.id}
                   onClick={() => onNavigateTab("milestones")}
@@ -638,7 +638,7 @@ export default function ClientOverview({
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-2xs space-y-3 flex-1 flex flex-col justify-between">
               <div className="space-y-2.5">
-                {recommendedFreelancers.map((fr) => {
+                {recommendedFreelancers.slice(0, 4).map((fr) => {
                   const isInvited = invitedTalentIds.has(fr.id);
                 
   return (

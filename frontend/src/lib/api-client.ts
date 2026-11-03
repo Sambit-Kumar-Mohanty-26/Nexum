@@ -4189,3 +4189,530 @@ export async function submitClientSupportTicket(ticket: {
     return { success: false, error: msg };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Workspace Collaboration, Cryptographic Timeline, Meetings & Tasks
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch real active workspace projects for a user.
+ * Returns truthful empty list when user has zero projects.
+ */
+export async function fetchWorkspaceProjects(
+  userId = "usr_client_alex",
+  role = "CLIENT"
+): Promise<{
+  success: boolean;
+  count: number;
+  data: any[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch(
+      `/api/workspace/projects?userId=${encodeURIComponent(userId)}&role=${encodeURIComponent(role)}`,
+      { cache: "no-store" }
+    );
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch workspace projects";
+    return { success: false, count: 0, data: [], error: msg };
+  }
+}
+
+/**
+ * Fetch bilateral workspace state (timeline, meetings, tasks, decisions, agreement hash)
+ */
+export async function getWorkspaceTimeline(projectId: string): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/timeline`, {
+      cache: "no-store",
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch timeline";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Send a message into the bilateral workspace
+ */
+export async function sendWorkspaceMessage(
+  projectId: string,
+  payload: {
+    senderId: string;
+    senderRole: "CLIENT" | "FREELANCER" | "OPERATOR";
+    content: string;
+    type?: string;
+    origin?: "WEB" | "TELEGRAM";
+    metadata?: Record<string, unknown>;
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to send message";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Propose a scope amendment (Existing milestone delta or new milestone)
+ */
+export async function proposeScopeAmendment(
+  projectId: string,
+  payload: {
+    proposerId: string;
+    amendmentType: "AMEND_EXISTING_MILESTONE" | "ADD_NEW_MILESTONE" | "ZERO_COST_TWEAK";
+    milestoneId?: string;
+    newMilestoneTitle?: string;
+    priceDeltaCents: number;
+    timelineDaysDelta: number;
+    newAcceptanceCriteria: string[];
+    justification: string;
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/amendments/propose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to propose amendment";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Respond to pending scope amendment (Accept or Decline)
+ */
+export async function respondToScopeAmendment(
+  projectId: string,
+  messageId: string,
+  payload: {
+    responderId: string;
+    action: "ACCEPT" | "DECLINE";
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/amendments/${messageId}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to respond to amendment";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Submit deliverable and trigger 72-hour inspection clock
+ */
+export async function submitWorkspaceDeliverable(
+  projectId: string,
+  payload: {
+    milestoneId: string;
+    freelancerId: string;
+    repoUrl: string;
+    previewUrl?: string;
+    notes: string;
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/deliverables/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to submit deliverable";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Propose meeting with 1-3 time slots
+ */
+export async function proposeWorkspaceMeeting(
+  projectId: string,
+  payload: {
+    proposedByUserId: string;
+    title: string;
+    agenda: string;
+    durationMinutes: number;
+    proposedSlots: Array<{ id: string; startTime: string; endTime: string }>;
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/meetings/propose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to propose meeting";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Confirm meeting time slot with Google Calendar link generation
+ */
+export async function respondToWorkspaceMeeting(
+  projectId: string,
+  meetingId: string,
+  payload: {
+    responderId: string;
+    action: "CONFIRM" | "DECLINE";
+    selectedSlotTime?: string;
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/meetings/${meetingId}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to respond to meeting";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Submit autonomous meeting notetaker summary & auto-extract tasks/ADRs
+ */
+export async function submitMeetingNotetakerSynthesis(
+  projectId: string,
+  meetingId: string,
+  payload: {
+    executiveSummary: string;
+    actionItems: Array<{ task: string; assigneeId?: string; dueDate?: string }>;
+    decisions: Array<{ title: string; description: string }>;
+    transcriptSegments?: Array<{ speaker: string; timestamp: string; text: string }>;
+    verbalScopeAlert?: { detected: boolean; verbalAgreementSnippet: string; suggestedDeltaCents: number };
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/meetings/${meetingId}/notetaker/synthesize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to synthesize meeting notes";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Create a Kanban Task
+ */
+export async function createWorkspaceTask(
+  projectId: string,
+  payload: {
+    title: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+    assignedToId?: string;
+    dueDate?: string;
+  }
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create task";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Update Kanban Task status
+ */
+export async function updateWorkspaceTaskStatus(
+  taskId: string,
+  status: string
+): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/tasks/${taskId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to update task status";
+    return { success: false, error: msg };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Telegram Mobile Edge Node Gateway
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch 1-click deep link to pair Telegram account with Nexum
+ */
+export async function getTelegramDeepLink(userId = "usr_client_alex"): Promise<{
+  success: boolean;
+  data?: {
+    deepLink: string;
+    isLinked: boolean;
+    telegramUsername?: string;
+    telegramNotifications?: boolean;
+  };
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/telegram/link?userId=${encodeURIComponent(userId)}`, {
+      cache: "no-store",
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to get Telegram deep link";
+    return {
+      success: false,
+      data: {
+        deepLink: "https://t.me/NexumDev_Bot?start=link_usr_client_alex",
+        isLinked: false,
+      },
+      error: msg,
+    };
+  }
+}
+
+/**
+ * Disconnect Telegram pairing
+ */
+export async function disconnectTelegram(userId = "usr_client_alex"): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/telegram/disconnect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to disconnect Telegram";
+    return { success: false, error: msg };
+  }
+}
+
+
+// ============================================================================
+// Phase 7: Client Financial Ledger & PayPal Orders REST v2
+// ============================================================================
+
+/**
+ * Fetch client payments & financial escrow summary.
+ */
+export async function fetchClientPaymentsSummary(clientId?: string): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const q = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    const res = await fetch(`${BACKEND_URL}/api/client/payments/summary${q}`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to load payment summary";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Fetch client transaction history with cryptographic evidence.
+ */
+export async function fetchClientTransactions(
+  clientId?: string,
+  filter?: { status?: string; search?: string }
+): Promise<{
+  success: boolean;
+  data?: any[];
+  count?: number;
+  error?: string;
+}> {
+  try {
+    const params = new URLSearchParams();
+    if (clientId) params.append("clientId", clientId);
+    if (filter?.status && filter.status !== "ALL") params.append("status", filter.status);
+    if (filter?.search) params.append("search", filter.search);
+
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${BACKEND_URL}/api/client/payments/transactions${qs}`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to load transactions";
+    return { success: false, data: [], error: msg };
+  }
+}
+
+/**
+ * Fetch client cash flow points for spline chart.
+ */
+export async function fetchClientCashFlow(
+  clientId?: string,
+  timeframe = "1M"
+): Promise<{
+  success: boolean;
+  data?: any[];
+  error?: string;
+}> {
+  try {
+    const params = new URLSearchParams();
+    if (clientId) params.append("clientId", clientId);
+    if (timeframe) params.append("timeframe", timeframe);
+
+    const res = await fetch(`${BACKEND_URL}/api/client/payments/cash-flow?${params.toString()}`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to load cash flow";
+    return { success: false, data: [], error: msg };
+  }
+}
+
+/**
+ * Fetch urgent client action items (milestone deliverables submitted).
+ */
+export async function fetchClientActionRequired(clientId?: string): Promise<{
+  success: boolean;
+  data?: any | null;
+  error?: string;
+}> {
+  try {
+    const q = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    const res = await fetch(`${BACKEND_URL}/api/client/payments/action-required${q}`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    return { success: false, data: null };
+  }
+}
+
+/**
+ * Fetch upcoming scheduled deliverable for client.
+ */
+export async function fetchClientUpcomingDeliverable(clientId?: string): Promise<{
+  success: boolean;
+  data?: any | null;
+  error?: string;
+}> {
+  try {
+    const q = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    const res = await fetch(`${BACKEND_URL}/api/client/payments/upcoming${q}`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: unknown) {
+    return { success: false, data: null };
+  }
+}
+
+/**
+ * Authorize and Release milestone escrow funds to freelancer.
+ */
+export async function authorizeClientMilestoneRelease(
+  milestoneId: string,
+  clientId?: string
+): Promise<{
+  success: boolean;
+  receiptNumber?: string;
+  proofHash?: string;
+  amountReleased?: string;
+  freelancerName?: string;
+  error?: string;
+}> {
+  try {
+    const q = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    const res = await fetch(`${BACKEND_URL}/api/client/payments/release${q}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ milestoneId }),
+    });
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to release milestone escrow";
+    return { success: false, error: msg };
+  }
+}

@@ -7,6 +7,8 @@ interface ReviewVersionModalProps {
   isOpen: boolean;
   onClose: () => void;
   versionName?: string;
+  projectName?: string;
+  freelancerName?: string;
   onApproveVersion?: (ver: string) => void;
   onOpenCounteroffer?: () => void;
 }
@@ -15,6 +17,8 @@ export default function ReviewVersionModal({
   isOpen,
   onClose,
   versionName = "Version 4",
+  projectName = "Active Project",
+  freelancerName = "Partner",
   onApproveVersion,
   onOpenCounteroffer,
 }: ReviewVersionModalProps) {
@@ -51,7 +55,7 @@ export default function ReviewVersionModal({
               Compare Agreement v3 vs {versionName}
             </h3>
             <p className="text-xs text-slate-500">
-              TechKart – E-commerce Website · Freelancer: Sambit Kumar
+              {projectName || "Active Project"} · Freelancer: {freelancerName || "Partner"}
             </p>
           </div>
 

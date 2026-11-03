@@ -17,7 +17,11 @@ function FreelancerWorkspaceContent() {
   const helpParam = searchParams.get("help");
   const isStandalone = searchParams.get("standalone") === "true";
   // Derive mode directly from URL searchParams
-  const mode: WorkspaceMode = modeParam === "ai" ? "ai" : "chats";
+  const [mode, setMode] = useState<WorkspaceMode>(modeParam === "ai" ? "ai" : "chats");
+
+  useEffect(() => {
+    setMode(modeParam === "ai" ? "ai" : "chats");
+  }, [modeParam]);
   const [isMediationHelpOpen, setIsMediationHelpOpen] = useState(
     helpParam === "mediation"
   );
@@ -33,10 +37,12 @@ function FreelancerWorkspaceContent() {
     }
   }, [user, isLoading, router]);
   const handleModeSwitch = (newMode: WorkspaceMode) => {
+    setMode(newMode);
     const standaloneQuery = isStandalone ? "&standalone=true" : "";
     router.replace(`/freelancer/workspace?mode=${newMode}${standaloneQuery}`, { scroll: false });
   };
   const handleOpenInChatsFromAI = () => {
+    setMode("chats");
     const standaloneQuery = isStandalone ? "&standalone=true" : "";
     router.replace(`/freelancer/workspace?mode=chats${standaloneQuery}`, { scroll: false });
   };

@@ -81,7 +81,7 @@ export default function NexumAssistantPanel() {
       } else if (lower.includes("payment") || lower.includes("status") || lower.includes("paypal") || lower.includes("escrow")) {
         reply = "Financial Status Overview:\n• Authorized Ceiling: $4,500.00 USD\n• Captured to Date: $1,200.00 USD\n• Pre-Funded in Sandbox: $1,500.00 USD (Order #6DE714998H998261C)\n• Remaining Reserve: $1,800.00 USD\n\nUnder ProofLoop compliance rules, PayPal Sandbox captures represent provider verification evidence, not external commercial bank deposits.";
       } else if (lower.includes("freelancer") || lower.includes("find") || lower.includes("match")) {
-        reply = "Matched Engineers for your architecture:\n1. Rohan Verma (Active Contractor) — 98% Fit ($65/hr, PayPal REST v2 expert)\n2. Priya Sharma (Available) — 94% Fit ($55/hr, UI/UX Design System Architect)\n3. Marcus Chen (Available) — 91% Fit ($75/hr, Webhook DevOps Specialist)\n\nYou can click 'Share Brief' on any candidate card to invite them to a scope.";
+        reply = "Matched Engineers for your architecture:\n1. Rohan Verma (Active Contractor) — 98% Match ($65/hr, PayPal REST v2 expert)\n2. Priya Sharma (Available) — 94% Match ($55/hr, UI/UX Design System Architect)\n3. Marcus Chen (Available) — 91% Match ($75/hr, Webhook DevOps Specialist)\n\nYou can click 'Share Brief' on any candidate card to invite them to a scope.";
       } else if (lower.includes("agreement") || lower.includes("contract")) {
         reply = "Your active bilateral agreement is locked under canonical hash: canonical_v1.2_#9f8c2b7e with contractor Rohan Verma. It enforces the 'Fund-Before-Work' rule and requires dual SHA-256 sign-off for any scope modifications.";
       }

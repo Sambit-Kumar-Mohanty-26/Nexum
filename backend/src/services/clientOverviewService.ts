@@ -1880,7 +1880,7 @@ export class ClientOverviewService {
       const dbUsers = await prisma.user.findMany({
         where: { role: "FREELANCER" },
         include: { freelancerProfile: true },
-        take: 6,
+        take: 4,
       }).catch(() => null);
 
       if (dbUsers && dbUsers.length > 0) {
@@ -1891,6 +1891,20 @@ export class ClientOverviewService {
             ? `$${Math.round(ratePref.preferredHourlyCents / 100)}/hr`
             : "$75/hr";
 
+          const avatarMap: Record<string, string> = {
+            usr_freelancer_elena: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
+            usr_freelancer_priya: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80",
+            usr_freelancer_marcus: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
+            usr_freelancer_rohan: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
+            usr_freelancer_sambit: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&q=80",
+            cmvuanz4u0000vgtkuq294rn2: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=128&q=80",
+          };
+          const avatarUrl =
+            (profile as any)?.avatarUrl ||
+            avatarMap[u.id] ||
+            avatarMap[u.email || ""] ||
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80";
+
           return {
             id: u.id,
             name: u.name || "Freelancer",
@@ -1898,7 +1912,7 @@ export class ClientOverviewService {
             skills: (profile?.skills as string[]) || ["TypeScript", "Full Stack"],
             rate: hourlyStr,
             rating: "5.0 (verified)",
-            avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
+            avatar: avatarUrl,
             availability: profile?.availability || "Available now",
           };
         });
@@ -1908,7 +1922,7 @@ export class ClientOverviewService {
     }
 
     if (realFreelancers.length === 0) {
-      realFreelancers = DEFAULT_RECOMMENDED_FREELANCERS;
+      realFreelancers = [];
     }
 
     // Query real audit ledger events from database
@@ -1965,7 +1979,8 @@ export class ClientOverviewService {
 
     // 4. Aggregate live projects into overview structure
     const aggregated = this.aggregateFromProjects(projects, targetClient);
-    aggregated.recommendedFreelancers = realFreelancers;
+    aggregated.upcomingMilestones = aggregated.upcomingMilestones.slice(0, 4);
+    aggregated.recommendedFreelancers = realFreelancers.slice(0, 4);
     aggregated.recentActivities = allAudits;
     return aggregated;
   }
