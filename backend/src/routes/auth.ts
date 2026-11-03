@@ -413,6 +413,171 @@ router.get("/google", (req: Request, res: Response) => {
   }
 });
 
+// GET /api/auth/google/callback - Handle direct browser redirect from Google OAuth consent screen
+router.get(
+  "/google/callback",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const frontendOrigin = env.CORS_ORIGIN.split(",")[0] || "http://localhost:3000";
+
+    const { code, state, error } = req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+    };
+
+    if (error) {
+      res.redirect(`${frontendOrigin}/login?error=${encodeURIComponent(String(error))}`);
+      return;
+    }
+
+    if (!code) {
+      res.redirect(`${frontendOrigin}/login?error=missing_authorization_code`);
+      return;
+    }
+
+    // CSRF validation
+    const expectedState = req.cookies?.nexum_oauth_state;
+    if (expectedState && state && expectedState !== state) {
+      res.redirect(`${frontendOrigin}/login?error=oauth_state_mismatch`);
+      return;
+    }
+    res.clearCookie("nexum_oauth_state", { path: "/" });
+
+    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+      res.redirect(`${frontendOrigin}/login?error=google_oauth_not_configured`);
+      return;
+    }
+
+    try {
+      const requestRedirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+      const configuredUri = env.GOOGLE_CALLBACK_URL || requestRedirectUri;
+
+      let tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: String(code),
+          client_id: env.GOOGLE_CLIENT_ID,
+          client_secret: env.GOOGLE_CLIENT_SECRET,
+          redirect_uri: configuredUri,
+          grant_type: "authorization_code",
+        }).toString(),
+      });
+
+      // If mismatch occurred on redirect_uri, fallback to actual incoming URI
+      if (!tokenRes.ok && configuredUri !== requestRedirectUri) {
+        tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            code: String(code),
+            client_id: env.GOOGLE_CLIENT_ID,
+            client_secret: env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: requestRedirectUri,
+            grant_type: "authorization_code",
+          }).toString(),
+        });
+      }
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text().catch(() => "");
+        console.error("Google token exchange failure:", errText);
+        res.redirect(`${frontendOrigin}/login?error=google_token_exchange_failed`);
+        return;
+      }
+
+      const tokens = (await tokenRes.json()) as { access_token: string; id_token?: string };
+
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+
+      if (!userInfoRes.ok) {
+        res.redirect(`${frontendOrigin}/login?error=google_profile_fetch_failed`);
+        return;
+      }
+
+      const profile = (await userInfoRes.json()) as {
+        sub: string;
+        email: string;
+        name?: string;
+        picture?: string;
+        email_verified?: boolean;
+      };
+
+      if (!profile.email) {
+        res.redirect(`${frontendOrigin}/login?error=no_email_provided`);
+        return;
+      }
+
+      const normalizedEmail = profile.email.trim().toLowerCase();
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { googleId: profile.sub },
+            { email: { equals: normalizedEmail, mode: "insensitive" } },
+          ],
+        },
+        include: { freelancerProfile: true },
+      });
+
+      if (user) {
+        if (!user.googleId || !user.avatarUrl) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleId: user.googleId || profile.sub,
+              avatarUrl: user.avatarUrl || profile.picture || null,
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: profile.name?.trim() || normalizedEmail.split("@")[0],
+            googleId: profile.sub,
+            avatarUrl: profile.picture || null,
+            role: null,
+            status: "ACTIVE",
+          },
+          include: { freelancerProfile: true },
+        });
+      }
+
+      try {
+        await appendAuditEvent({
+          actorId: user.id,
+          action: "USER_AUTHENTICATED_GOOGLE",
+          objectType: "USER",
+          objectId: user.id,
+          metadata: { googleId: profile.sub, role: user.role },
+        });
+      } catch (auditErr) {
+        console.warn("Audit log warning (non-fatal):", auditErr);
+      }
+
+      const { rawToken, expiresAt } = await createSession(user.id, req);
+      setSessionCookie(res, rawToken, expiresAt);
+
+      if (!user.role) {
+        res.redirect(`${frontendOrigin}/choose-role`);
+      } else if (user.role === "FREELANCER") {
+        res.redirect(`${frontendOrigin}/freelancer/dashboard`);
+      } else {
+        res.redirect(`${frontendOrigin}/client/dashboard`);
+      }
+    } catch (err: any) {
+      console.error("Google OAuth callback error:", err);
+      const isDbError = err?.name === "PrismaClientInitializationError" || err?.message?.includes("database") || err?.code === "P1001";
+      const errParam = isDbError ? "database_offline" : "auth_processing_error";
+      res.redirect(`${frontendOrigin}/login?error=${errParam}`);
+    }
+  }
+);
+
 // POST /api/auth/google/callback - Process Google authorization code or simulated login
 router.post(
   "/google/callback",

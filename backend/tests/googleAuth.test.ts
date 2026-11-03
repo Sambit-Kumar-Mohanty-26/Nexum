@@ -91,4 +91,12 @@ describe("Google OAuth 2.0 & Role Selection Suite", () => {
       expect([200, 500]).toContain(res.status);
     }
   });
+  it("should handle browser GET /api/auth/google/callback and redirect on missing code", async () => {
+    const res = await fetch(`${baseUrl}/api/auth/google/callback`, {
+      redirect: "manual",
+    });
+    expect([302, 303, 307]).toContain(res.status);
+    const location = res.headers.get("location");
+    expect(location).toContain("/login?error=missing_authorization_code");
+  });
 });
