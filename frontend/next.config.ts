@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
         hostname: "*.googleusercontent.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.microsoft.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.microsoftonline.com",
+        pathname: "/**",
+      },
     ],
   },
   async rewrites() {

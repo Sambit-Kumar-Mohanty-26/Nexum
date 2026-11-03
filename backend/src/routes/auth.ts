@@ -767,4 +767,402 @@ router.post(
   }
 );
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Microsoft OAuth 2.0
+// ─────────────────────────────────────────────────────────────────────────────
+
+const microsoftCallbackSchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  simulated: z.boolean().optional(),
+});
+
+// GET /api/auth/microsoft/url - Return authorization URL for Microsoft OAuth
+router.get("/microsoft/url", (req: Request, res: Response) => {
+  if (env.MICROSOFT_CLIENT_ID) {
+    const state = crypto.randomBytes(24).toString("hex");
+    res.cookie("nexum_ms_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60 * 1000,
+    });
+    const params = new URLSearchParams({
+      client_id: env.MICROSOFT_CLIENT_ID,
+      response_type: "code",
+      redirect_uri: env.MICROSOFT_CALLBACK_URL,
+      response_mode: "query",
+      scope: "openid email profile User.Read",
+      state,
+      prompt: "select_account",
+    });
+    const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`;
+    res.json({ url, simulated: false });
+  } else {
+    // Development simulation fallback
+    res.json({
+      url: `${env.CORS_ORIGIN.split(",")[0]}/api/auth/microsoft/callback?simulated=true`,
+      simulated: true,
+    });
+  }
+});
+
+// GET /api/auth/microsoft - Direct browser initiation redirect
+router.get("/microsoft", (req: Request, res: Response) => {
+  if (env.MICROSOFT_CLIENT_ID) {
+    const state = crypto.randomBytes(24).toString("hex");
+    res.cookie("nexum_ms_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60 * 1000,
+    });
+    const params = new URLSearchParams({
+      client_id: env.MICROSOFT_CLIENT_ID,
+      response_type: "code",
+      redirect_uri: env.MICROSOFT_CALLBACK_URL,
+      response_mode: "query",
+      scope: "openid email profile User.Read",
+      state,
+      prompt: "select_account",
+    });
+    res.redirect(`https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`);
+  } else {
+    res.redirect(`${env.CORS_ORIGIN.split(",")[0]}/api/auth/microsoft/callback?simulated=true`);
+  }
+});
+
+// GET /api/auth/microsoft/callback - Handle direct browser redirect from Microsoft
+router.get(
+  "/microsoft/callback",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const frontendOrigin = env.CORS_ORIGIN.split(",")[0] || "http://localhost:3000";
+    const { code, state, error } = req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+    };
+
+    if (error) {
+      res.redirect(`${frontendOrigin}/login?error=${encodeURIComponent(String(error))}`);
+      return;
+    }
+
+    if (!code) {
+      res.redirect(`${frontendOrigin}/login?error=missing_authorization_code`);
+      return;
+    }
+
+    // CSRF validation
+    const expectedState = req.cookies?.nexum_ms_oauth_state;
+    if (expectedState && state && expectedState !== state) {
+      res.redirect(`${frontendOrigin}/login?error=oauth_state_mismatch`);
+      return;
+    }
+    res.clearCookie("nexum_ms_oauth_state", { path: "/" });
+
+    if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CLIENT_SECRET) {
+      res.redirect(`${frontendOrigin}/login?error=microsoft_oauth_not_configured`);
+      return;
+    }
+
+    try {
+      // Exchange authorization code for tokens
+      const tokenRes = await fetch(
+        "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: env.MICROSOFT_CLIENT_ID,
+            client_secret: env.MICROSOFT_CLIENT_SECRET,
+            code: String(code),
+            redirect_uri: env.MICROSOFT_CALLBACK_URL,
+            grant_type: "authorization_code",
+          }).toString(),
+        }
+      );
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text().catch(() => "");
+        console.error("Microsoft token exchange failure:", errText);
+        res.redirect(`${frontendOrigin}/login?error=microsoft_token_exchange_failed`);
+        return;
+      }
+
+      const tokens = (await tokenRes.json()) as { access_token: string };
+
+      // Fetch user profile from Microsoft Graph
+      const profileRes = await fetch("https://graph.microsoft.com/v1.0/me", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+
+      if (!profileRes.ok) {
+        res.redirect(`${frontendOrigin}/login?error=microsoft_profile_fetch_failed`);
+        return;
+      }
+
+      const profile = (await profileRes.json()) as {
+        id: string;
+        displayName?: string;
+        mail?: string;
+        userPrincipalName?: string;
+      };
+
+      const email = profile.mail || profile.userPrincipalName || "";
+      if (!email) {
+        res.redirect(`${frontendOrigin}/login?error=no_email_provided`);
+        return;
+      }
+      const normalizedEmail = email.trim().toLowerCase();
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { microsoftId: profile.id },
+            { email: { equals: normalizedEmail, mode: "insensitive" } },
+          ],
+        },
+        include: { freelancerProfile: true },
+      });
+
+      if (user) {
+        if (!user.microsoftId) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { microsoftId: profile.id },
+            include: { freelancerProfile: true },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: profile.displayName?.trim() || normalizedEmail.split("@")[0],
+            microsoftId: profile.id,
+            role: null,
+            status: "ACTIVE",
+          },
+          include: { freelancerProfile: true },
+        });
+      }
+
+      try {
+        await appendAuditEvent({
+          actorId: user.id,
+          action: "USER_AUTHENTICATED_MICROSOFT",
+          objectType: "USER",
+          objectId: user.id,
+          metadata: { microsoftId: profile.id, role: user.role },
+        });
+      } catch (auditErr) {
+        console.warn("Audit log warning (non-fatal):", auditErr);
+      }
+
+      const { rawToken, expiresAt } = await createSession(user.id, req);
+      setSessionCookie(res, rawToken, expiresAt);
+
+      if (!user.role) {
+        res.redirect(`${frontendOrigin}/choose-role`);
+      } else if (user.role === "FREELANCER") {
+        res.redirect(`${frontendOrigin}/freelancer/dashboard`);
+      } else {
+        res.redirect(`${frontendOrigin}/client/dashboard`);
+      }
+    } catch (err: any) {
+      console.error("Microsoft OAuth callback error:", err);
+      const isDbError =
+        err?.name === "PrismaClientInitializationError" ||
+        err?.message?.includes("database") ||
+        err?.code === "P1001";
+      const errParam = isDbError ? "database_offline" : "auth_processing_error";
+      res.redirect(`${frontendOrigin}/login?error=${errParam}`);
+    }
+  }
+);
+
+// POST /api/auth/microsoft/callback - Process Microsoft authorization code or simulated login
+router.post(
+  "/microsoft/callback",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const parsed = microsoftCallbackSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError("Invalid Microsoft callback parameters");
+      }
+
+      const { code, state, simulated } = parsed.data;
+
+      // Handle simulated OAuth in development
+      if (simulated) {
+        if (env.NODE_ENV === "production") {
+          throw new ValidationError("Simulation is not permitted in production");
+        }
+
+        const simulatedEmail = "alex.microsoft@nexum.demo";
+        let user = await prisma.user.findFirst({
+          where: { email: simulatedEmail },
+          include: { freelancerProfile: true },
+        });
+
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email: simulatedEmail,
+              name: "Alex Rivera (Microsoft)",
+              microsoftId: "microsoft_oauth_oid_demo_001",
+              role: null,
+              status: "ACTIVE",
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+
+        await appendAuditEvent({
+          actorId: user.id,
+          action: "USER_AUTHENTICATED_MICROSOFT",
+          objectType: "USER",
+          objectId: user.id,
+          metadata: { simulated: true, role: user.role },
+        });
+
+        const { rawToken, expiresAt } = await createSession(user.id, req);
+        setSessionCookie(res, rawToken, expiresAt);
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatarUrl: user.avatarUrl,
+          },
+          requiresRole: !user.role,
+        });
+        return;
+      }
+
+      // Live Microsoft OAuth 2.0 flow
+      if (!code) {
+        throw new ValidationError("Authorization code is required");
+      }
+
+      // CSRF validation
+      const expectedState = req.cookies?.nexum_ms_oauth_state;
+      if (expectedState && state && expectedState !== state) {
+        throw new ValidationError("OAuth state mismatch (potential CSRF attempt)");
+      }
+      res.clearCookie("nexum_ms_oauth_state", { path: "/" });
+
+      if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CLIENT_SECRET) {
+        throw new ValidationError("Microsoft OAuth is not configured on the server");
+      }
+
+      const tokenRes = await fetch(
+        "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: env.MICROSOFT_CLIENT_ID,
+            client_secret: env.MICROSOFT_CLIENT_SECRET,
+            code,
+            redirect_uri: env.MICROSOFT_CALLBACK_URL,
+            grant_type: "authorization_code",
+          }).toString(),
+        }
+      );
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text().catch(() => "");
+        throw new UnauthorizedError(`Microsoft token exchange failed: ${tokenRes.statusText}`);
+      }
+
+      const tokens = (await tokenRes.json()) as { access_token: string };
+
+      const profileRes = await fetch("https://graph.microsoft.com/v1.0/me", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+
+      if (!profileRes.ok) {
+        throw new UnauthorizedError("Failed to retrieve user profile from Microsoft");
+      }
+
+      const profile = (await profileRes.json()) as {
+        id: string;
+        displayName?: string;
+        mail?: string;
+        userPrincipalName?: string;
+      };
+
+      const email = profile.mail || profile.userPrincipalName || "";
+      if (!email) {
+        throw new ValidationError("Microsoft account did not provide a valid email");
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { microsoftId: profile.id },
+            { email: { equals: normalizedEmail, mode: "insensitive" } },
+          ],
+        },
+        include: { freelancerProfile: true },
+      });
+
+      if (user) {
+        if (!user.microsoftId) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { microsoftId: profile.id },
+            include: { freelancerProfile: true },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: profile.displayName?.trim() || normalizedEmail.split("@")[0],
+            microsoftId: profile.id,
+            role: null,
+            status: "ACTIVE",
+          },
+          include: { freelancerProfile: true },
+        });
+      }
+
+      await appendAuditEvent({
+        actorId: user.id,
+        action: "USER_AUTHENTICATED_MICROSOFT",
+        objectType: "USER",
+        objectId: user.id,
+        metadata: { microsoftId: profile.id, role: user.role },
+      });
+
+      const { rawToken, expiresAt } = await createSession(user.id, req);
+      setSessionCookie(res, rawToken, expiresAt);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+        },
+        requiresRole: !user.role,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 export default router;
