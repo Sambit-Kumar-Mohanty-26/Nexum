@@ -4716,3 +4716,113 @@ export async function authorizeClientMilestoneRelease(
     return { success: false, error: msg };
   }
 }
+
+/**
+ * Request meeting postponement / reschedule with structured reasons & proposed slots
+ */
+export async function postponeWorkspaceMeeting(
+  projectId: string,
+  meetingId: string,
+  payload: {
+    userId: string;
+    userRole?: "CLIENT" | "FREELANCER" | "OPERATOR";
+    reasonCategory: string;
+    reasonDetails: string;
+    newSlots: string[];
+  }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/workspace/projects/${projectId}/meetings/${meetingId}/postpone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to postpone meeting";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Bilaterally accept or decline meeting postponement proposal
+ */
+export async function respondToWorkspaceMeetingPostpone(
+  projectId: string,
+  meetingId: string,
+  payload: {
+    responderId: string;
+    responderRole?: "CLIENT" | "FREELANCER" | "OPERATOR";
+    action: "ACCEPT" | "DECLINE";
+    acceptedSlot?: string;
+  }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/workspace/projects/${projectId}/meetings/${meetingId}/respond-postpone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to respond to meeting postponement";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Formally request milestone deadline postponement with structured reasons
+ */
+export async function postponeWorkspaceMilestone(
+  projectId: string,
+  milestoneId: string,
+  payload: {
+    requestedById: string;
+    requestedByRole: "CLIENT" | "FREELANCER";
+    proposedDueDate: string;
+    reasonCategory: string;
+    reasonDetails: string;
+  }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/workspace/projects/${projectId}/milestones/${milestoneId}/postpone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to postpone milestone";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Bilateral consensus response (Accept or Decline) for milestone postponement
+ */
+export async function respondToWorkspaceMilestonePostpone(
+  projectId: string,
+  postponementId: string,
+  payload: {
+    responderId: string;
+    responderRole: "CLIENT" | "FREELANCER";
+    action: "ACCEPT" | "DECLINE";
+    declineReason?: string;
+  }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/workspace/projects/${projectId}/milestones/postponements/${postponementId}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to respond to milestone postponement";
+    return { success: false, error: msg };
+  }
+}

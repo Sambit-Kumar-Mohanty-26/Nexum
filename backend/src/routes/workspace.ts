@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { workspaceService } from "../services/workspaceService.js";
 import { groqService } from "../services/groqService.js";
@@ -498,6 +499,231 @@ router.patch("/tasks/:taskId/status", async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : "Failed to update task status",
+    });
+  }
+});
+
+
+// ---------------------------------------------------------------------------
+// Bilateral Postponement Engine (Meetings & Milestones)
+// ---------------------------------------------------------------------------
+
+const postponeMeetingSchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+  userRole: z.enum(["CLIENT", "FREELANCER", "OPERATOR"]).optional(),
+  reasonCategory: z.enum([
+    "SUDDEN_EMERGENCY",
+    "CLIENT_CONFLICT",
+    "HEALTH_EMERGENCY",
+    "SCHEDULE_ADJUSTMENT",
+    "PREPARATION_DELAY",
+    "OTHER"
+  ]),
+  reasonDetails: z.string().min(1, "reasonDetails is required"),
+  newSlots: z.array(z.any()).min(1, "At least one new proposed slot is required"),
+});
+
+const respondMeetingPostponeSchema = z.object({
+  responderId: z.string().min(1, "responderId is required"),
+  responderRole: z.enum(["CLIENT", "FREELANCER", "OPERATOR"]).optional(),
+  action: z.enum(["ACCEPT", "DECLINE"]),
+  acceptedSlot: z.string().optional(),
+});
+
+const postponeMilestoneSchema = z.object({
+  requestedById: z.string().min(1, "requestedById is required"),
+  requestedByRole: z.enum(["CLIENT", "FREELANCER"]),
+  proposedDueDate: z.string().min(1, "proposedDueDate is required"),
+  reasonCategory: z.enum([
+    "SUDDEN_EMERGENCY",
+    "TECHNICAL_BLOCKER",
+    "CLIENT_DEPENDENCY",
+    "SCOPE_EXPANSION",
+    "PERSONAL_LEAVE",
+    "OTHER"
+  ]),
+  reasonDetails: z.string().min(1, "reasonDetails is required"),
+});
+
+const respondMilestonePostponeSchema = z.object({
+  responderId: z.string().min(1, "responderId is required"),
+  responderRole: z.enum(["CLIENT", "FREELANCER"]),
+  action: z.enum(["ACCEPT", "DECLINE"]),
+  declineReason: z.string().optional(),
+});
+
+/**
+ * POST /api/workspace/projects/:projectId/meetings/:meetingId/postpone
+ * Request meeting postponement / reschedule with structured/sudden reason & new proposed slots
+ */
+router.post("/projects/:projectId/meetings/:meetingId/postpone", async (req: Request, res: Response) => {
+  try {
+    const { meetingId } = req.params;
+    const parsed = postponeMeetingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid postponement parameters",
+          details: parsed.error.issues,
+        },
+      });
+    }
+
+    const result = await workspaceService.postponeMeeting({
+      meetingId,
+      ...parsed.data,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err: any) {
+    console.error("Meeting postpone error:", err);
+    res.status(500).json({
+      error: {
+        code: "MEETING_POSTPONE_ERROR",
+        message: err.message || "Failed to postpone meeting",
+      },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/projects/:projectId/meetings/:meetingId/respond-postpone
+ * Bilaterally accept or decline meeting postponement proposal
+ */
+router.post("/projects/:projectId/meetings/:meetingId/respond-postpone", async (req: Request, res: Response) => {
+  try {
+    const { meetingId } = req.params;
+    const parsed = respondMeetingPostponeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid response parameters",
+          details: parsed.error.issues,
+        },
+      });
+    }
+
+    const result = await workspaceService.respondToMeetingPostpone({
+      meetingId,
+      ...parsed.data,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err: any) {
+    console.error("Respond to meeting postpone error:", err);
+    res.status(500).json({
+      error: {
+        code: "RESPOND_MEETING_POSTPONE_ERROR",
+        message: err.message || "Failed to respond to meeting postponement",
+      },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/projects/:projectId/milestones/:milestoneId/postpone
+ * Formally request milestone deadline postponement with structured reasons
+ */
+router.post("/projects/:projectId/milestones/:milestoneId/postpone", async (req: Request, res: Response) => {
+  try {
+    const { projectId, milestoneId } = req.params;
+    const parsed = postponeMilestoneSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid milestone postponement parameters",
+          details: parsed.error.issues,
+        },
+      });
+    }
+
+    const postponement = await workspaceService.requestMilestonePostponement({
+      projectId,
+      milestoneId,
+      ...parsed.data,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: postponement,
+    });
+  } catch (err: any) {
+    console.error("Milestone postpone error:", err);
+    res.status(500).json({
+      error: {
+        code: "MILESTONE_POSTPONE_ERROR",
+        message: err.message || "Failed to request milestone postponement",
+      },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/projects/:projectId/milestones/postponements/:postponementId/respond
+ * Bilateral consensus response (Accept or Decline) for milestone postponement
+ */
+router.post("/projects/:projectId/milestones/postponements/:postponementId/respond", async (req: Request, res: Response) => {
+  try {
+    const { postponementId } = req.params;
+    const parsed = respondMilestonePostponeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid response parameters",
+          details: parsed.error.issues,
+        },
+      });
+    }
+
+    const result = await workspaceService.respondToMilestonePostponement({
+      postponementId,
+      ...parsed.data,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err: any) {
+    console.error("Respond to milestone postpone error:", err);
+    res.status(500).json({
+      error: {
+        code: "RESPOND_MILESTONE_POSTPONE_ERROR",
+        message: err.message || "Failed to respond to milestone postponement",
+      },
+    });
+  }
+});
+
+/**
+ * GET /api/workspace/projects/:projectId/milestones/postponements
+ * List milestone postponement requests and consensus history
+ */
+router.get("/projects/:projectId/milestones/postponements", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const postponements = await workspaceService.getProjectMilestonePostponements(projectId);
+    res.json({
+      success: true,
+      data: postponements,
+    });
+  } catch (err: any) {
+    console.error("Fetch milestone postponements error:", err);
+    res.status(500).json({
+      error: {
+        code: "FETCH_POSTPONEMENTS_ERROR",
+        message: err.message || "Failed to fetch milestone postponements",
+      },
     });
   }
 });

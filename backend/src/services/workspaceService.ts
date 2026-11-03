@@ -1,3 +1,4 @@
+import { appendAuditEvent } from "../lib/audit.js";
 import { prisma } from "../prisma.js";
 import { computeCanonicalHash, computeTimelineSeal } from "../lib/canonicalHash.js";
 import { notificationQueue } from "./notificationQueue.js";
@@ -822,6 +823,443 @@ export class WorkspaceService {
       },
     });
   }
+
+  /**
+   * Postpone / Reschedule an existing meeting with proper/sudden reasons & new proposed slots
+   */
+  async postponeMeeting(params: {
+    meetingId: string;
+    userId: string;
+    userRole?: "CLIENT" | "FREELANCER" | "OPERATOR";
+    reasonCategory: string;
+    reasonDetails: string;
+    newSlots: Array<{ id: string; startTime: string; endTime: string } | string>;
+  }) {
+    const meeting = await prisma.workspaceMeeting.findUnique({
+      where: { id: params.meetingId },
+      include: { conversation: { include: { project: true } } },
+    });
+
+    if (!meeting) {
+      throw new Error(`Meeting ${params.meetingId} not found`);
+    }
+
+    const previousStatus = meeting.status;
+    const formattedSlots = params.newSlots.map((s, idx) => {
+      if (typeof s === "string") {
+        const start = new Date(s);
+        const end = new Date(start.getTime() + meeting.durationMinutes * 60000);
+        return { id: `slot-${idx + 1}`, startTime: start.toISOString(), endTime: end.toISOString() };
+      }
+      return s;
+    });
+
+    const updated = await prisma.workspaceMeeting.update({
+      where: { id: params.meetingId },
+      data: {
+        status: "RESCHEDULE_PROPOSED",
+        postponedByUserId: params.userId,
+        postponeReason: params.reasonDetails,
+        postponeCategory: params.reasonCategory,
+        rescheduledSlots: formattedSlots as any,
+      },
+    });
+
+    // Append audit event
+    await appendAuditEvent({
+      actorId: params.userId,
+      action: "MEETING_POSTPONE_REQUESTED",
+      objectType: "WORKSPACE_MEETING",
+      objectId: meeting.id,
+      previousStatus,
+      newStatus: "RESCHEDULE_PROPOSED",
+      metadata: {
+        reasonCategory: params.reasonCategory,
+        reasonDetails: params.reasonDetails,
+        newSlotsCount: formattedSlots.length,
+      },
+    });
+
+    // Drop interactive Postponement Card into bilateral timeline
+    const seal = computeCanonicalHash({
+      meetingId: meeting.id,
+      postponedByUserId: params.userId,
+      reasonCategory: params.reasonCategory,
+      reasonDetails: params.reasonDetails,
+      newSlots: formattedSlots,
+    });
+
+    await prisma.workspaceMessage.create({
+      data: {
+        conversationId: meeting.conversationId,
+        senderId: params.userId,
+        senderRole: (params.userRole as any) || "CLIENT",
+        type: "meeting_postponed_card",
+        origin: "WEB",
+        originalContent: `Meeting Postponed [${params.reasonCategory}]: ${params.reasonDetails}`,
+        sha256Seal: seal,
+        metadata: {
+          meetingId: meeting.id,
+          title: meeting.title,
+          originalSlot: meeting.confirmedSlot ? meeting.confirmedSlot.toISOString() : null,
+          postponedByUserId: params.userId,
+          reasonCategory: params.reasonCategory,
+          reasonDetails: params.reasonDetails,
+          newSlots: formattedSlots,
+          status: "RESCHEDULE_PROPOSED",
+        } as any,
+      },
+    });
+
+    return {
+      success: true,
+      status: "RESCHEDULE_PROPOSED",
+      meeting: updated,
+    };
+  }
+
+  /**
+   * Respond to meeting postponement request (Accept new slot or Decline)
+   */
+  async respondToMeetingPostpone(params: {
+    meetingId: string;
+    responderId: string;
+    responderRole?: "CLIENT" | "FREELANCER" | "OPERATOR";
+    action: "ACCEPT" | "DECLINE";
+    acceptedSlot?: string;
+  }) {
+    const meeting = await prisma.workspaceMeeting.findUnique({
+      where: { id: params.meetingId },
+      include: { conversation: { include: { project: true } } },
+    });
+
+    if (!meeting) {
+      throw new Error(`Meeting ${params.meetingId} not found`);
+    }
+
+    const previousStatus = meeting.status;
+
+    if (params.action === "DECLINE") {
+      const updated = await prisma.workspaceMeeting.update({
+        where: { id: params.meetingId },
+        data: { status: "CANCELLED" },
+      });
+
+      await appendAuditEvent({
+        actorId: params.responderId,
+        action: "MEETING_POSTPONE_DECLINED",
+        objectType: "WORKSPACE_MEETING",
+        objectId: meeting.id,
+        previousStatus,
+        newStatus: "CANCELLED",
+      });
+
+      await prisma.workspaceMessage.create({
+        data: {
+          conversationId: meeting.conversationId,
+          senderId: params.responderId,
+          senderRole: (params.responderRole as any) || "FREELANCER",
+          type: "system_status_event",
+          origin: "WEB",
+          originalContent: `Meeting Reschedule Declined for "${meeting.title}". Meeting is now cancelled.`,
+          sha256Seal: computeCanonicalHash({ meetingId: meeting.id, action: "DECLINE" }),
+        },
+      });
+
+      return { success: true, status: "CANCELLED", meeting: updated };
+    }
+
+    const confirmedSlot = params.acceptedSlot ? new Date(params.acceptedSlot) : new Date();
+    const endSlot = new Date(confirmedSlot.getTime() + meeting.durationMinutes * 60000);
+
+    const startIso = confirmedSlot.toISOString().replace(/-|:|.\d\d\d/g, "");
+    const endIso = endSlot.toISOString().replace(/-|:|.\d\d\d/g, "");
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      `Nexum Sync (Rescheduled): ${meeting.title}`
+    )}&dates=${startIso}/${endIso}&details=${encodeURIComponent(
+      `Rescheduled: ${meeting.postponeReason || meeting.agenda}\n\nNexum Internal Room: ${meeting.roomUrl}`
+    )}&location=${encodeURIComponent(meeting.roomUrl)}`;
+
+    const updated = await prisma.workspaceMeeting.update({
+      where: { id: params.meetingId },
+      data: {
+        status: "CONFIRMED",
+        confirmedSlot,
+        googleCalendarHtmlLink: gcalUrl,
+      },
+    });
+
+    await appendAuditEvent({
+      actorId: params.responderId,
+      action: "MEETING_POSTPONE_ACCEPTED",
+      objectType: "WORKSPACE_MEETING",
+      objectId: meeting.id,
+      previousStatus,
+      newStatus: "CONFIRMED",
+      metadata: {
+        confirmedSlot: confirmedSlot.toISOString(),
+      },
+    });
+
+    await prisma.workspaceMessage.create({
+      data: {
+        conversationId: meeting.conversationId,
+        senderId: params.responderId,
+        senderRole: (params.responderRole as any) || "FREELANCER",
+        type: "meeting_confirmed_card",
+        origin: "WEB",
+        originalContent: `Meeting Rescheduled & Confirmed: ${meeting.title} on ${confirmedSlot.toLocaleString()}`,
+        sha256Seal: computeCanonicalHash({ meetingId: meeting.id, confirmedSlot, type: "RESCHEDULED" }),
+        metadata: {
+          meetingId: meeting.id,
+          title: meeting.title,
+          confirmedSlot: confirmedSlot.toISOString(),
+          roomUrl: meeting.roomUrl,
+          googleCalendarHtmlLink: gcalUrl,
+          durationMinutes: meeting.durationMinutes,
+          status: "CONFIRMED",
+          isRescheduled: true,
+        } as any,
+      },
+    });
+
+    return {
+      success: true,
+      status: "CONFIRMED",
+      meeting: updated,
+      googleCalendarHtmlLink: gcalUrl,
+    };
+  }
+
+  /**
+   * Request Milestone Postponement / Due Date Extension with structured reasons
+   */
+  async requestMilestonePostponement(params: {
+    projectId: string;
+    milestoneId: string;
+    requestedById: string;
+    requestedByRole: "CLIENT" | "FREELANCER";
+    proposedDueDate: string;
+    reasonCategory: string;
+    reasonDetails: string;
+  }) {
+    const milestone = await prisma.milestone.findUnique({
+      where: { id: params.milestoneId },
+      include: { project: true },
+    });
+
+    if (!milestone) {
+      throw new Error(`Milestone ${params.milestoneId} not found`);
+    }
+
+    const proposedDate = new Date(params.proposedDueDate);
+    if (isNaN(proposedDate.getTime())) {
+      throw new Error("Invalid proposed due date format");
+    }
+
+    const conversation = await this.getOrCreateWorkspaceConversation(params.projectId);
+
+    const seal = computeCanonicalHash({
+      milestoneId: milestone.id,
+      currentDueDate: milestone.dueDate || milestone.deadline,
+      proposedDueDate: proposedDate.toISOString(),
+      reasonCategory: params.reasonCategory,
+      reasonDetails: params.reasonDetails,
+      requestedById: params.requestedById,
+    });
+
+    const postponement = await prisma.milestonePostponement.create({
+      data: {
+        milestoneId: milestone.id,
+        projectId: params.projectId,
+        requestedById: params.requestedById,
+        requestedByRole: params.requestedByRole as any,
+        currentDueDate: milestone.dueDate || milestone.deadline || null,
+        proposedDueDate: proposedDate,
+        reasonCategory: params.reasonCategory,
+        reasonDetails: params.reasonDetails,
+        status: "PENDING",
+        sha256Seal: seal,
+      },
+    });
+
+    await appendAuditEvent({
+      actorId: params.requestedById,
+      action: "MILESTONE_POSTPONE_REQUESTED",
+      objectType: "MILESTONE_POSTPONEMENT",
+      objectId: postponement.id,
+      previousStatus: "CURRENT_DEADLINE",
+      newStatus: "PENDING",
+      metadata: {
+        milestoneId: milestone.id,
+        milestoneTitle: milestone.title,
+        currentDueDate: milestone.dueDate || milestone.deadline,
+        proposedDueDate: proposedDate.toISOString(),
+        reasonCategory: params.reasonCategory,
+        reasonDetails: params.reasonDetails,
+      },
+    });
+
+    // Drop interactive Milestone Postponement Card into bilateral timeline
+    await prisma.workspaceMessage.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: params.requestedById,
+        senderRole: params.requestedByRole,
+        type: "milestone_postponement_card",
+        origin: "WEB",
+        originalContent: `Milestone Postponement Request for "${milestone.title}" to ${proposedDate.toLocaleDateString()} [${params.reasonCategory}]: ${params.reasonDetails}`,
+        sha256Seal: seal,
+        metadata: {
+          postponementId: postponement.id,
+          milestoneId: milestone.id,
+          milestoneTitle: milestone.title,
+          currentDueDate: milestone.dueDate || milestone.deadline,
+          proposedDueDate: proposedDate.toISOString(),
+          reasonCategory: params.reasonCategory,
+          reasonDetails: params.reasonDetails,
+          requestedById: params.requestedById,
+          requestedByRole: params.requestedByRole,
+          status: "PENDING",
+        } as any,
+      },
+    });
+
+    return postponement;
+  }
+
+  /**
+   * Bilateral response to Milestone Postponement (Accept or Decline)
+   */
+  async respondToMilestonePostponement(params: {
+    postponementId: string;
+    responderId: string;
+    responderRole: "CLIENT" | "FREELANCER";
+    action: "ACCEPT" | "DECLINE";
+    declineReason?: string;
+  }) {
+    const postponement = await prisma.milestonePostponement.findUnique({
+      where: { id: params.postponementId },
+      include: { milestone: true, project: true },
+    });
+
+    if (!postponement) {
+      throw new Error(`Postponement ${params.postponementId} not found`);
+    }
+
+    if (postponement.status !== "PENDING") {
+      throw new Error(`Postponement ${params.postponementId} is already ${postponement.status}`);
+    }
+
+    const conversation = await this.getOrCreateWorkspaceConversation(postponement.projectId);
+    const previousStatus = postponement.status;
+
+    if (params.action === "DECLINE") {
+      const updated = await prisma.milestonePostponement.update({
+        where: { id: params.postponementId },
+        data: {
+          status: "DECLINED",
+          respondedAt: new Date(),
+          respondedById: params.responderId,
+          declineReason: params.declineReason || null,
+        },
+      });
+
+      await appendAuditEvent({
+        actorId: params.responderId,
+        action: "MILESTONE_POSTPONE_DECLINED",
+        objectType: "MILESTONE_POSTPONEMENT",
+        objectId: postponement.id,
+        previousStatus,
+        newStatus: "DECLINED",
+        metadata: {
+          declineReason: params.declineReason,
+        },
+      });
+
+      await prisma.workspaceMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: params.responderId,
+          senderRole: params.responderRole,
+          type: "system_status_event",
+          origin: "WEB",
+          originalContent: `Milestone Extension Request for "${postponement.milestone.title}" was declined. Original due date remains active.`,
+          sha256Seal: computeCanonicalHash({ postponementId: postponement.id, status: "DECLINED" }),
+        },
+      });
+
+      return { success: true, status: "DECLINED", postponement: updated };
+    }
+
+    // ACCEPT: Atomically update Milestone dueDate & deadline
+    const [updatedPostponement, updatedMilestone] = await prisma.$transaction([
+      prisma.milestonePostponement.update({
+        where: { id: params.postponementId },
+        data: {
+          status: "ACCEPTED",
+          respondedAt: new Date(),
+          respondedById: params.responderId,
+        },
+      }),
+      prisma.milestone.update({
+        where: { id: postponement.milestoneId },
+        data: {
+          dueDate: postponement.proposedDueDate,
+          deadline: postponement.proposedDueDate,
+        },
+      }),
+    ]);
+
+    await appendAuditEvent({
+      actorId: params.responderId,
+      action: "MILESTONE_POSTPONE_ACCEPTED",
+      objectType: "MILESTONE_POSTPONEMENT",
+      objectId: postponement.id,
+      previousStatus,
+      newStatus: "ACCEPTED",
+      metadata: {
+        milestoneId: postponement.milestoneId,
+        newDueDate: postponement.proposedDueDate.toISOString(),
+      },
+    });
+
+    await prisma.workspaceMessage.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: params.responderId,
+        senderRole: params.responderRole,
+        type: "system_status_event",
+        origin: "WEB",
+        originalContent: `Milestone "${postponement.milestone.title}" due date postponed and mutually accepted to ${postponement.proposedDueDate.toLocaleDateString()}. Sealed with consensus.`,
+        sha256Seal: computeCanonicalHash({
+          postponementId: postponement.id,
+          milestoneId: postponement.milestoneId,
+          newDueDate: postponement.proposedDueDate,
+          status: "ACCEPTED",
+        }),
+      },
+    });
+
+    return {
+      success: true,
+      status: "ACCEPTED",
+      postponement: updatedPostponement,
+      milestone: updatedMilestone,
+    };
+  }
+
+  /**
+   * List all milestone postponement requests for a project
+   */
+  async getProjectMilestonePostponements(projectId: string) {
+    return await prisma.milestonePostponement.findMany({
+      where: { projectId },
+      include: { milestone: true },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
 }
 
 export const workspaceService = new WorkspaceService();

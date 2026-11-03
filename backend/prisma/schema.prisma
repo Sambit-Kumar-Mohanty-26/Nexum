@@ -415,6 +415,7 @@ model Project {
   requireFunding   Boolean             @default(false)
   payments         Payment[]
   ledgerEntries    LedgerEntry[]
+  milestonePostponements MilestonePostponement[]
 
   @@index([state, visibility])
   @@index([budgetCents])
@@ -621,6 +622,7 @@ model Milestone {
   disputeHolds          DisputeHold[]
   payments              Payment[]
   ledgerEntries         LedgerEntry[]
+  postponements         MilestonePostponement[]
 
   @@index([agreementId, sequence])
   @@index([projectId, workStatus])
@@ -1783,7 +1785,35 @@ model WorkspaceMeeting {
   decisions             Json?                  // Extracted agreed points [{ id, decision, context }]
   transcriptJson        Json?                  // Multilingual speaker-attributed transcript segments
   audioRecordingUrl     String?
+  postponedByUserId     String?
+  postponeReason        String?                @db.Text
+  postponeCategory      String?
+  rescheduledSlots      Json?
   createdAt             DateTime               @default(now())
 
   @@index([conversationId, status])
+}
+
+model MilestonePostponement {
+  id               String    @id @default(cuid())
+  milestoneId      String
+  milestone        Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  projectId        String
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestedById    String
+  requestedByRole  Role      @default(FREELANCER)
+  currentDueDate   DateTime?
+  proposedDueDate  DateTime
+  reasonCategory   String
+  reasonDetails    String    @db.Text
+  status           String    @default("PENDING")
+  respondedAt      DateTime?
+  respondedById    String?
+  declineReason    String?   @db.Text
+  sha256Seal       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([milestoneId, status])
+  @@index([projectId, status])
 }

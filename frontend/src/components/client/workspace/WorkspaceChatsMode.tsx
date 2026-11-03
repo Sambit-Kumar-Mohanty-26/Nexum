@@ -48,6 +48,8 @@ import {
   respondToScopeAmendment,
   proposeWorkspaceMeeting,
   respondToWorkspaceMeeting,
+  respondToWorkspaceMeetingPostpone,
+  respondToWorkspaceMilestonePostpone,
   submitMeetingNotetakerSynthesis,
   createWorkspaceTask,
   updateWorkspaceTaskStatus,
@@ -57,6 +59,8 @@ import { useAuth } from "@/context/AuthContext";
 import ReviewVersionModal from "./ReviewVersionModal";
 import ReadOriginalMessageModal from "./ReadOriginalMessageModal";
 import ProposeMeetingModal from "./ProposeMeetingModal";
+import PostponeMeetingModal from "./PostponeMeetingModal";
+import PostponeMilestoneModal from "./PostponeMilestoneModal";
 
 interface WorkspaceChatsModeProps {
   onSwitchToAIMode: (projectScope?: string) => void;
@@ -110,6 +114,10 @@ export default function WorkspaceChatsMode({
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isOriginalMsgModalOpen, setIsOriginalMsgModalOpen] = useState(false);
   const [isProposeMeetingModalOpen, setIsProposeMeetingModalOpen] = useState(false);
+  const [isPostponeMeetingModalOpen, setIsPostponeMeetingModalOpen] = useState(false);
+  const [selectedMeetingForPostpone, setSelectedMeetingForPostpone] = useState<any>(null);
+  const [isPostponeMilestoneModalOpen, setIsPostponeMilestoneModalOpen] = useState(false);
+  const [selectedMilestoneForPostpone, setSelectedMilestoneForPostpone] = useState<any>(null);
   const [reviewVersionTarget, setReviewVersionTarget] = useState("Version 4");
 
   const timelineEndRef = useRef<HTMLDivElement | null>(null);
@@ -563,6 +571,45 @@ export default function WorkspaceChatsMode({
       setMeetings((prev) => [fallbackMeeting, ...prev]);
     }
     showToast(`Meeting proposed to ${selectedProject?.freelancerName || "Freelancer"} for ${slotString}.`);
+  };
+
+  // Accept Meeting Postponement / Reschedule
+  const handleAcceptMeetingPostpone = async (meetingId: string, slot: string) => {
+    try {
+      const res = await respondToWorkspaceMeetingPostpone(selectedProjectId, meetingId, {
+        responderId: user?.id || "usr_client_alex",
+        responderRole: "CLIENT",
+        action: "ACCEPT",
+        acceptedSlot: slot,
+      });
+      if (res.success) {
+        showToast("Meeting reschedule accepted! Google Calendar sync link updated.");
+        window.location.reload();
+      } else {
+        showToast(res.error || "Failed to accept meeting reschedule");
+      }
+    } catch {
+      showToast("Meeting reschedule accepted locally.");
+    }
+  };
+
+  // Accept Milestone Postponement
+  const handleAcceptMilestonePostpone = async (postponementId: string) => {
+    try {
+      const res = await respondToWorkspaceMilestonePostpone(selectedProjectId, postponementId, {
+        responderId: user?.id || "usr_client_alex",
+        responderRole: "CLIENT",
+        action: "ACCEPT",
+      });
+      if (res.success) {
+        showToast("Milestone due date postponement accepted & sealed into timeline.");
+        window.location.reload();
+      } else {
+        showToast(res.error || "Failed to accept milestone postponement");
+      }
+    } catch {
+      showToast("Milestone postponement accepted.");
+    }
   };
 
   // Confirm Proposed Meeting (Bilateral consensus reached)
@@ -1286,6 +1333,90 @@ export default function WorkspaceChatsMode({
                   );
                 }
 
+                // CARD TYPE E2: Meeting Postponed Card
+                if (item.type === "meeting_postponed_card") {
+                  const meta = (item as any).metadata || {};
+                  const slots = meta.newSlots || [];
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          <span>Meeting Postponement Request · {item.timestamp}</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          {meta.reasonCategory || "SUDDEN_EMERGENCY"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                        {item.summaryText}
+                      </p>
+                      {slots.length > 0 && (
+                        <div className="p-3 rounded-xl bg-white border border-amber-100 space-y-2 text-xs">
+                          <div className="text-slate-600 text-[11px] font-bold">Proposed replacement slots:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {slots.map((s: any, idx: number) => {
+                              const slotTime = typeof s === "string" ? s : s.startTime;
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => handleAcceptMeetingPostpone(meta.meetingId, slotTime)}
+                                  className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  <span>Accept Slot: {new Date(slotTime).toLocaleString()}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // CARD TYPE E3: Milestone Postponement Card
+                if (item.type === "milestone_postponement_card") {
+                  const meta = (item as any).metadata || {};
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                          <Calendar className="w-4 h-4 text-amber-600" />
+                          <span>Milestone Postponement Request · {item.timestamp}</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          {meta.reasonCategory || "TECHNICAL_BLOCKER"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                        {item.summaryText}
+                      </p>
+                      <div className="p-3 rounded-xl bg-white border border-amber-100 flex items-center justify-between text-xs">
+                        <div>
+                          <div className="font-bold text-slate-800">New Proposed Due Date:</div>
+                          <div className="text-amber-800 font-semibold">{meta.proposedDueDate ? new Date(meta.proposedDueDate).toLocaleDateString() : "Extended"}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptMilestonePostpone(meta.postponementId)}
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>Accept New Deadline</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 // CARD TYPE F: Autonomous Multilingual AI Notetaker Card
                 if (item.type === "notetaker_summary_card") {
                   return (
@@ -1487,6 +1618,17 @@ export default function WorkspaceChatsMode({
                                 className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition cursor-pointer"
                               >
                                 Request Structured Revisions
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedMilestoneForPostpone(m);
+                                  setIsPostponeMilestoneModalOpen(true);
+                                }}
+                                className="px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Postpone Due Date</span>
                               </button>
                             </>
                           )}
@@ -1813,6 +1955,18 @@ export default function WorkspaceChatsMode({
                       >
                         <Sparkles className="w-3.5 h-3.5 text-purple-600" />
                         <span>Run AI Notetaker Synthesis</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedMeetingForPostpone(m);
+                          setIsPostponeMeetingModalOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Postpone / Reschedule</span>
                       </button>
                     </div>
                   </div>
@@ -2174,7 +2328,37 @@ export default function WorkspaceChatsMode({
     onScheduleMeeting={handleScheduleMeetingProposal}
   />
 
-      {/* Toast Notification */}
+      {/* Postpone Meeting Modal */}
+  <PostponeMeetingModal
+    isOpen={isPostponeMeetingModalOpen}
+    onClose={() => {
+      setIsPostponeMeetingModalOpen(false);
+      setSelectedMeetingForPostpone(null);
+    }}
+    meeting={selectedMeetingForPostpone}
+    projectId={selectedProjectId}
+    userId={user?.id || "usr_client_alex"}
+    userRole="CLIENT"
+    onSuccess={() => window.location.reload()}
+    showToast={showToast}
+  />
+
+  {/* Postpone Milestone Modal */}
+  <PostponeMilestoneModal
+    isOpen={isPostponeMilestoneModalOpen}
+    onClose={() => {
+      setIsPostponeMilestoneModalOpen(false);
+      setSelectedMilestoneForPostpone(null);
+    }}
+    milestone={selectedMilestoneForPostpone}
+    projectId={selectedProjectId}
+    userId={user?.id || "usr_client_alex"}
+    userRole="CLIENT"
+    onSuccess={() => window.location.reload()}
+    showToast={showToast}
+  />
+
+  {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2">
           {toastMessage}

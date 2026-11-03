@@ -45,11 +45,11 @@ export class EmailService {
   ): Promise<EmailSendResult> {
     this.reloadEnv();
 
-    const subject = "Your Nexum Mobile Gateway Login Code";
+    const subject = "Nexum AI Bot Login Verification";
     const message = [
       `Hello ${recipientName || "there"},`,
       ``,
-      `Your Nexum Mobile Gateway login verification code is:`,
+      `Your Nexum AI Bot login verification code is:`,
       ``,
       `   👉 ${otp} 👈`,
       ``,
@@ -59,7 +59,7 @@ export class EmailService {
       `If you did not request this code, you can safely ignore this email.`,
       ``,
       `Best regards,`,
-      `Nexum AI Concierge Security Team`
+      `Nexum AI Team`
     ].join("\n");
 
     if (!this.isConfigured()) {
@@ -82,8 +82,14 @@ export class EmailService {
           email: toEmail,
           user_email: toEmail,
           to_name: recipientName || "User",
-          subject,
+          from_name: "Nexum AI Team",
+          team_name: "Nexum AI Team",
+          subject: "Nexum AI Bot Login Verification",
+          title: "Nexum AI Bot Login Verification",
           message,
+          otp,
+          otp_code: otp,
+          verification_code: otp,
         },
       };
 

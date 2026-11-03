@@ -58,6 +58,8 @@ export type TimelineItemType =
   | "agreement_comparison_card"
   | "meeting_proposal_card"
   | "meeting_confirmed_card"
+  | "meeting_postponed_card"
+  | "milestone_postponement_card"
   | "deliverable_card"
   | "notetaker_summary_card"
   | "system_event_card";

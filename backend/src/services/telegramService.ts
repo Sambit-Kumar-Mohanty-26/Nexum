@@ -26,7 +26,7 @@ export interface PendingTelegramAuth {
 
 export const LOGGED_IN_GREETINGS = [
   (name: string, role: string, prj: string) =>
-    `✨ *Welcome back, ${name}!* 🌟 Your Nexum Concierge is online and guarding your contracts.\n\nActive Contract: *${prj}* (${role})\n\nWhat shall we accomplish today?`,
+    `✨ *Welcome back, ${name}!* 🌟 Your Nexum AI Bot is online and guarding your contracts.\n\nActive Contract: *${prj}* (${role})\n\nWhat shall we accomplish today?`,
   (name: string, role: string, prj: string) =>
     `🚀 *Hey there, ${name}!* Ready to make magic happen on mobile?\n\n*${prj}* is running smoothly and waiting for your lead!`,
   (name: string, role: string, prj: string) =>
@@ -60,7 +60,7 @@ export const LOGGED_IN_GREETINGS = [
 ];
 
 export const LOGGED_OUT_GREETINGS = [
-  `👋 *Oh hello, wanderer!* 🎒 Welcome to the Nexum Mobile Gateway! I’m your AI mediator, but we haven’t met yet.\n\nType \`/login\` with your email so I can fetch your contracts!`,
+  `👋 *Oh hello, wanderer!* 🎒 Welcome to the Nexum AI Bot! I’m your AI mediator, but we haven’t met yet.\n\nType \`/login\` with your email so I can fetch your contracts!`,
   `✨ *Knock knock! Who’s there?* A brand-new Nexum traveler! 🚀 Let’s get you connected to your workspace.\n\nType \`/login <email>\` to receive your 6-digit magic code!`,
   `🌱 *Welcome to Nexum on Telegram!* I’m all geared up to track your escrow, relay voice memos, and protect your project scopes.\n\nFirst, let’s sign in! Type \`/login\` to begin.`,
   `🌟 *Hello friend!* 🪄 Ready to run your projects right from your pocket?\n\nType \`/login\` and reply with your registered email—I’ll send you an instant login code!`,
@@ -473,7 +473,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       if (!transcribedText.trim()) {
-        transcribedText = "[Voice memo recorded on Telegram Mobile Gateway]";
+        transcribedText = "[Voice memo via Nexum AI Bot]";
       }
 
       try {
@@ -520,7 +520,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
 
           await this.sendMessage(
             chatId,
-            `🎉 *Welcome to Nexum Mobile Edge Gateway!*\n\nYour Telegram is securely paired with user account \`${userId}\`.\n\nYou now have real-time access to:\n• 1-Click Milestone Escrow Release\n• Scope Amendment Digital Signing\n• Voice & Text Bilateral Workspace Relaying\n• Live Financial & Milestone Pulse Check\n\nUse the menu buttons below to interact!`,
+            `🎉 *Welcome to Nexum AI Bot!*\n\nYour Telegram is securely paired with user account \`${userId}\`.\n\nYou now have real-time access to:\n• 1-Click Milestone Escrow Release\n• Scope Amendment Digital Signing\n• Voice & Text Bilateral Workspace Relaying\n• Live Financial & Milestone Pulse Check\n\nUse the menu buttons below to interact!`,
             undefined,
             true
           );
@@ -609,7 +609,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
 
         await this.sendMessage(
           chatId,
-          "👋 *You have been logged out from Nexum Mobile Gateway.*\n\nType \`/login\` anytime to sign back in from your phone."
+          "👋 *You have been logged out from Nexum AI Bot.*\n\nType \`/login\` anytime to sign back in from your phone."
         );
         return { handled: true, action: "LOGGED_OUT" };
       }
@@ -635,7 +635,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         this.awaitingEmail.add(chatId);
         await this.sendMessage(
           chatId,
-          "👋 *Welcome to Nexum Mobile Gateway!*\n\nPlease reply with your registered Nexum account email (e.g. `abc@client.com`) to receive your 6-digit login verification code:"
+          "👋 *Welcome to Nexum AI Bot!*\n\nPlease reply with your registered Nexum account email (e.g. `abc@client.com`) to receive your 6-digit login verification code:"
         );
         return { handled: true, action: "AWAITING_EMAIL_PROMPT" };
       }
@@ -884,7 +884,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       attempts: 0,
     });
 
-    await this.sendMessage(chatId, "⏳ Sending verification code via EmailJS...");
+    await this.sendMessage(chatId, "⏳ Sending your verification code...");
     const emailResult = await emailService.sendOtpEmail(targetUser.email, targetUser.name || "User", otp);
 
     const maskedEmail = targetUser.email.replace(/(.{2})(.*)(?=@)/, (_m, p1, p2) => p1 + "*".repeat(Math.max(2, p2.length)));
