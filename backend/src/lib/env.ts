@@ -28,6 +28,9 @@ const envSchema = z.object({
   MICROSOFT_CLIENT_ID: z.string().optional().default(""),
   MICROSOFT_CLIENT_SECRET: z.string().optional().default(""),
   MICROSOFT_CALLBACK_URL: z.string().optional().default("http://localhost:3000/api/auth/microsoft/callback"),
+  GITHUB_CLIENT_ID: z.string().optional().default(""),
+  GITHUB_CLIENT_SECRET: z.string().optional().default(""),
+  GITHUB_CALLBACK_URL: z.string().optional().default("http://localhost:3000/api/auth/github/callback"),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

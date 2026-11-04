@@ -22,7 +22,13 @@ export async function GET(request: Request) {
       });
       if (res.ok) {
         const json = await res.json();
-        return NextResponse.json(json);
+        return NextResponse.json(json, {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        });
       }
     } catch {
       // Backend offline / local fallback
@@ -33,16 +39,25 @@ export async function GET(request: Request) {
     const offset = (page - 1) * limit;
     const paginated = INITIAL_FREELANCERS.slice(offset, offset + limit);
 
-    return NextResponse.json({
-      success: true,
-      count: paginated.length,
-      total: INITIAL_FREELANCERS.length,
-      page,
-      limit,
-      totalPages: Math.max(1, Math.ceil(INITIAL_FREELANCERS.length / limit)),
-      hasMore: page * limit < INITIAL_FREELANCERS.length,
-      data: paginated,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        count: paginated.length,
+        total: INITIAL_FREELANCERS.length,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(INITIAL_FREELANCERS.length / limit)),
+        hasMore: page * limit < INITIAL_FREELANCERS.length,
+        data: paginated,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal error";
     return NextResponse.json({ success: false, error: msg }, { status: 500 });

@@ -646,7 +646,7 @@ export default function FreelancerWorkspaceChatsMode({
           </div>
           <button
             type="button"
-            onClick={() => window.open("https://t.me/NexumDev_Bot?start=link_usr_freelancer_sambit", "_blank")}
+            onClick={() => window.open(`https://t.me/NexumDev_Bot?start=link_${user?.id || 'usr_freelancer_sambit'}`, "_blank")}
             className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded-md hover:bg-indigo-50 transition cursor-pointer"
           >
             Connect @NexumDev_Bot
@@ -1794,9 +1794,14 @@ export default function FreelancerWorkspaceChatsMode({
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        {meeting.acceptedSlot ||
-                          (meeting.proposedSlots && meeting.proposedSlots[0]) ||
-                          "Time slot pending"}
+                        {(() => {
+                          const s = meeting.acceptedSlot || (meeting.proposedSlots && meeting.proposedSlots[0]);
+                          if (!s) return "Time slot pending";
+                          if (typeof s === "object" && s !== null) {
+                            return (s as any).startTime ? new Date((s as any).startTime).toLocaleString() : String((s as any).id || "Proposed slot");
+                          }
+                          return String(s);
+                        })()}
                         {meeting.agenda ? ` · ${meeting.agenda}` : ""}
                       </p>
                       <div className="flex items-center gap-2 pt-1">
@@ -2094,7 +2099,13 @@ export default function FreelancerWorkspaceChatsMode({
             <div className="flex items-center justify-between gap-2 pt-1">
               <div>
                 <div className="font-bold text-slate-900">{selectedProject.upcomingMeeting.title}</div>
-                <div className="text-[11px] text-slate-500">{selectedProject.upcomingMeeting.time}</div>
+                <div className="text-[11px] text-slate-500">
+                  {typeof selectedProject.upcomingMeeting.time === "object" && selectedProject.upcomingMeeting.time !== null
+                    ? ((selectedProject.upcomingMeeting.time as any).startTime
+                        ? new Date((selectedProject.upcomingMeeting.time as any).startTime).toLocaleString()
+                        : String((selectedProject.upcomingMeeting.time as any).id || "Upcoming"))
+                    : String(selectedProject.upcomingMeeting.time || "Upcoming")}
+                </div>
               </div>
               <button
                 type="button"

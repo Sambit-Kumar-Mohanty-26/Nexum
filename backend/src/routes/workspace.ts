@@ -103,7 +103,15 @@ router.get("/projects", async (req: Request, res: Response) => {
         paymentNote: 'Milestone funds secured via PayPal Orders REST v2 Escrow.',
         upcomingMeeting: nextMeeting ? {
           title: nextMeeting.title,
-          time: nextMeeting.confirmedSlot ? nextMeeting.confirmedSlot.toISOString() : (Array.isArray(nextMeeting.proposedSlots) ? (nextMeeting.proposedSlots[0]) : 'Upcoming'),
+          time: nextMeeting.confirmedSlot
+            ? new Date(nextMeeting.confirmedSlot).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+            : Array.isArray(nextMeeting.proposedSlots) && nextMeeting.proposedSlots.length > 0
+              ? typeof nextMeeting.proposedSlots[0] === 'object' && nextMeeting.proposedSlots[0] !== null
+                ? (nextMeeting.proposedSlots[0] as any).startTime
+                  ? new Date((nextMeeting.proposedSlots[0] as any).startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                  : String((nextMeeting.proposedSlots[0] as any).id || 'Upcoming')
+                : String(nextMeeting.proposedSlots[0])
+              : 'Upcoming',
         } : undefined,
         milestones: rawMilestones.map((m: any, idx: number) => ({
           id: m.id,

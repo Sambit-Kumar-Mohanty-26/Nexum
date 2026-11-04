@@ -921,7 +921,7 @@ export default function WorkspaceChatsMode({
           </div>
           <button
             type="button"
-            onClick={() => window.open("https://t.me/NexumDev_Bot?start=link_usr_client_alex", "_blank")}
+            onClick={() => window.open(`https://t.me/NexumDev_Bot?start=link_${user?.id || 'usr_client_alex'}`, "_blank")}
             className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded-md hover:bg-indigo-50 transition cursor-pointer"
           >
             Connect @NexumDev_Bot
@@ -1315,17 +1315,23 @@ export default function WorkspaceChatsMode({
                           <div className="font-bold text-slate-800">{item.meetingDetails.title}</div>
                           <div className="text-slate-500 text-[11px]">Proposed slots:</div>
                           <div className="flex flex-wrap gap-2">
-                            {item.meetingDetails.proposedSlots.map((slot, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleConfirmMeeting(item.meetingDetails!.meetingId, slot)}
-                                className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
-                              >
-                                <Check className="w-3 h-3" />
-                                <span>Accept: {slot}</span>
-                              </button>
-                            ))}
+                            {item.meetingDetails.proposedSlots.map((slot: any, idx: number) => {
+                              const slotVal = typeof slot === "object" && slot !== null ? (slot.startTime || slot.id || `Slot ${idx + 1}`) : String(slot);
+                              const displayVal = typeof slot === "object" && slot !== null && slot.startTime
+                                ? new Date(slot.startTime).toLocaleString()
+                                : String(slotVal);
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => handleConfirmMeeting(item.meetingDetails!.meetingId, slotVal)}
+                                  className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  <span>Accept: {displayVal}</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1916,7 +1922,14 @@ export default function WorkspaceChatsMode({
                         <div>
                           <div className="font-bold text-slate-900">{m.title}</div>
                           <div className="text-[11px] text-slate-500">
-                            {m.acceptedSlot || m.proposedSlots[0]} ({m.durationMinutes} mins)
+                            {(() => {
+                              const s = m.acceptedSlot || (m.proposedSlots && m.proposedSlots[0]);
+                              if (!s) return "Upcoming";
+                              if (typeof s === "object" && s !== null) {
+                                return (s as any).startTime ? new Date((s as any).startTime).toLocaleString() : String((s as any).id || "Upcoming");
+                              }
+                              return String(s);
+                            })()} ({m.durationMinutes} mins)
                           </div>
                         </div>
                       </div>
@@ -2270,7 +2283,13 @@ export default function WorkspaceChatsMode({
               <div className="flex items-center justify-between gap-2 pt-1">
                 <div>
                   <div className="font-bold text-slate-900">{selectedProject.upcomingMeeting.title}</div>
-                  <div className="text-[11px] text-slate-500">{selectedProject.upcomingMeeting.time}</div>
+                  <div className="text-[11px] text-slate-500">
+                    {typeof selectedProject.upcomingMeeting.time === "object" && selectedProject.upcomingMeeting.time !== null
+                      ? ((selectedProject.upcomingMeeting.time as any).startTime
+                          ? new Date((selectedProject.upcomingMeeting.time as any).startTime).toLocaleString()
+                          : String((selectedProject.upcomingMeeting.time as any).id || "Upcoming"))
+                      : String(selectedProject.upcomingMeeting.time || "Upcoming")}
+                  </div>
                 </div>
                 <button
                   type="button"

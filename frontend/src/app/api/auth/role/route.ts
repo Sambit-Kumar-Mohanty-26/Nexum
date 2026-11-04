@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         Cookie: cookieHeader,
       },
-      body: JSON.stringify({ role }),
+      body: JSON.stringify(body),
     });
 
     if (!backendRes.ok) {

@@ -4,6 +4,7 @@ import prisma from "../prisma.js";
 import { workspaceService } from "./workspaceService.js";
 import { groqService } from "./groqService.js";
 import { emailService } from "./emailService.js";
+import { geminiService } from "./geminiService.js";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 dotenv.config({ path: path.resolve(process.cwd(), "backend", ".env") });
@@ -80,8 +81,16 @@ export const LOGGED_OUT_GREETINGS = [
 
 export const TELEGRAM_MAIN_KEYBOARD = [
   [{ text: "📊 Status" }, { text: "📋 Milestones" }],
-  [{ text: "💰 Escrow" }, { text: "📁 Projects" }],
-  [{ text: "❓ Help" }],
+  [{ text: "💰 Escrow" }, { text: "📋 Tasks" }],
+  [{ text: "📁 Files" }, { text: "⚖️ Decisions" }],
+  [{ text: "📁 Projects" }, { text: "❓ Help" }],
+];
+
+export const TELEGRAM_FREELANCER_KEYBOARD = [
+  [{ text: "📊 Status" }, { text: "📋 Milestones" }],
+  [{ text: "💰 Earnings" }, { text: "📋 Tasks" }],
+  [{ text: "📁 Files" }, { text: "⚖️ Decisions" }],
+  [{ text: "🚀 Submit Deliverable" }, { text: "❓ Help" }],
 ];
 
 export class TelegramService {
@@ -187,7 +196,8 @@ export class TelegramService {
     chatId: string | number,
     text: string,
     inlineKeyboard?: TelegramInlineButton[][],
-    showMainKeyboard = false
+    showMainKeyboard = false,
+    userRole?: "CLIENT" | "FREELANCER" | string | null
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     if (!this.botToken) {
       return { success: false, error: "TELEGRAM_BOT_TOKEN not configured" };
@@ -206,7 +216,7 @@ export class TelegramService {
         };
       } else if (showMainKeyboard) {
         payload.reply_markup = {
-          keyboard: TELEGRAM_MAIN_KEYBOARD,
+          keyboard: userRole === "FREELANCER" ? TELEGRAM_FREELANCER_KEYBOARD : TELEGRAM_MAIN_KEYBOARD,
           resize_keyboard: true,
           one_time_keyboard: false,
         };
@@ -282,10 +292,13 @@ export class TelegramService {
           OR: [
             { agreement: { freelancerId: user.id } },
             { proposals: { some: { freelancerId: user.id } } },
+            { projectProposals: { some: { freelancerId: user.id } } },
           ],
         },
         include: {
           client: true,
+          agreement: { include: { freelancer: true } },
+          proposals: { include: { freelancer: true } },
           projectMilestones: { orderBy: { orderIndex: "asc" } },
           payments: true,
         },
@@ -433,6 +446,55 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         return { handled: true, action: "AMENDMENT_ACCEPTED" };
       }
 
+      // 1b. Accept / Decline Milestone Postponement
+      if (dataStr.startsWith("accept_postpone_ms:") || dataStr.startsWith("decline_postpone_ms:")) {
+        const isAccept = dataStr.startsWith("accept_postpone_ms:");
+        const postponementId = dataStr.split(":")[1];
+        try {
+          const res = await workspaceService.respondToMilestonePostponement({
+            postponementId,
+            responderId: "usr_client_alex",
+            responderRole: "CLIENT",
+            action: isAccept ? "ACCEPT" : "DECLINE",
+            declineReason: isAccept ? undefined : "Declined via Telegram mobile quick action",
+          });
+          const alertText = isAccept ? "✅ Milestone Postponement Accepted!" : "❌ Milestone Postponement Declined.";
+          await this.answerCallbackQuery(cq.id, alertText);
+          if (chatId) {
+            await this.sendMessage(chatId, alertText + "\n\nContract state has been sealed in PostgreSQL.", undefined, true);
+          }
+          return { handled: true, action: isAccept ? "POSTPONE_MS_ACCEPTED" : "POSTPONE_MS_DECLINED" };
+        } catch (err: any) {
+          await this.answerCallbackQuery(cq.id, `Error: ${err.message}`);
+          return { handled: false, action: "POSTPONE_MS_ERROR" };
+        }
+      }
+
+      // 1c. Accept / Decline Meeting Postponement
+      if (dataStr.startsWith("accept_postpone_mt:") || dataStr.startsWith("decline_postpone_mt:")) {
+        const isAccept = dataStr.startsWith("accept_postpone_mt:");
+        const parts = dataStr.split(":");
+        const meetingId = parts[1];
+        const slot = parts[2] ? decodeURIComponent(parts[2]) : undefined;
+        try {
+          const res = await workspaceService.respondToMeetingPostpone({
+            meetingId,
+            responderId: "usr_client_alex",
+            action: isAccept ? "ACCEPT" : "DECLINE",
+            acceptedSlot: slot,
+          });
+          const alertText = isAccept ? "✅ Meeting Reschedule Accepted!" : "❌ Meeting Reschedule Declined.";
+          await this.answerCallbackQuery(cq.id, alertText);
+          if (chatId) {
+            await this.sendMessage(chatId, alertText + "\n\nCalendar sync and video room updated.", undefined, true);
+          }
+          return { handled: true, action: isAccept ? "POSTPONE_MT_ACCEPTED" : "POSTPONE_MT_DECLINED" };
+        } catch (err: any) {
+          await this.answerCallbackQuery(cq.id, `Error: ${err.message}`);
+          return { handled: false, action: "POSTPONE_MT_ERROR" };
+        }
+      }
+
       await this.answerCallbackQuery(cq.id);
       return { handled: true, action: "GENERIC_CALLBACK" };
     }
@@ -539,8 +601,8 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         where: { telegramChatId: chatId },
       });
 
-            // 3b. Handle Greetings, /start, and /help with Cute Dynamic Messages
-      const isGreetingOrStart = text === "/start" || text === "/help" || text === "❓ Help" || /^(hi|hello|hey|hola|greetings)(s+bot|s+nexum)?$/i.test(text);
+            // 3b. Handle Greetings and /start with Cute Dynamic Messages
+      const isGreetingOrStart = text === "/start" || /^(hi|hello|hey|hola|greetings)(\s+bot|\s+nexum)?$/i.test(text);
       if (isGreetingOrStart) {
         if (user) {
           const projects = await this.getUserProjects(user);
@@ -783,25 +845,529 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         return { handled: true, action: "MILESTONES_SENT" };
       }
 
-      // 3g. /escrow or /balance or "💰 Escrow"
-      if (text === "/escrow" || text === "💰 Escrow" || text === "/balance") {
-        const payments = targetPrj.payments || [];
-        const capturedMinor = payments
-          .filter((p) => p.status === "CAPTURED")
-          .reduce((sum, p) => sum + p.amountMinor, 0);
+      // 3g. /escrow, /balance, /earnings or "💰 Escrow" / "💰 Earnings"
+      if (
+        text === "/escrow" ||
+        text === "💰 Escrow" ||
+        text === "/balance" ||
+        text === "/earnings" ||
+        text === "💰 Earnings"
+      ) {
+        const isFreelancer = user.role === "FREELANCER";
+        const allUserProjects = await this.getUserProjects(user);
+
+        let totalCapturedCents = 0;
+        let totalHeldCents = 0;
+
+        for (const prj of allUserProjects) {
+          const payments = prj.payments || [];
+          for (const p of payments) {
+            if (p.status === "CAPTURED") totalCapturedCents += p.amountMinor;
+            if (p.status === "APPROVED" || p.status === "CAPTURE_PENDING") totalHeldCents += p.amountMinor;
+          }
+        }
+
+        const capturedDollars = (totalCapturedCents / 100).toFixed(2);
+        const heldDollars = (totalHeldCents / 100).toFixed(2);
+        const activePrjBudget = (targetPrj.budgetCents / 100).toFixed(2);
+
+        if (isFreelancer) {
+          const report = [
+            `💰 *Freelancer Earnings & Financial Summary*`,
+            `*Active Contract:* ${targetPrj.title}\n`,
+            `• *Total Earned & Released:* \`$${capturedDollars} USD\``,
+            `• *Currently in Escrow (Locked):* \`$${heldDollars} USD\``,
+            `• *Active Contract Budget:* \`$${activePrjBudget} USD\``,
+            `• *Payment Security:* PayPal Orders REST v2 & SHA-256 Consensus`,
+            `• *Payout Rail:* Instant settlement upon client milestone sign-off`,
+            `\n💡 *Tip:* Submit finished work with \`/submit <github-link> <notes>\` to trigger escrow release!`,
+          ].join("\n");
+
+          await this.sendMessage(chatId, report, undefined, true, user.role);
+          return { handled: true, action: "EARNINGS_SENT" };
+        } else {
+          const report = [
+            `💰 *Escrow & Financial Ledger Summary*`,
+            `*Project:* ${targetPrj.title}\n`,
+            `• *Committed Contract Value:* \`$${activePrjBudget} USD\``,
+            `• *Total Captured & Released:* \`$${capturedDollars} USD\``,
+            `• *Currently Secured in Escrow:* \`$${heldDollars} USD\``,
+            `• *Payment Rail:* PayPal Orders REST v2 Escrow`,
+            `• *Dispute Hold Guard:* Safe Harbor enabled`,
+          ].join("\n");
+
+          await this.sendMessage(chatId, report, undefined, true, user.role);
+          return { handled: true, action: "ESCROW_SENT" };
+        }
+      }
+
+      // 3g-2. /submit or "🚀 Submit Deliverable" (Freelancer exclusive)
+      if (text.startsWith("/submit") || text === "🚀 Submit Deliverable") {
+        if (user.role !== "FREELANCER") {
+          await this.sendMessage(
+            chatId,
+            `ℹ️ The \`/submit\` command is exclusively for freelancers to submit deliverables. As a client, you can review and approve deliverables via the workspace.`,
+            undefined,
+            true,
+            user.role
+          );
+          return { handled: true, action: "SUBMIT_CLIENT_NOT_ALLOWED" };
+        }
+
+        const submitText = text.replace(/^\/submit\s*/i, "").trim();
+        if (!submitText || text === "🚀 Submit Deliverable") {
+          await this.sendMessage(
+            chatId,
+            `🚀 *How to Submit a Deliverable from Telegram:*\n\n` +
+              `Type: \`/submit <github-or-preview-url> <notes>\`\n\n` +
+              `*Example:*\n\`/submit https://github.com/myrepo/pr/42 Completed order engine and test suite\`\n\n` +
+              `Nexum AI will package your deliverable with an immutable SHA-256 seal and send an instant approval alert to your client with a 1-click escrow release button!`,
+            undefined,
+            true,
+            user.role
+          );
+          return { handled: true, action: "SUBMIT_USAGE_SENT" };
+        }
+
+        // Find active milestone to submit against
+        const milestones = targetPrj.projectMilestones || [];
+        const activeMilestone =
+          milestones.find((m) => m.workStatus === "IN_PROGRESS") ||
+          milestones.find((m) => m.workStatus === "READY_TO_SUBMIT") ||
+          milestones.find((m) => m.workStatus === "UPCOMING") ||
+          (milestones.length > 0 ? milestones[0] : null);
+
+        if (!activeMilestone) {
+          await this.sendMessage(
+            chatId,
+            `⚠️ No active milestone found for *${targetPrj.title}* to submit against.`,
+            undefined,
+            true,
+            user.role
+          );
+          return { handled: true, action: "SUBMIT_NO_ACTIVE_MILESTONE" };
+        }
+
+        // Parse link vs notes
+        const urlMatch = submitText.match(/https?:\/\/[^\s]+/);
+        const repoUrl = urlMatch ? urlMatch[0] : `https://workspace.nexum.app/projects/${targetPrj.id}/deliverables`;
+        const notes = submitText.replace(repoUrl, "").trim() || submitText;
+
+        try {
+          const deliverable = await workspaceService.submitDeliverable({
+            projectId: targetPrj.id,
+            milestoneId: activeMilestone.id,
+            freelancerId: user.id,
+            repoUrl,
+            notes,
+          });
+
+          // Confirm to Freelancer
+          await this.sendMessage(
+            chatId,
+            `✅ *Deliverable Submitted Successfully!* 🚀\n\n` +
+              `• *Milestone:* ${activeMilestone.title}\n` +
+              `• *Repository/Preview:* ${repoUrl}\n` +
+              `• *Notes:* ${notes}\n` +
+              `• *SHA-256 Seal:* \`${deliverable.card.sha256Seal.slice(0, 16)}...\`\n\n` +
+              `📣 Your client has been notified with a 1-click review & escrow release button!`,
+            undefined,
+            true,
+            user.role
+          );
+
+          // If client has telegramChatId, notify client with 1-click Approve button!
+          if (targetPrj.client?.telegramChatId) {
+            const approveButtons: TelegramInlineButton[][] = [
+              [
+                {
+                  text: `✅ Approve & Release Escrow ($${((activeMilestone.amountMinor || (activeMilestone as any).amountCents || 0) / 100).toFixed(2)})`,
+                  callback_data: `approve_ms:${targetPrj.id}:${activeMilestone.id}`,
+                },
+              ],
+            ];
+            await this.sendMessage(
+              targetPrj.client.telegramChatId,
+              `📬 *New Deliverable Submitted by ${user.name}:*\n\n` +
+                `• *Project:* ${targetPrj.title}\n` +
+                `• *Milestone:* ${activeMilestone.title}\n` +
+                `• *Link:* ${repoUrl}\n` +
+                `• *Notes:* ${notes}\n\n` +
+                `Click below to approve work and release PayPal escrow:`,
+              approveButtons
+            );
+          }
+
+          return { handled: true, action: "DELIVERABLE_SUBMITTED_TELEGRAM" };
+        } catch (err: any) {
+          await this.sendMessage(
+            chatId,
+            `⚠️ Submission failed: ${err.message}`,
+            undefined,
+            true,
+            user.role
+          );
+          return { handled: false, action: "SUBMIT_ERROR" };
+        }
+      }
+
+      // 3h. /tasks or "📋 Tasks" (Kanban Board Inspection)
+      if (text === "/tasks" || text === "📋 Tasks") {
+        const tasks = await prisma.workspaceTask.findMany({
+          where: { projectId: targetPrj.id },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (tasks.length === 0) {
+          await this.sendMessage(
+            chatId,
+            `📋 *Kanban Tasks (${targetPrj.title}):*\n\nNo tasks registered yet.\n\n💡 *Quick add:* Type \`/task add <title>\` to create one directly from Telegram!`,
+            undefined,
+            true
+          );
+          return { handled: true, action: "TASKS_EMPTY" };
+        }
+
+        const todo = tasks.filter((t) => t.status === "TODO");
+        const inProg = tasks.filter((t) => t.status === "IN_PROGRESS");
+        const done = tasks.filter((t) => t.status === "DONE");
+
+        const fmt = (list: typeof tasks, icon: string) =>
+          list.length === 0
+            ? "   _None_"
+            : list
+                .slice(0, 4)
+                .map((t) => `   ${icon} *${t.title}* [${t.priority}]`)
+                .join("\n");
+
+        const taskReport = [
+          `📋 *Kanban Board (${targetPrj.title})*`,
+          `*Total Tasks:* ${tasks.length} synchronized\n`,
+          `📌 *To Do (${todo.length}):*`,
+          fmt(todo, "•"),
+          `\n🚧 *In Progress (${inProg.length}):*`,
+          fmt(inProg, "•"),
+          `\n✅ *Done (${done.length}):*`,
+          fmt(done, "✓"),
+          `\n💡 *Create New Task:* Type \`/task add <title>\``,
+        ].join("\n");
+
+        await this.sendMessage(chatId, taskReport, undefined, true);
+        return { handled: true, action: "TASKS_SENT" };
+      }
+
+      // 3i. /task add <title>
+      if (text.startsWith("/task add") || text.startsWith("/task new")) {
+        const title = text.replace(/^\/task\s+(add|new)\s*/i, "").trim();
+        if (!title) {
+          await this.sendMessage(
+            chatId,
+            `💡 *Usage:* \`/task add <title>\`\n\n*Example:* \`/task add Implement Apple Pay webhook idempotency test\``,
+            undefined,
+            true
+          );
+          return { handled: true, action: "TASK_ADD_EMPTY" };
+        }
+
+        const createdTask = await workspaceService.createTask({
+          projectId: targetPrj.id,
+          title,
+          priority: "MEDIUM",
+          status: "TODO",
+        });
 
         await this.sendMessage(
           chatId,
-          `💰 *Escrow & Financial Ledger Summary*\n\n` +
-            `*Project:* ${targetPrj.title}\n` +
-            `*Committed Contract Value:* $${(targetPrj.budgetCents / 100).toFixed(2)} USD\n` +
-            `*Total Captured / Settled:* $${(capturedMinor / 100).toFixed(2)} USD\n` +
-            `*Payment Rail:* \`PayPal Orders REST v2 Escrow\`\n` +
-            `*State Consensus:* Dual SHA-256 Tamper-Proof`,
+          `✅ *Task Created & Synced to Kanban Board!*\n\n• *Title:* ${createdTask.title}\n• *Project:* ${targetPrj.title}\n• *Column:* \`TODO\`\n• *Priority:* \`MEDIUM\`\n\nVisible to both Client and Freelancer in workspace.`,
           undefined,
           true
         );
-        return { handled: true, action: "ESCROW_SENT" };
+        return { handled: true, action: "TASK_CREATED" };
+      }
+
+      // 3j. /files or "📁 Files"
+      if (text === "/files" || text === "📁 Files") {
+        const files = await prisma.projectFile.findMany({
+          where: { projectId: targetPrj.id },
+          include: { file: true, uploader: true },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+        });
+
+        if (files.length === 0) {
+          await this.sendMessage(
+            chatId,
+            `📁 *Project Files & Deliverables (${targetPrj.title}):*\n\nNo files uploaded yet in the workspace repository.`,
+            undefined,
+            true
+          );
+          return { handled: true, action: "FILES_EMPTY" };
+        }
+
+        const fileList = files
+          .map((f, idx) => {
+            const kb = (((f.file?.sizeBytes) || 0) / 1024).toFixed(1);
+            const role = f.uploader?.role || "COLLABORATOR";
+            return `${idx + 1}. 📄 *${f.name}* (${kb} KB)\n   • Uploader: \`${role}\` | Date: ${new Date(f.createdAt).toLocaleDateString()}\n   • Category: \`${f.category}\``;
+          })
+          .join("\n\n");
+
+        await this.sendMessage(
+          chatId,
+          `📁 *Project Deliverables & Repository Files (${targetPrj.title}):*\n\n${fileList}`,
+          undefined,
+          true
+        );
+        return { handled: true, action: "FILES_SENT" };
+      }
+
+      // 3k. /decisions or "⚖️ Decisions"
+      if (text === "/decisions" || text === "⚖️ Decisions") {
+        const decisions = await prisma.workspaceDecision.findMany({
+          where: { conversation: { projectId: targetPrj.id } },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+        });
+
+        if (decisions.length === 0) {
+          await this.sendMessage(
+            chatId,
+            `⚖️ *Architectural Decision Records (${targetPrj.title}):*\n\nNo formal ADR decisions logged yet. Run an AI meeting notetaker session or propose decisions in workspace.`,
+            undefined,
+            true
+          );
+          return { handled: true, action: "DECISIONS_EMPTY" };
+        }
+
+        const decisionList = decisions
+          .map((d, idx) => {
+            const clientSign = d.signedByClient ? "✅" : "⏳";
+            const devSign = d.signedByFreelancer ? "✅" : "⏳";
+            return `${idx + 1}. 🏛️ *${d.title}*\n   • ${d.description}\n   • Consensus: Client ${clientSign} | Freelancer ${devSign}\n   • Seal: \`${d.sha256Hash.slice(0, 16)}...\``;
+          })
+          .join("\n\n");
+
+        await this.sendMessage(
+          chatId,
+          `⚖️ *Bilateral ADR Decisions & Consensus Log (${targetPrj.title}):*\n\n${decisionList}`,
+          undefined,
+          true
+        );
+        return { handled: true, action: "DECISIONS_SENT" };
+      }
+
+      // 3l. /postpone meeting <reason>
+      if (text.startsWith("/postpone meeting") || text.startsWith("/postpone mt")) {
+        const reason = text.replace(/^\/postpone\s+(meeting|mt)\s*/i, "").trim();
+        if (!reason) {
+          await this.sendMessage(
+            chatId,
+            `💡 *Usage:* \`/postpone meeting <reason>\`\n\n*Example:* \`/postpone meeting Urgent client emergency overlap. Need to reschedule.\``,
+            undefined,
+            true
+          );
+          return { handled: true, action: "POSTPONE_MEETING_EMPTY" };
+        }
+
+        const conv = await workspaceService.getOrCreateWorkspaceConversation(targetPrj.id);
+        const nextMt = await prisma.workspaceMeeting.findFirst({
+          where: { conversationId: conv.id, status: { in: ["PROPOSED", "CONFIRMED"] } },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (!nextMt) {
+          await this.sendMessage(chatId, `ℹ️ No upcoming meeting found to postpone on ${targetPrj.title}.`, undefined, true);
+          return { handled: true, action: "NO_MEETING_TO_POSTPONE" };
+        }
+
+        const slot1 = new Date(Date.now() + 2 * 86400 * 1000 + 15 * 3600 * 1000).toISOString();
+        const slot2 = new Date(Date.now() + 3 * 86400 * 1000 + 16 * 3600 * 1000).toISOString();
+
+        await workspaceService.postponeMeeting({
+          meetingId: nextMt.id,
+          userId: user.id,
+          userRole: user.role === "FREELANCER" ? "FREELANCER" : "CLIENT",
+          reasonCategory: "SUDDEN_EMERGENCY",
+          reasonDetails: reason,
+          newSlots: [slot1, slot2],
+        });
+
+        await this.sendMessage(
+          chatId,
+          `⏳ *Meeting Postponement Submitted!*\n\n• *Meeting:* ${nextMt.title}\n• *Category:* \`SUDDEN_EMERGENCY\`\n• *Reason:* ${reason}\n\nInteractive card posted into bilateral chat timeline for counterparty approval.`,
+          undefined,
+          true
+        );
+        return { handled: true, action: "MEETING_POSTPONED_TELEGRAM" };
+      }
+
+      // 3m. /postpone milestone <days> <reason>
+      if (text.startsWith("/postpone milestone") || text.startsWith("/postpone ms")) {
+        const args = text.replace(/^\/postpone\s+(milestone|ms)\s*/i, "").trim();
+        const match = args.match(/^(\d+)\s+(.+)$/);
+        if (!match) {
+          await this.sendMessage(
+            chatId,
+            `💡 *Usage:* \`/postpone milestone <days_to_add> <detailed_reason>\`\n\n*Example:* \`/postpone milestone 7 Waiting for third-party OAuth sandbox verification\``,
+            undefined,
+            true
+          );
+          return { handled: true, action: "POSTPONE_MS_HELP" };
+        }
+
+        const days = parseInt(match[1], 10);
+        const reason = match[2].trim();
+
+        const activeMs = await prisma.milestone.findFirst({
+          where: { projectId: targetPrj.id, workStatus: { in: ["IN_PROGRESS", "UPCOMING"] } },
+          orderBy: { orderIndex: "asc" },
+        });
+
+        if (!activeMs) {
+          await this.sendMessage(chatId, `ℹ️ No active milestone found to postpone on ${targetPrj.title}.`, undefined, true);
+          return { handled: true, action: "NO_MS_TO_POSTPONE" };
+        }
+
+        const proposedDate = new Date(Date.now() + days * 86400 * 1000).toISOString();
+
+        await workspaceService.requestMilestonePostponement({
+          projectId: targetPrj.id,
+          milestoneId: activeMs.id,
+          requestedById: user.id,
+          requestedByRole: user.role === "FREELANCER" ? "FREELANCER" : "CLIENT",
+          proposedDueDate: proposedDate,
+          reasonCategory: "TECHNICAL_BLOCKER",
+          reasonDetails: reason,
+        });
+
+        await this.sendMessage(
+          chatId,
+          `⏳ *Milestone Postponement Requested!*\n\n• *Milestone:* ${activeMs.title}\n• *Proposed Extension:* +${days} days (${new Date(proposedDate).toLocaleDateString()})\n• *Reason:* ${reason}\n\nInteractive card sent to counterparty for bilateral consent.`,
+          undefined,
+          true
+        );
+        return { handled: true, action: "MS_POSTPONED_TELEGRAM" };
+      }
+
+      // 3n. /addon <description> (Gemini AI Scope Evaluation)
+      if (text.startsWith("/addon") || text.startsWith("/add-on") || text.startsWith("/scope add")) {
+        const featureBrief = text.replace(/^\/(addon|add-on|scope add)\s*/i, "").trim();
+        if (!featureBrief) {
+          await this.sendMessage(
+            chatId,
+            `💡 *Usage:* \`/addon <feature description>\`\n\n*Example:* \`/addon Integrate Apple Pay with 1-click Express Checkout in cart\``,
+            undefined,
+            true
+          );
+          return { handled: true, action: "ADDON_EMPTY" };
+        }
+
+        await this.sendMessage(chatId, "✨ Consulting Google Gemini AI Scope Intelligence...");
+
+        const rawMilestones = targetPrj.projectMilestones || [];
+        const mappedMilestones = rawMilestones.map((m) => ({
+          id: m.id,
+          title: m.title,
+          amountCents: m.amountCents || m.amountMinor || 0,
+          workStatus: m.workStatus,
+          dueDate: m.dueDate ? new Date(m.dueDate).toISOString() : null,
+        }));
+
+        const evaluation = await geminiService.evaluateScopeAddon({
+          projectTitle: targetPrj.title,
+          projectDescription: targetPrj.description,
+          currentMilestones: mappedMilestones,
+          addonDescription: featureBrief,
+          requestedByRole: user.role === "FREELANCER" ? "FREELANCER" : "CLIENT",
+        });
+
+        // Drop formal Scope Amendment Proposal card in workspace
+        const proposedAmendment = await workspaceService.proposeScopeAmendment({
+          projectId: targetPrj.id,
+          proposerId: user.id,
+          amendmentType: evaluation.recommendation,
+          newMilestoneTitle: evaluation.targetMilestoneTitle,
+          priceDeltaCents: evaluation.suggestedPriceCents,
+          timelineDaysDelta: evaluation.suggestedTimelineDays,
+          newAcceptanceCriteria: evaluation.acceptanceCriteria,
+          justification: evaluation.justification,
+        });
+
+        const recLabel = evaluation.recommendation === "AMEND_EXISTING_MILESTONE" ? "Amend Existing Milestone" : "Add New Milestone";
+        const priceDollars = (evaluation.suggestedPriceCents / 100).toFixed(2);
+        const criteriaList = evaluation.acceptanceCriteria.map((c, i) => `  ${i + 1}. ${c}`).join("\n");
+
+        const replyMsg = [
+          `🤖 *Gemini AI Scope & Add-on Evaluation*`,
+          `*Project:* ${targetPrj.title}\n`,
+          `📌 *Recommendation:* \`${recLabel}\``,
+          `🎯 *Target Phase:* *${evaluation.targetMilestoneTitle}*`,
+          `💰 *Fair Price Delta:* \`+${priceDollars} USD\` (integer minor units)`,
+          `⏳ *Timeline Impact:* \`+${evaluation.suggestedTimelineDays} days\`\n`,
+          `📋 *Acceptance Criteria:*\n${criteriaList}\n`,
+          `⚖️ *Protocol Justification:*\n${evaluation.justification}\n`,
+          `_Formal Bilateral Amendment Card has been drafted into your workspace timeline. Counterparty can review and digitally sign._`,
+        ].join("\n");
+
+        const buttons: TelegramInlineButton[][] = [
+          [
+            {
+              text: `⚡ Sign & Commit Amendment (+$ ${priceDollars})`,
+              callback_data: `accept_amend:${targetPrj.id}:${proposedAmendment.id}`,
+            },
+          ],
+        ];
+
+        await this.sendMessage(chatId, replyMsg, buttons, true);
+        return { handled: true, action: "ADDON_EVALUATED_GEMINI" };
+      }
+
+      // 3o. /help or ❓ Help (Role-Aware Comprehensive Guide)
+      if (text === "/help" || text === "❓ Help") {
+        const isClient = user.role !== "FREELANCER";
+        const roleBadge = isClient ? "Client Commander 🎩" : "Freelancer Specialist 🚀";
+
+        const telemetryHelp = isClient
+          ? `*📊 Contract & Financial Telemetry:*\n` +
+            `• \`/status\` - Live milestones progress & contract state\n` +
+            `• \`/milestones\` - Deliverables, escrow values & inspection buffer\n` +
+            `• \`/escrow\` - PayPal Orders REST v2 balance & SHA-256 state\n` +
+            `• \`/projects\` - List all contracts & switch context\n` +
+            `• \`/switch <id>\` - Switch active contract target\n`
+          : `*📊 Freelancer Financial & Contract Telemetry:*\n` +
+            `• \`/earnings\` - Total released earnings, locked escrow & payouts\n` +
+            `• \`/status\` - Live milestone progress & review buffer\n` +
+            `• \`/milestones\` - Deliverable requirements & due dates\n` +
+            `• \`/submit <link> <notes>\` - Submit deliverable & trigger escrow release\n` +
+            `• \`/projects\` - List all client contracts & switch context\n` +
+            `• \`/switch <id>\` - Switch active project\n`;
+
+        const helpText = [
+          `🛡️ *Nexum AI Bot — Command Center Guide*`,
+          `Logged in as: *${user.name}* (${roleBadge})\n`,
+          telemetryHelp,
+          `*📋 Project Operations & Kanban:*\n` +
+            `• \`/tasks\` - View real-time Kanban board (To Do, In Progress, Done)\n` +
+            `• \`/task add <title>\` - Create a task instantly on Kanban\n` +
+            `• \`/files\` - Download project repository deliverables\n` +
+            `• \`/decisions\` - View sealed ADR architectural consensus log\n`,
+          `*⏳ Postponement & Reschedule Engine:*\n` +
+            `• \`/postpone meeting <reason>\` - Reschedule upcoming call with emergency reason\n` +
+            `• \`/postpone milestone <days> <reason>\` - Request formal due-date extension\n`,
+          `*💡 Gemini AI Scope Intelligence:*\n` +
+            `• \`/addon <feature>\` - Gemini AI evaluates scope impact, fair price delta, timeline delta, and milestone placement\n` +
+            `• \`/ai <question>\` - Private consultation with Nexum AI Copilot\n`,
+          `*🎙️ Bilateral Relaying:*\n` +
+            `• *Voice Notes* - Speak naturally; transcribed via Groq Whisper & relayed to ${targetPrj.title}\n` +
+            `• *Text* - Any regular message is sealed and posted to your workspace timeline\n`,
+          isClient
+            ? `*🎩 Client-Exclusive Actions:*\n• 1-Click approve deliverable alerts to release escrow funds\n• Deposit add-on escrow seamlessly\n• Digitally sign scope amendments`
+            : `*🚀 Freelancer-Exclusive Actions:*\n• \`/submit <url> <notes>\` - Submit deliverable with GitHub/Preview link\n• \`/earnings\` - View release history & locked funds\n• \`/postpone milestone <days> <reason>\` - Request emergency deadline extensions\n• \`/addon <feature>\` - Propose paid scope additions before doing extra work`,
+          `\n_Type \`/logout\` anytime to unlink this phone session._`,
+        ].join("\n");
+
+        await this.sendMessage(chatId, helpText, undefined, true);
+        return { handled: true, action: "HELP_SENT" };
       }
 
       // 3h. /ai <prompt> or /ask <prompt>
