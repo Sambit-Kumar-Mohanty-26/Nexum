@@ -12,19 +12,26 @@ export async function GET(request: Request) {
     const user = await getCurrentUser();
     const query = new URLSearchParams(searchParams);
 
-    if (!query.has("clientId")) {
-      query.set("clientId", user?.id || "usr_client_alex");
+    if (!query.has("clientId") && user?.id) {
+      query.set("clientId", user.id);
+    } else if (!query.has("clientId")) {
+      query.set("clientId", "usr_client_alex");
     }
 
+    const cookieHeader = request.headers.get("cookie") || "";
     const res = await fetch(`${BACKEND_URL}/api/projects?${query.toString()}`, {
+      headers: {
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
       cache: "no-store",
     });
+
     if (res.ok) {
       const data = await res.json();
       return NextResponse.json(data);
     }
-  } catch {
-    // Backend offline
+  } catch (err) {
+    console.error("Failed to proxy GET /api/projects:", err);
   }
 
   return NextResponse.json({
@@ -54,41 +61,40 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
     const body = await request.json();
 
+    const clientId = body.clientId || user?.id || "usr_client_alex";
     const payload = {
       ...body,
-      clientId: body.clientId || user?.id || "usr_client_alex",
+      clientId,
     };
 
-    // Forward to Express backend
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const cookieHeader = request.headers.get("cookie") || "";
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 201 });
-      }
-    } catch {
-      // Backend not running on 4000
+    // Forward to Express backend
+    const res = await fetch(`${BACKEND_URL}/api/projects`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json(data, { status: 201 });
     }
 
-    // Serverless fallback response
+    const errorJson = await res.json().catch(() => ({}));
+    const errorMessage = errorJson.error || `Backend returned status ${res.status}`;
+    console.error("Backend project creation failed:", errorMessage);
+
     return NextResponse.json(
-      {
-        success: true,
-        message: payload.state === "DRAFT" ? "Draft saved successfully" : "Project created in consensus engine",
-        data: {
-          id: payload.id || `prj_${Date.now()}`,
-          ...payload,
-        },
-      },
-      { status: 201 }
+      { success: false, error: errorMessage },
+      { status: res.status || 500 }
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to create project";
+    console.error("POST /api/projects exception:", err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
