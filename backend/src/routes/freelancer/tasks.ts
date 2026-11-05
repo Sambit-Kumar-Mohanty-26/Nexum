@@ -172,11 +172,14 @@ export async function createProjectTask(req: Request, res: Response, next: NextF
       throw new ValidationError("Invalid task parameters", parsed.error.flatten().fieldErrors, 422);
     }
 
-    let parsedStatus = WorkspaceTaskStatus.TODO;
-    if (parsed.data.status === "COMPLETED" || parsed.data.status === WorkspaceTaskStatus.DONE) {
+    let parsedStatus: WorkspaceTaskStatus = WorkspaceTaskStatus.TODO;
+    const rawStatus = parsed.data.status as string;
+    if (rawStatus === "COMPLETED" || rawStatus === "DONE") {
       parsedStatus = WorkspaceTaskStatus.DONE;
-    } else if (parsed.data.status === "IN_PROGRESS" || parsed.data.status === WorkspaceTaskStatus.IN_PROGRESS) {
+    } else if (rawStatus === "IN_PROGRESS") {
       parsedStatus = WorkspaceTaskStatus.IN_PROGRESS;
+    } else {
+      parsedStatus = WorkspaceTaskStatus.TODO;
     }
 
     let parsedDueDate: Date | null = null;
@@ -238,13 +241,14 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction): Pr
       throw new ValidationError("Invalid update parameters", parsed.error.flatten().fieldErrors, 422);
     }
 
-    let nextStatus = task.status;
+    let nextStatus: WorkspaceTaskStatus = task.status;
     if (parsed.data.status) {
-      if (parsed.data.status === "COMPLETED" || parsed.data.status === WorkspaceTaskStatus.DONE) {
+      const rawUpdateStatus = parsed.data.status as string;
+      if (rawUpdateStatus === "COMPLETED" || rawUpdateStatus === "DONE") {
         nextStatus = WorkspaceTaskStatus.DONE;
-      } else if (parsed.data.status === "TO_DO" || parsed.data.status === WorkspaceTaskStatus.TODO) {
+      } else if (rawUpdateStatus === "TO_DO" || rawUpdateStatus === "TODO") {
         nextStatus = WorkspaceTaskStatus.TODO;
-      } else if (parsed.data.status === "IN_PROGRESS" || parsed.data.status === WorkspaceTaskStatus.IN_PROGRESS) {
+      } else if (rawUpdateStatus === "IN_PROGRESS") {
         nextStatus = WorkspaceTaskStatus.IN_PROGRESS;
       }
     }
