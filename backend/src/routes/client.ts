@@ -327,6 +327,7 @@ router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
         where: { projectId: proposal.projectId },
       });
 
+      let agreement = existingAgreement;
       if (!existingAgreement) {
         const { terms: agTerms, contentHash } = currentVersion
           ? createAgreementTermsFromProposalVersion(currentVersion)
@@ -345,7 +346,7 @@ router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
               contentHash: `hash_${proposal.id}`,
             };
 
-        await tx.agreement.create({
+        agreement = await tx.agreement.create({
           data: {
             projectId: proposal.projectId,
             proposalId: proposal.id,
@@ -362,6 +363,19 @@ router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
                 status: AgreementVersionStatus.ACTIVE,
               },
             },
+          },
+        });
+      }
+
+      // Link project milestones to agreement so freelancer workspace immediately reflects real deliverable schedule
+      if (agreement) {
+        await tx.milestone.updateMany({
+          where: {
+            projectId: proposal.projectId,
+            agreementId: null,
+          },
+          data: {
+            agreementId: agreement.id,
           },
         });
       }
