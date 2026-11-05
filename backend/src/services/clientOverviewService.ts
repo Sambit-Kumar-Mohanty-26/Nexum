@@ -2540,7 +2540,13 @@ export class ClientOverviewService {
           project: { clientId },
         },
         include: {
-          project: true,
+          project: {
+            include: {
+              agreement: {
+                include: { freelancer: true },
+              },
+            },
+          },
         },
         orderBy: { orderIndex: "asc" },
       });
@@ -2552,6 +2558,7 @@ export class ClientOverviewService {
             const amountVal = dbm.amountCents || 0;
             const amountStr = `$${(amountVal / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             const isAccepted = dbm.workStatus === "ACCEPTED" || dbm.state === "CAPTURED";
+            const assignedFreelancer = dbm.project?.agreement?.freelancer;
             list.push({
               id: dbm.id,
               number: dbm.orderIndex,
@@ -2560,12 +2567,21 @@ export class ClientOverviewService {
               projectName: dbm.project?.title || "Project Workspace",
               agreementVersion: "canonical_v1.0",
               canonicalSpecHash: `canonical_v1.0_#${(dbm.projectId || "").slice(-8)}`,
-              freelancer: {
-                name: "Elena Rostova",
-                role: "Full-Stack AI Architect",
-                avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
-                rating: "5.0",
-              },
+              freelancer: assignedFreelancer
+                ? {
+                    name: assignedFreelancer.name,
+                    role: "Assigned Freelancer",
+                    avatar:
+                      ((assignedFreelancer.preferences as Record<string, any>)?.avatar as string) ||
+                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+                    rating: "5.0",
+                  }
+                : {
+                    name: "Unassigned Freelancer",
+                    role: "Awaiting Proposal Acceptance",
+                    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80",
+                    rating: "—",
+                  },
               dueDate: dbm.deadline ? new Date(dbm.deadline).toLocaleDateString() : "Scheduled",
               dueDateTimestamp: dbm.deadline ? new Date(dbm.deadline).getTime() : Date.now(),
               isOverdue: false,

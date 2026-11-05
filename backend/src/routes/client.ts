@@ -1,7 +1,11 @@
 import { Router, Request, Response } from "express";
 import { clientOverviewService } from "../services/clientOverviewService.js";
+import projectAiRouter from "./client/projectAi.js";
 
 const router = Router();
+
+// Mount project AI assistant & document extraction routes
+router.use(projectAiRouter);
 
 // GET /api/client/overview - full overview telemetry, attention items, projects & talent
 router.get("/overview", async (req: Request, res: Response) => {

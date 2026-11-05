@@ -18,6 +18,8 @@ import {
   Edit2,
   FileText,
   AlertCircle,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopHeader from "@/components/DashboardTopHeader";
@@ -31,6 +33,49 @@ const PROJECT_CATEGORIES: Record<string, string[]> = {
   "Mobile Development": ["React Native", "iOS / Swift", "Android / Kotlin", "Flutter"],
   "UI/UX Design": ["Design Systems", "Figma Prototyping", "User Research", "Wireframing"],
   "DevOps / Cloud": ["Kubernetes", "AWS & GCP Architecture", "CI/CD Pipelines", "Docker"],
+};
+
+const CATEGORY_SKILL_RECOMMENDATIONS: Record<string, string[]> = {
+  "Web Development": [
+    "React", "Next.js", "Node.js", "TypeScript", "PostgreSQL", "Tailwind CSS", "GraphQL", "Redis", "REST APIs", "Stripe"
+  ],
+  "AI / Machine Learning": [
+    "Python", "PyTorch", "FastAPI", "OpenAI / LLMs", "LangChain", "pgvector", "RAG", "TensorFlow", "Pandas", "Hugging Face"
+  ],
+  "Blockchain / Web3": [
+    "Solidity", "Smart Contracts", "Ethers.js", "Hardhat", "Web3.js", "Rust", "DeFi", "IPFS", "Ethereum", "Tokenomics"
+  ],
+  "Mobile Development": [
+    "React Native", "Flutter", "Swift", "Kotlin", "iOS", "Android", "Firebase", "Mobile UI", "Expo", "SQLite"
+  ],
+  "UI/UX Design": [
+    "Figma", "Design Systems", "Wireframing", "Prototyping", "User Research", "Mobile Design", "Web Design", "Tailwind CSS"
+  ],
+  "DevOps / Cloud": [
+    "Docker", "Kubernetes", "AWS", "Terraform", "CI/CD Pipelines", "GCP", "Linux", "Prometheus", "Nginx", "GitHub Actions"
+  ],
+};
+
+const KEYWORD_SKILL_MAP: Record<string, string[]> = {
+  ecommerce: ["Stripe", "Shopify", "Payment Gateway", "Cart & Checkout", "PostgreSQL"],
+  shop: ["Stripe", "Shopify", "Payment Gateway", "Cart & Checkout"],
+  payment: ["Stripe", "PayPal", "Payment Gateway", "Financial Ledger", "Webhooks"],
+  chat: ["WebSockets", "Socket.io", "Redis", "Real-Time Chat"],
+  realtime: ["WebSockets", "Redis", "Socket.io"],
+  auth: ["OAuth", "JWT", "NextAuth", "RBAC"],
+  dashboard: ["Data Visualization", "Chart.js", "Tailwind CSS", "Analytics"],
+  analytics: ["Data Visualization", "Mixpanel", "Analytics", "PostgreSQL"],
+  database: ["PostgreSQL", "Prisma", "Redis", "MongoDB", "SQL Optimization"],
+  api: ["REST APIs", "GraphQL", "FastAPI", "Swagger / OpenAPI"],
+  mobile: ["React Native", "Flutter", "Swift", "Kotlin"],
+  ios: ["iOS", "Swift", "Apple Pay", "Mobile UI"],
+  android: ["Android", "Kotlin", "Jetpack Compose"],
+  flutter: ["Flutter", "Dart", "Cross-Platform Mobile"],
+  ai: ["Python", "OpenAI / LLMs", "FastAPI", "pgvector", "LangChain"],
+  llm: ["OpenAI / LLMs", "LangChain", "RAG", "Prompt Engineering"],
+  agent: ["LLM Agents", "LangChain", "Autonomous Workflows", "Vector DB"],
+  figma: ["Figma", "Design Systems", "UI Prototyping"],
+  crypto: ["Solidity", "Web3.js", "Smart Contracts", "Ethers.js"],
 };
 
 const SUGGESTED_SKILLS = [
@@ -49,36 +94,28 @@ const SUGGESTED_SKILLS = [
 
 const MATCHING_FREELANCERS_PREVIEW = [
   {
-    name: "Priya Sharma",
-    role: "Full-Stack & Design Systems",
-    rating: "4.9",
-    skills: ["Next.js", "React", "AI/ML"],
-    rate: "$55/hr",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
-  },
-  {
     name: "Rohan Verma",
-    role: "Payment Rails & Backend",
+    role: "Senior Full-Stack & Payment Rails Engineer",
     rating: "5.0",
-    skills: ["Node.js", "PostgreSQL", "Next.js"],
+    skills: ["PayPal v2", "Next.js", "PostgreSQL", "State Machines"],
     rate: "$65/hr",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
   },
   {
-    name: "Marcus Chen",
-    role: "Cloud Reliability & DevOps",
-    rating: "4.9",
-    skills: ["Docker", "Kubernetes", "AWS"],
-    rate: "$75/hr",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
-  },
-  {
-    name: "Elena Rostova",
-    role: "AI Architecture & LLMs",
+    name: "Sambit Kumar Mohanty",
+    role: "Full-Stack Specialist & Escrow Engineer",
     rating: "5.0",
-    skills: ["Python", "FastAPI", "pgvector"],
-    rate: "$80/hr",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80",
+    skills: ["Next.js", "React", "TypeScript", "Tailwind CSS"],
+    rate: "$60/hr",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+  },
+  {
+    name: "Chandrasekhar",
+    role: "Freelancer Specialist",
+    rating: "5.0",
+    skills: ["Web development", "Backend / API development", "TypeScript"],
+    rate: "$60/hr",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
   },
 ];
 
@@ -138,6 +175,202 @@ function PostNewProjectContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Document Extraction & AI Assistant State
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isExtractingDoc, setIsExtractingDoc] = useState(false);
+  const [extractedFileName, setExtractedFileName] = useState<string | null>(null);
+  const [isAiImprovingOverview, setIsAiImprovingOverview] = useState(false);
+  const [isAiSuggestingSkills, setIsAiSuggestingSkills] = useState(false);
+  const [isAiRefiningRequirements, setIsAiRefiningRequirements] = useState(false);
+  const [recommendedSkillsList, setRecommendedSkillsList] = useState<string[]>([
+    "React",
+    "Next.js",
+    "Node.js",
+    "TypeScript",
+    "PostgreSQL",
+    "Docker",
+  ]);
+
+  // Dynamically derive recommended skills based on what the client is filling up
+  useEffect(() => {
+    // 1. Category-specific base pool
+    let dynamicPool: string[] = [];
+    if (category && CATEGORY_SKILL_RECOMMENDATIONS[category]) {
+      dynamicPool = [...CATEGORY_SKILL_RECOMMENDATIONS[category]];
+    } else {
+      dynamicPool = ["React", "Next.js", "TypeScript", "Node.js", "PostgreSQL", "Docker", "Redis"];
+    }
+
+    // 2. Keyword scan across Title, Overview, and Subcategory
+    const contextText = `${title} ${overview} ${subcategory}`.toLowerCase();
+    const keywordMatches: string[] = [];
+
+    for (const [kw, skills] of Object.entries(KEYWORD_SKILL_MAP)) {
+      if (contextText.includes(kw)) {
+        keywordMatches.push(...skills);
+      }
+    }
+
+    // 3. Subcategory-specific boosters
+    if (subcategory) {
+      const subLower = subcategory.toLowerCase();
+      if (subLower.includes("mobile") || subLower.includes("ios") || subLower.includes("flutter") || subLower.includes("react native")) {
+        keywordMatches.unshift("React Native", "Flutter", "Swift", "Kotlin", "iOS", "Android");
+      } else if (subLower.includes("llm") || subLower.includes("agent") || subLower.includes("ai")) {
+        keywordMatches.unshift("Python", "FastAPI", "OpenAI / LLMs", "pgvector", "LangChain");
+      } else if (subLower.includes("figma") || subLower.includes("design") || subLower.includes("wireframing")) {
+        keywordMatches.unshift("Figma", "Design Systems", "UI Prototyping", "Tailwind CSS");
+      } else if (subLower.includes("e-commerce")) {
+        keywordMatches.unshift("Stripe", "Shopify", "Next.js", "PostgreSQL");
+      } else if (subLower.includes("smart contracts") || subLower.includes("solidity")) {
+        keywordMatches.unshift("Solidity", "Smart Contracts", "Ethers.js", "Hardhat");
+      } else if (subLower.includes("kubernetes") || subLower.includes("aws") || subLower.includes("devops")) {
+        keywordMatches.unshift("Kubernetes", "Docker", "AWS", "CI/CD Pipelines");
+      }
+    }
+
+    // Combine: specific keyword matches first, followed by category pool
+    const combined = Array.from(new Set([...keywordMatches, ...dynamicPool]));
+
+    if (combined.length > 0) {
+      setRecommendedSkillsList(combined.slice(0, 8));
+    }
+  }, [category, subcategory, title, overview]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsExtractingDoc(true);
+    setExtractedFileName(file.name);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/client/projects/ai/extract-doc", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const d = json.data;
+        if (d.title) setTitle(d.title);
+        if (d.category) setCategory(d.category);
+        if (d.subcategory) setSubcategory(d.subcategory);
+        if (d.overview) setOverview(d.overview);
+        if (Array.isArray(d.keyGoals) && d.keyGoals.length > 0) setKeyGoals(d.keyGoals);
+        if (Array.isArray(d.requiredSkills) && d.requiredSkills.length > 0) {
+          setRequiredSkills((prev) => Array.from(new Set([...prev, ...d.requiredSkills])));
+          setRecommendedSkillsList((prev) => Array.from(new Set([...d.requiredSkills, ...prev])).slice(0, 8));
+        }
+        if (d.detailedRequirements) setDetailedRequirements(d.detailedRequirements);
+        if (Array.isArray(d.scopeOfWork) && d.scopeOfWork.length > 0) {
+          setScopeOfWork((prev) => Array.from(new Set([...prev, ...d.scopeOfWork])));
+        }
+        if (d.estimatedBudgetCents && typeof d.estimatedBudgetCents === "number") {
+          const dollars = Math.round(d.estimatedBudgetCents / 100);
+          setBudgetAmount(String(dollars));
+          setBudgetType("FIXED");
+        }
+        showToast("PRD parsed! Fields auto-filled below. You can freely edit any details manually.");
+      } else {
+        showToast(json.error?.message || "Could not parse document. You can type manually.");
+      }
+    } catch {
+      showToast("Document upload failed. You can type manually.");
+    } finally {
+      setIsExtractingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleImproveOverview = async () => {
+    setIsAiImprovingOverview(true);
+    try {
+      const res = await fetch("/api/client/projects/ai/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "IMPROVE_OVERVIEW",
+          title,
+          overview,
+          category,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data?.improvedOverview) {
+        setOverview(json.data.improvedOverview);
+        showToast("Overview enriched with technical architecture benchmarks!");
+      } else {
+        showToast("Could not enhance overview. Manual editing preserved.");
+      }
+    } catch {
+      showToast("AI Assistant offline. You can edit overview manually.");
+    } finally {
+      setIsAiImprovingOverview(false);
+    }
+  };
+
+  const handleSuggestSkills = async () => {
+    setIsAiSuggestingSkills(true);
+    try {
+      const res = await fetch("/api/client/projects/ai/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "SUGGEST_SKILLS",
+          title,
+          overview,
+          category,
+          existingSkills: requiredSkills,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data?.suggestedSkills) && json.data.suggestedSkills.length > 0) {
+        setRecommendedSkillsList(json.data.suggestedSkills);
+        for (const s of json.data.suggestedSkills.slice(0, 2)) {
+          addSkill(s);
+        }
+        showToast("AI recommended skills loaded and added to scope!");
+      } else {
+        showToast("Suggestion offline. Pick from default skills below.");
+      }
+    } catch {
+      showToast("AI Assistant offline. Pick from default skills below.");
+    } finally {
+      setIsAiSuggestingSkills(false);
+    }
+  };
+
+  const handleRefineRequirements = async () => {
+    setIsAiRefiningRequirements(true);
+    try {
+      const res = await fetch("/api/client/projects/ai/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "REFINE_REQUIREMENTS",
+          title,
+          overview,
+          category,
+          existingRequirements: detailedRequirements,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data?.refinedRequirements) {
+        setDetailedRequirements(json.data.refinedRequirements);
+        if (Array.isArray(json.data.suggestedScope) && json.data.suggestedScope.length > 0) {
+          setScopeOfWork((prev) => Array.from(new Set([...prev, ...json.data.suggestedScope])));
+        }
+        showToast("Requirements refined with technical specifications & scope!");
+      } else {
+        showToast("Could not refine requirements. Manual editing preserved.");
+      }
+    } catch {
+      showToast("AI Assistant offline. You can edit requirements manually.");
+    } finally {
+      setIsAiRefiningRequirements(false);
+    }
+  };
 
   // Optional Template Loader (When client clicks a starter template from empty workspace)
   useEffect(() => {
@@ -656,6 +889,57 @@ function PostNewProjectContent() {
                     </div>
                   </div>
 
+                  {/* Document Upload / AI Extraction Dropzone Banner */}
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-dashed border-[#4f46e5]/40 bg-gradient-to-r from-[#f8f9ff] via-[#f1f4ff] to-[#eef2ff] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-[#4f46e5] text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-slate-900">Upload Project Brief / PRD</h4>
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#4f46e5] bg-white border border-[#4f46e5]/20 px-1.5 py-0.5 rounded shadow-2xs">
+                            Nexum AI
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                          {isExtractingDoc
+                            ? "Extracting parameters & scope from document with Nexum AI..."
+                            : extractedFileName
+                            ? `Parsed: ${extractedFileName} (fields populated below)`
+                            : "Upload PDF, Word, Markdown, or text file to auto-populate fields (100% editable)"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2 self-end sm:self-auto">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        accept=".pdf,.docx,.doc,.txt,.md,.json"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        disabled={isExtractingDoc}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                      >
+                        {isExtractingDoc ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Extracting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Document</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Project Title */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -833,6 +1117,50 @@ function PostNewProjectContent() {
                     </div>
                   </div>
 
+                  {/* Document Upload / AI Extraction Dropzone Banner */}
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-dashed border-[#4f46e5]/40 bg-gradient-to-r from-[#f8f9ff] via-[#f1f4ff] to-[#eef2ff] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-[#4f46e5] text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-slate-900">Upload Project Brief / PRD</h4>
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#4f46e5] bg-white border border-[#4f46e5]/20 px-1.5 py-0.5 rounded shadow-2xs">
+                            Nexum AI
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                          {isExtractingDoc
+                            ? "Extracting skills, scope & detailed specs with Nexum AI..."
+                            : extractedFileName
+                            ? `Parsed: ${extractedFileName} (fields populated below)`
+                            : "Upload PDF, Word, Markdown, or text file to extract scope & skills automatically"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        disabled={isExtractingDoc}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                      >
+                        {isExtractingDoc ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Extracting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Document</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Required Skills Tag List */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -902,19 +1230,22 @@ function PostNewProjectContent() {
                     {/* Suggested Skills */}
                     <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                       <span className="text-[11px] font-bold text-slate-500 mr-1">Suggested:</span>
-                      {SUGGESTED_SKILLS.filter((s) => !requiredSkills.includes(s)).map((skill) => (
+                      {recommendedSkillsList.filter((s) => !requiredSkills.includes(s)).map((skill) => (
                         <button
                           key={skill}
                           type="button"
                           onClick={() => addSkill(skill)}
-                          className="text-[10.5px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                          className="text-[10.5px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-[#eef2ff] hover:text-[#4f46e5] text-slate-700 transition cursor-pointer font-medium"
                         >
                           + {skill}
                         </button>
                       ))}
                       <button
                         type="button"
-                        onClick={() => setRequiredSkills([...new Set([...requiredSkills, ...SUGGESTED_SKILLS])])}
+                        onClick={() => {
+                          const toAdd = recommendedSkillsList.filter((s) => !requiredSkills.includes(s));
+                          setRequiredSkills((prev) => Array.from(new Set([...prev, ...toAdd])));
+                        }}
                         className="text-[10.5px] font-bold text-[#4f46e5] hover:underline ml-1 cursor-pointer"
                       >
                         + Add All
@@ -1589,52 +1920,91 @@ function PostNewProjectContent() {
                   <p className="text-xs text-slate-600 leading-relaxed">
                     {currentStep === 1
                       ? "I can analyze your project title and overview to enhance scope clarity and attract senior contractors."
-                      : "Recommended skills based on your project title and chosen subcategory."}
+                      : "I can refine your technical requirements and suggest matching high-demand frameworks for your scope."}
                   </p>
 
                   <div className="grid grid-cols-2 gap-2 pt-1">
+                    {currentStep === 1 ? (
+                      <button
+                        type="button"
+                        disabled={isAiImprovingOverview}
+                        onClick={handleImproveOverview}
+                        className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#4f46e5] text-[#4f46e5] font-bold text-[11px] shadow-2xs transition cursor-pointer text-center disabled:opacity-50 inline-flex items-center justify-center gap-1"
+                      >
+                        {isAiImprovingOverview ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Enriching...</span>
+                          </>
+                        ) : (
+                          <span>✨ Improve Overview</span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isAiRefiningRequirements}
+                        onClick={handleRefineRequirements}
+                        className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#4f46e5] text-[#4f46e5] font-bold text-[11px] shadow-2xs transition cursor-pointer text-center disabled:opacity-50 inline-flex items-center justify-center gap-1"
+                      >
+                        {isAiRefiningRequirements ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Refining...</span>
+                          </>
+                        ) : (
+                          <span>✨ Refine Specs</span>
+                        )}
+                      </button>
+                    )}
+
                     <button
                       type="button"
-                      onClick={() => {
-                        setOverview(
-                          `${overview}\n\nTechnical Architecture & Standards:\n• Sub-200ms latency for analytics queries\n• Role-based access control with secure JWT/OAuth sessions\n• PostgreSQL database with row-level security`
-                        );
-                        showToast("Overview enriched with technical benchmarks!");
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#4f46e5] text-[#4f46e5] font-bold text-[11px] shadow-2xs transition cursor-pointer text-center"
+                      disabled={isAiSuggestingSkills}
+                      onClick={handleSuggestSkills}
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#4f46e5] text-[#4f46e5] font-bold text-[11px] shadow-2xs transition cursor-pointer text-center disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     >
-                      ✨ Improve Overview
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        addSkill("Data Visualization");
-                        addSkill("Docker");
-                        addSkill("Redis");
-                        showToast("Added top AI-recommended skills!");
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#4f46e5] text-[#4f46e5] font-bold text-[11px] shadow-2xs transition cursor-pointer text-center"
-                    >
-                      💡 Suggest Skills
+                      {isAiSuggestingSkills ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Suggesting...</span>
+                        </>
+                      ) : (
+                        <span>💡 Suggest Skills</span>
+                      )}
                     </button>
                   </div>
 
                   {/* Recommended Skills Pills */}
                   <div className="pt-2 border-t border-[#4f46e5]/10">
                     <span className="text-[10.5px] font-bold text-slate-500 block mb-1.5">
-                      Recommended Skills to Add
+                      Recommended Skills to Add {category ? `(${category})` : ""}
                     </span>
                     <div className="flex flex-wrap gap-1">
-                      {["Data Visualization", "Machine Learning", "AWS", "Docker", "Redis"].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => addSkill(s)}
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-[#4f46e5] text-slate-700 transition cursor-pointer"
-                        >
-                          + {s}
-                        </button>
-                      ))}
+                      {recommendedSkillsList.map((s) => {
+                        const isSelected = requiredSkills.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                removeSkill(s);
+                              } else {
+                                addSkill(s);
+                              }
+                            }}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                              isSelected
+                                ? "bg-[#4f46e5] text-white border border-[#4f46e5] shadow-2xs"
+                                : "bg-white border border-slate-200 hover:border-[#4f46e5] text-slate-700 hover:text-[#4f46e5]"
+                            }`}
+                          >
+                            <span>{isSelected ? "✓" : "+"}</span>
+                            <span>{s}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -1646,7 +2016,7 @@ function PostNewProjectContent() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xs font-bold text-slate-900">Matching Freelancers</h3>
-                      <p className="text-[10.5px] text-slate-400">120+ verified candidates found</p>
+                      <p className="text-[10.5px] text-slate-400">{MATCHING_FREELANCERS_PREVIEW.length} verified candidates available</p>
                     </div>
                     <Link
                       href="/client/freelancers"
