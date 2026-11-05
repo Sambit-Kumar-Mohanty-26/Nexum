@@ -13,18 +13,19 @@ router.use(requireRole(Role.FREELANCER));
 
 const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
-  description: z.string().max(2000).optional(),
-  status: z.nativeEnum(WorkspaceTaskStatus).default(WorkspaceTaskStatus.TODO),
-  dueDate: z.string().datetime().optional(),
+  description: z.string().max(2000).optional().nullable(),
+  status: z.union([z.nativeEnum(WorkspaceTaskStatus), z.enum(["COMPLETED", "TO_DO", "IN_PROGRESS"])]).default(WorkspaceTaskStatus.TODO),
+  dueDate: z.string().optional().nullable(),
+  priority: z.string().optional().default("MEDIUM"),
   visibility: z.nativeEnum(TaskVisibility).default(TaskVisibility.PRIVATE),
-  milestoneId: z.string().optional(),
+  milestoneId: z.string().optional().nullable(),
 });
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  description: z.string().max(2000).optional(),
-  status: z.nativeEnum(WorkspaceTaskStatus).optional(),
-  dueDate: z.string().datetime().nullable().optional(),
+  description: z.string().max(2000).optional().nullable(),
+  status: z.union([z.nativeEnum(WorkspaceTaskStatus), z.enum(["COMPLETED", "TO_DO", "IN_PROGRESS"])]).optional(),
+  dueDate: z.string().optional().nullable(),
   visibility: z.nativeEnum(TaskVisibility).optional(),
 });
 
@@ -64,13 +65,84 @@ export async function getProjectTasks(req: Request, res: Response, next: NextFun
       throw new NotFoundError("Project not found");
     }
 
-    const tasks = await prisma.workspaceTask.findMany({
+    let tasks = await prisma.workspaceTask.findMany({
       where: {
         projectId,
         OR: [{ visibility: TaskVisibility.SHARED }, { createdBy: freelancerId }],
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
     });
+
+    if (tasks.length === 0) {
+      // Auto-seed implementation checklist tasks mapped to milestone deliverables
+      const milestones = await prisma.milestone.findMany({
+        where: {
+          OR: [
+            { projectId, removedAt: null },
+            { agreement: { projectId }, removedAt: null },
+          ],
+        },
+        orderBy: { orderIndex: "asc" },
+      });
+
+      if (milestones.length > 0) {
+        const initialTasksData = [];
+        for (const ms of milestones) {
+          let deliverables = ms.deliverables;
+          if (typeof deliverables === "string") {
+            try {
+              deliverables = JSON.parse(deliverables);
+            } catch {}
+          }
+          const deliverableList = Array.isArray(deliverables) ? deliverables : [];
+          const isCompleted = ms.workStatus === "ACCEPTED";
+          if (deliverableList.length > 0) {
+            for (const d of deliverableList) {
+              const deliverableTitle = typeof d === "string" ? d : (d as any).title || "Deliverable Item";
+              initialTasksData.push({
+                projectId,
+                milestoneId: ms.id,
+                title: deliverableTitle,
+                description: `Deliverable requirement for milestone "${ms.title}"`,
+                status: isCompleted ? WorkspaceTaskStatus.DONE : WorkspaceTaskStatus.TODO,
+                priority: "HIGH",
+                dueDate: ms.dueDate || ms.deadline,
+                visibility: TaskVisibility.SHARED,
+                createdBy: freelancerId,
+                completedAt: isCompleted ? new Date() : null,
+              });
+            }
+          } else {
+            initialTasksData.push({
+              projectId,
+              milestoneId: ms.id,
+              title: ms.title,
+              description: `Deliverable package for milestone "${ms.title}"`,
+              status: isCompleted ? WorkspaceTaskStatus.DONE : WorkspaceTaskStatus.TODO,
+              priority: "MEDIUM",
+              dueDate: ms.dueDate || ms.deadline,
+              visibility: TaskVisibility.SHARED,
+              createdBy: freelancerId,
+              completedAt: isCompleted ? new Date() : null,
+            });
+          }
+        }
+
+        if (initialTasksData.length > 0) {
+          await prisma.workspaceTask.createMany({
+            data: initialTasksData,
+          });
+
+          tasks = await prisma.workspaceTask.findMany({
+            where: {
+              projectId,
+              OR: [{ visibility: TaskVisibility.SHARED }, { createdBy: freelancerId }],
+            },
+            orderBy: { createdAt: "asc" },
+          });
+        }
+      }
+    }
 
     const pendingCount = tasks.filter(
       (t) => t.status === WorkspaceTaskStatus.TODO || t.status === WorkspaceTaskStatus.IN_PROGRESS
@@ -100,17 +172,30 @@ export async function createProjectTask(req: Request, res: Response, next: NextF
       throw new ValidationError("Invalid task parameters", parsed.error.flatten().fieldErrors, 422);
     }
 
+    let parsedStatus = WorkspaceTaskStatus.TODO;
+    if (parsed.data.status === "COMPLETED" || parsed.data.status === WorkspaceTaskStatus.DONE) {
+      parsedStatus = WorkspaceTaskStatus.DONE;
+    } else if (parsed.data.status === "IN_PROGRESS" || parsed.data.status === WorkspaceTaskStatus.IN_PROGRESS) {
+      parsedStatus = WorkspaceTaskStatus.IN_PROGRESS;
+    }
+
+    let parsedDueDate: Date | null = null;
+    if (parsed.data.dueDate && parsed.data.dueDate !== "No deadline" && !isNaN(Date.parse(parsed.data.dueDate))) {
+      parsedDueDate = new Date(parsed.data.dueDate);
+    }
+
     const task = await prisma.workspaceTask.create({
       data: {
         projectId,
         title: parsed.data.title,
         description: parsed.data.description || null,
-        status: parsed.data.status,
-        dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
-        visibility: parsed.data.visibility,
+        status: parsedStatus,
+        priority: parsed.data.priority || "MEDIUM",
+        dueDate: parsedDueDate,
+        visibility: parsed.data.visibility || TaskVisibility.SHARED,
         milestoneId: parsed.data.milestoneId || null,
         createdBy: freelancerId,
-        completedAt: parsed.data.status === WorkspaceTaskStatus.DONE ? new Date() : null,
+        completedAt: parsedStatus === WorkspaceTaskStatus.DONE ? new Date() : null,
       },
     });
 
@@ -153,7 +238,22 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction): Pr
       throw new ValidationError("Invalid update parameters", parsed.error.flatten().fieldErrors, 422);
     }
 
-    const nextStatus = parsed.data.status || task.status;
+    let nextStatus = task.status;
+    if (parsed.data.status) {
+      if (parsed.data.status === "COMPLETED" || parsed.data.status === WorkspaceTaskStatus.DONE) {
+        nextStatus = WorkspaceTaskStatus.DONE;
+      } else if (parsed.data.status === "TO_DO" || parsed.data.status === WorkspaceTaskStatus.TODO) {
+        nextStatus = WorkspaceTaskStatus.TODO;
+      } else if (parsed.data.status === "IN_PROGRESS" || parsed.data.status === WorkspaceTaskStatus.IN_PROGRESS) {
+        nextStatus = WorkspaceTaskStatus.IN_PROGRESS;
+      }
+    }
+
+    let parsedDueDate: Date | null | undefined = undefined;
+    if (parsed.data.dueDate !== undefined) {
+      parsedDueDate = parsed.data.dueDate && !isNaN(Date.parse(parsed.data.dueDate)) ? new Date(parsed.data.dueDate) : null;
+    }
+
     const completedAt =
       nextStatus === WorkspaceTaskStatus.DONE
         ? task.completedAt || new Date()
@@ -164,8 +264,8 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction): Pr
       data: {
         title: parsed.data.title || undefined,
         description: parsed.data.description !== undefined ? parsed.data.description : undefined,
-        status: parsed.data.status || undefined,
-        dueDate: parsed.data.dueDate !== undefined ? (parsed.data.dueDate ? new Date(parsed.data.dueDate) : null) : undefined,
+        status: nextStatus,
+        dueDate: parsedDueDate,
         visibility: parsed.data.visibility || undefined,
         completedAt,
       },

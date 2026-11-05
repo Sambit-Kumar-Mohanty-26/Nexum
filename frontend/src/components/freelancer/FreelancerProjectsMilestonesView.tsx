@@ -300,7 +300,9 @@ export default function FreelancerProjectsMilestonesView({
                     })
                   : "No deadline",
                 relatedMilestoneId: t.milestoneId || "",
-                milestoneTitle: t.milestoneId ? "Associated Milestone" : "Project Task",
+                milestoneTitle: t.milestoneId
+                  ? projects.find((p) => p.id === selectedProjectId)?.milestones.find((m: any) => m.id === t.milestoneId)?.title || "Associated Milestone"
+                  : "Project Task",
                 completed: t.status === "DONE",
               }))
             );
@@ -531,6 +533,8 @@ export default function FreelancerProjectsMilestonesView({
       const res = await createProjectTask(selectedProjectId, {
         title: newTask.title,
         description: newTask.description,
+        priority: newTask.priority,
+        dueDate: newTask.dueDate,
         status: "TODO" as any,
       });
       if (res.success && res.task) {

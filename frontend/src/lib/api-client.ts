@@ -2669,6 +2669,7 @@ export async function createProjectTask(
     dueDate?: string;
     visibility?: string;
     milestoneId?: string;
+    priority?: "LOW" | "MEDIUM" | "HIGH" | string;
   }
 ): Promise<{
   success: boolean;

@@ -23,6 +23,10 @@ export async function verifyProjectAccess(
   if (project.projectProposals.length > 0) return { allowed: true, project };
   if (project.invitations.length > 0) return { allowed: true, project };
 
+  const agreement = await prisma.agreement.findFirst({
+    where: { projectId, freelancerId: userId },
+  });
+  if (agreement) return { allowed: true, project };
+
   return { allowed: false, project };
 }
-
