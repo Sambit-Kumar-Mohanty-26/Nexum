@@ -2736,17 +2736,33 @@ export class ClientOverviewService {
 
     // Try DB update
     try {
+      const msRecord = await prisma.milestone.findUnique({
+        where: { id: milestoneId },
+        select: { id: true, title: true, projectId: true, amountCents: true, amountMinor: true },
+      });
+
       await prisma.milestone.updateMany({
         where: { id: milestoneId },
         data: { state: "CAPTURED", workStatus: "ACCEPTED", acceptedAt: new Date() },
       });
+
+      await prisma.milestoneSubmission.updateMany({
+        where: { milestoneId, status: "SUBMITTED" },
+        data: { status: "ACCEPTED", reviewedAt: new Date() },
+      });
+
       await prisma.auditEvent.create({
         data: {
           actorId: clientId,
           action: "MILESTONE_ACCEPTED",
           objectType: "MILESTONE",
           objectId: milestoneId,
-          metadata: { amount: target?.amount, timestamp: new Date().toISOString() },
+          metadata: {
+            title: msRecord?.title || target?.title || "Milestone Deliverable",
+            projectId: msRecord?.projectId,
+            amountMinor: msRecord?.amountCents || msRecord?.amountMinor,
+            timestamp: new Date().toISOString(),
+          },
         },
       });
     } catch {}

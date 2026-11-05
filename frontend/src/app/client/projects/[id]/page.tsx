@@ -37,7 +37,7 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopHeader from "@/components/DashboardTopHeader";
 import { useAuth } from "@/context/AuthContext";
 import { getProjectById, ProjectDetailData, MOCK_PROJECTS, ProjectLifecycleStatus, MilestoneItem } from "@/lib/mock-projects";
-import { fetchProjectById, acceptClientProposal, rejectClientProposal } from "@/lib/api-client";
+import { fetchProjectById, acceptClientProposal, rejectClientProposal, approveClientMilestone } from "@/lib/api-client";
 
 type ProjectTab =
   | "overview"
@@ -383,70 +383,69 @@ function ProjectWorkspaceContent() {
 
   const handleApproveMilestone = async (milestoneId: string) => {
     setIsCapturing(true);
-    showToast("Dual SHA-256 Consensus: Initiating PayPal Sandbox Escrow Capture...");
+    showToast("Dual SHA-256 Consensus: Initiating PayPal Sandbox Escrow Capture & Approval...");
 
     try {
-      const res = await fetch("/api/paypal/capture-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: "6DE714998H998261C",
-          milestoneId,
-        }),
+      const res = await approveClientMilestone(milestoneId, {
+        clientId: user?.id,
       });
 
-      await res.json().catch(() => ({}));
+      if (!res.success) {
+        showToast(res.error || "Failed to approve milestone deliverable.");
+        setIsCapturing(false);
+        return;
+      }
 
       // Update state locally
       setProjectData((prev) => {
         if (!prev) return null;
+        const updatedMilestones = prev.milestones.map((m) =>
+          m.id === milestoneId
+            ? {
+                ...m,
+                status: "RELEASED" as const,
+                statusLabel: "Approved & Released",
+                captureId: "CAP_LIVE_SANDBOX_SUCCESS",
+              }
+            : m
+        );
+
+        const newReleased = updatedMilestones
+          .filter((m) => m.status === "RELEASED")
+          .reduce((sum, m) => sum + (parseFloat(m.amount.replace(/[^0-9.]/g, "")) || 0), 0);
+
         return {
           ...prev,
           status: "IN_PROGRESS",
           statusLabel: "In Progress",
           statusColor: "bg-blue-50 text-blue-700 border-blue-200/80",
-          releasedAmount: "$2,700.00 USD",
+          releasedAmount: `$${newReleased.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`,
           nextAction: {
-            label: "Track Milestone 3 Development",
-            description: "Milestone 2 captured and released. Milestone 3 execution active.",
+            label: "Track Subsequent Milestone Development",
+            description: "Milestone deliverable accepted and funds released from Sandbox Escrow.",
             type: "VIEW",
             urgent: false,
           },
-          milestones: prev.milestones.map((m) =>
-            m.id === milestoneId
-              ? {
-                  ...m,
-                  status: "RELEASED" as const,
-                  statusLabel: "Approved & Released",
-                  captureId: "CAP_LIVE_SANDBOX_SUCCESS",
-                }
-              : m
-          ),
-          payments: [
-            ...prev.payments.map((p) =>
-              p.orderId === "6DE714998H998261C"
-                ? { ...p, status: "CAPTURED" as const }
-                : p
-            ),
-          ],
+          milestones: updatedMilestones,
           activities: [
             {
               id: `act_${Date.now()}`,
               timestamp: "Just now",
-              actor: user?.name || "Sambit Kumar",
+              actor: user?.name || "Client",
               role: "CLIENT" as const,
-              action: "Milestone 2 Accepted & Released",
-              detail: "$1,500.00 USD captured from Sandbox Escrow to Rohan Verma.",
-              hash: "sha256:88fa10...99bb",
+              action: "Milestone Deliverables Accepted & Released",
+              detail: "Deliverable criteria accepted. PayPal sandbox escrow capture confirmed.",
+              hash: `sha256:cap_${Date.now()}`,
             },
             ...prev.activities,
           ],
         };
       });
 
-      showToast("Milestone 2 accepted! $1,500.00 captured & released to contractor.");
-    } catch {
-      showToast("Ledger updated: Milestone 2 released via Sandbox consensus.");
+      showToast("Milestone deliverables approved! PayPal funds released to contractor.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to approve milestone";
+      showToast(msg);
     } finally {
       setIsCapturing(false);
     }
