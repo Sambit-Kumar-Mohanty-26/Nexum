@@ -1773,6 +1773,8 @@ export class ClientOverviewService {
           deadline: input.deadline,
           category: input.category || "Web Development",
           skills: input.requiredSkills || input.skills || [],
+          visibility: input.visibility || "PUBLIC",
+          budgetType: input.budgetType === "HOURLY" ? "HOURLY" : "FIXED_PRICE",
           ...(expLevel ? { experienceLevel: expLevel } : {}),
         },
         create: {
@@ -1787,6 +1789,8 @@ export class ClientOverviewService {
           deadline: input.deadline,
           category: input.category || "Web Development",
           skills: input.requiredSkills || input.skills || [],
+          visibility: input.visibility || "PUBLIC",
+          budgetType: input.budgetType === "HOURLY" ? "HOURLY" : "FIXED_PRICE",
           ...(expLevel ? { experienceLevel: expLevel } : {}),
         },
       }).catch(() => {});
