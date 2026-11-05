@@ -1,6 +1,9 @@
 import { Router, Request, Response } from "express";
 import { clientOverviewService } from "../services/clientOverviewService.js";
 import projectAiRouter from "./client/projectAi.js";
+import { prisma } from "../prisma.js";
+import { Role, ProposalStatus, ProjectState, AgreementStatus, AgreementVersionStatus } from "@prisma/client";
+import { createAgreementTermsFromProposalVersion } from "../domain/agreements/createTerms.js";
 
 const router = Router();
 
@@ -284,6 +287,161 @@ router.post("/settings/support", async (req: Request, res: Response) => {
 router.post("/overview/reset", (_req: Request, res: Response) => {
   clientOverviewService.reset();
   res.json({ success: true, message: "Client overview state reset" });
+});
+
+
+// POST /api/client/proposals/:id/accept - client accepts a freelancer proposal and initializes agreement
+router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = (req.body?.clientId as string) || (req.query?.clientId as string) || "usr_client_alex";
+
+    const proposal = await prisma.proposal.findUnique({
+      where: { id },
+      include: {
+        project: true,
+        versions: { orderBy: { version: "desc" }, take: 1 },
+      },
+    });
+
+    if (!proposal) {
+      return res.status(404).json({ success: false, error: "Proposal not found" });
+    }
+
+    const currentVersion = proposal.versions[0];
+    const now = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Update proposal status to ACCEPTED
+      await tx.proposal.update({
+        where: { id: proposal.id },
+        data: {
+          status: ProposalStatus.ACCEPTED,
+          lastActivityAt: now,
+        },
+      });
+
+      // 2. Initialize Agreement if not already existing
+      const existingAgreement = await tx.agreement.findUnique({
+        where: { projectId: proposal.projectId },
+      });
+
+      if (!existingAgreement && currentVersion) {
+        const { terms: agTerms, contentHash } = createAgreementTermsFromProposalVersion(currentVersion);
+        await tx.agreement.create({
+          data: {
+            projectId: proposal.projectId,
+            proposalId: proposal.id,
+            clientId: proposal.project.clientId || clientId,
+            freelancerId: proposal.freelancerId,
+            status: AgreementStatus.ACTIVE,
+            versions: {
+              create: {
+                versionNumber: 1,
+                source: "PROPOSAL",
+                sourceRefId: proposal.id,
+                terms: agTerms as any,
+                contentHash,
+                status: AgreementVersionStatus.ACTIVE,
+              },
+            },
+          },
+        });
+      }
+
+      // 3. Update project state to ACTIVE
+      await tx.project.update({
+        where: { id: proposal.projectId },
+        data: {
+          state: ProjectState.ACTIVE,
+        },
+      });
+
+      // 4. Record append-only audit event
+      await tx.auditEvent.create({
+        data: {
+          actorId: clientId,
+          action: "PROPOSAL_ACCEPTED",
+          objectType: "PROPOSAL",
+          objectId: proposal.id,
+          metadata: {
+            projectId: proposal.projectId,
+            freelancerId: proposal.freelancerId,
+            amountMinor: currentVersion?.totalAmountMinor || currentVersion?.amountCents || 0,
+            timestamp: now.toISOString(),
+          },
+        },
+      }).catch(() => {});
+    });
+
+    res.json({
+      success: true,
+      message: "Proposal accepted and agreement initialized successfully.",
+      proposalId: id,
+      status: "ACCEPTED",
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to accept proposal";
+    console.error("Accept proposal error:", err);
+    res.status(500).json({ success: false, error: msg });
+  }
+});
+
+// POST /api/client/proposals/:id/reject - client declines a freelancer proposal
+router.post("/proposals/:id/reject", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = (req.body?.clientId as string) || (req.query?.clientId as string) || "usr_client_alex";
+    const feedback = req.body?.feedback || "Declined by client";
+
+    const proposal = await prisma.proposal.findUnique({
+      where: { id },
+      include: { project: true },
+    });
+
+    if (!proposal) {
+      return res.status(404).json({ success: false, error: "Proposal not found" });
+    }
+
+    const now = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.proposal.update({
+        where: { id: proposal.id },
+        data: {
+          status: ProposalStatus.REJECTED,
+          rejectionFeedback: feedback,
+          lastActivityAt: now,
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: clientId,
+          action: "PROPOSAL_REJECTED",
+          objectType: "PROPOSAL",
+          objectId: proposal.id,
+          metadata: {
+            projectId: proposal.projectId,
+            freelancerId: proposal.freelancerId,
+            feedback,
+            timestamp: now.toISOString(),
+          },
+        },
+      }).catch(() => {});
+    });
+
+    res.json({
+      success: true,
+      message: "Proposal declined.",
+      proposalId: id,
+      status: "REJECTED",
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to decline proposal";
+    console.error("Decline proposal error:", err);
+    res.status(500).json({ success: false, error: msg });
+  }
 });
 
 export default router;
