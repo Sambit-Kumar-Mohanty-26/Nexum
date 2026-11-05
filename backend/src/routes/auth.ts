@@ -44,6 +44,14 @@ const roleSchema = z.object({
   role: z.enum(["CLIENT", "FREELANCER"], {
     errorMap: () => ({ message: "Role must be CLIENT or FREELANCER" }),
   }),
+  companyName: z.string().optional(),
+  interests: z.array(z.string()).optional(),
+  budget: z.string().optional(),
+  title: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  profileType: z.string().optional(),
+  workExperience: z.string().optional(),
+  hourlyRate: z.number().optional(),
 });
 
 function setSessionCookie(res: Response, rawToken: string, expiresAt: Date) {
@@ -101,7 +109,7 @@ router.post(
                     bio: "Independent specialist on the Nexum protocol.",
                     skills: [],
                     onboardingStatus: "NOT_STARTED",
-                    availability: "AVAILABLE",
+                    availabilityStatus: "AVAILABLE",
                   },
                 },
               }
@@ -311,21 +319,37 @@ router.post(
           });
         }
 
+        const pType = parsed.data.profileType;
+        const expLevel = pType === "Experienced / Senior" ? "SENIOR" : pType === "Student / Beginner" ? "BEGINNER" : "MID";
         return await tx.user.update({
           where: { id: user.id },
           data: {
             role: parsed.data.role,
+            preferences: {
+              ...(parsed.data.companyName ? { companyName: parsed.data.companyName } : {}),
+              ...(parsed.data.interests ? { interests: parsed.data.interests } : {}),
+              ...(parsed.data.budget ? { budget: parsed.data.budget } : {}),
+            },
             ...(parsed.data.role === "FREELANCER"
               ? {
                   freelancerProfile: {
                     upsert: {
                       create: {
-                        title: "Freelancer Specialist",
-                        bio: "Independent specialist on the Nexum protocol.",
-                        skills: [],
-                        onboardingStatus: "NOT_STARTED",
+                        title: parsed.data.title?.trim() || "Freelancer Specialist",
+                        bio: parsed.data.workExperience?.trim() || "Independent specialist on the Nexum protocol.",
+                        skills: parsed.data.skills || [],
+                        experienceLevel: expLevel,
+                        onboardingStatus: parsed.data.skills && parsed.data.skills.length > 0 ? "COMPLETED" : "NOT_STARTED",
+                        rateHourlyMinor: parsed.data.hourlyRate ? parsed.data.hourlyRate * 100 : 5000,
+                        availability: "AVAILABLE",
                       },
-                      update: {},
+                      update: {
+                        title: parsed.data.title?.trim() || undefined,
+                        bio: parsed.data.workExperience?.trim() || undefined,
+                        skills: parsed.data.skills || undefined,
+                        experienceLevel: expLevel,
+                        onboardingStatus: parsed.data.skills && parsed.data.skills.length > 0 ? "COMPLETED" : undefined,
+                      },
                     },
                   },
                 }
@@ -1143,6 +1167,442 @@ router.post(
         objectType: "USER",
         objectId: user.id,
         metadata: { microsoftId: profile.id, role: user.role },
+      });
+
+      const { rawToken, expiresAt } = await createSession(user.id, req);
+      setSessionCookie(res, rawToken, expiresAt);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+        },
+        requiresRole: !user.role,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GitHub OAuth 2.0
+// ─────────────────────────────────────────────────────────────────────────────
+
+const githubCallbackSchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  simulated: z.boolean().optional(),
+});
+
+// GET /api/auth/github/url - Return authorization URL for GitHub OAuth
+router.get("/github/url", (req: Request, res: Response) => {
+  if (env.GITHUB_CLIENT_ID) {
+    const state = crypto.randomBytes(24).toString("hex");
+    res.cookie("nexum_gh_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60 * 1000,
+    });
+    const params = new URLSearchParams({
+      client_id: env.GITHUB_CLIENT_ID,
+      redirect_uri: env.GITHUB_CALLBACK_URL,
+      scope: "read:user user:email",
+      state,
+    });
+    const url = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    res.json({ url, simulated: false });
+  } else {
+    res.json({
+      url: `${env.CORS_ORIGIN.split(",")[0]}/api/auth/github/callback?simulated=true`,
+      simulated: true,
+    });
+  }
+});
+
+// GET /api/auth/github - Direct browser initiation redirect
+router.get("/github", (req: Request, res: Response) => {
+  if (env.GITHUB_CLIENT_ID) {
+    const state = crypto.randomBytes(24).toString("hex");
+    res.cookie("nexum_gh_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 10 * 60 * 1000,
+    });
+    const params = new URLSearchParams({
+      client_id: env.GITHUB_CLIENT_ID,
+      redirect_uri: env.GITHUB_CALLBACK_URL,
+      scope: "read:user user:email",
+      state,
+    });
+    res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+  } else {
+    res.redirect(`${env.CORS_ORIGIN.split(",")[0]}/api/auth/github/callback?simulated=true`);
+  }
+});
+
+// GET /api/auth/github/callback - Direct browser redirect handling from GitHub
+router.get(
+  "/github/callback",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const frontendOrigin = env.CORS_ORIGIN.split(",")[0] || "http://localhost:3000";
+    const { code, state, error } = req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+    };
+
+    if (error) {
+      res.redirect(`${frontendOrigin}/login?error=${encodeURIComponent(String(error))}`);
+      return;
+    }
+
+    if (!code) {
+      res.redirect(`${frontendOrigin}/login?error=missing_authorization_code`);
+      return;
+    }
+
+    const expectedState = req.cookies?.nexum_gh_oauth_state;
+    if (expectedState && state && expectedState !== state) {
+      res.redirect(`${frontendOrigin}/login?error=oauth_state_mismatch`);
+      return;
+    }
+    res.clearCookie("nexum_gh_oauth_state", { path: "/" });
+
+    if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
+      res.redirect(`${frontendOrigin}/login?error=github_oauth_not_configured`);
+      return;
+    }
+
+    try {
+      const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "User-Agent": "Nexum-App",
+        },
+        body: JSON.stringify({
+          client_id: env.GITHUB_CLIENT_ID,
+          client_secret: env.GITHUB_CLIENT_SECRET,
+          code: String(code),
+          redirect_uri: env.GITHUB_CALLBACK_URL,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        res.redirect(`${frontendOrigin}/login?error=github_token_exchange_failed`);
+        return;
+      }
+
+      const tokens = (await tokenRes.json()) as { access_token?: string; error?: string };
+      if (!tokens.access_token) {
+        res.redirect(`${frontendOrigin}/login?error=${encodeURIComponent(tokens.error || "github_token_exchange_failed")}`);
+        return;
+      }
+
+      const profileRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+          "User-Agent": "Nexum-App",
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+
+      if (!profileRes.ok) {
+        res.redirect(`${frontendOrigin}/login?error=github_profile_fetch_failed`);
+        return;
+      }
+
+      const profile = (await profileRes.json()) as {
+        id: number;
+        login: string;
+        name?: string;
+        avatar_url?: string;
+        email?: string;
+      };
+
+      let email = profile.email || "";
+      if (!email) {
+        const emailRes = await fetch("https://api.github.com/user/emails", {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            "User-Agent": "Nexum-App",
+            Accept: "application/vnd.github.v3+json",
+          },
+        });
+        if (emailRes.ok) {
+          const emails = (await emailRes.json()) as Array<{
+            email: string;
+            primary: boolean;
+            verified: boolean;
+          }>;
+          const primaryEmail = emails.find((e) => e.primary && e.verified) || emails.find((e) => e.verified) || emails[0];
+          if (primaryEmail) {
+            email = primaryEmail.email;
+          }
+        }
+      }
+
+      if (!email) {
+        email = `${profile.login}@users.noreply.github.com`;
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { githubId: String(profile.id) },
+            { email: { equals: normalizedEmail, mode: "insensitive" } },
+          ],
+        },
+        include: { freelancerProfile: true },
+      });
+
+      if (user) {
+        if (!user.githubId) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              githubId: String(profile.id),
+              avatarUrl: user.avatarUrl || profile.avatar_url,
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: profile.name?.trim() || profile.login || normalizedEmail.split("@")[0],
+            githubId: String(profile.id),
+            avatarUrl: profile.avatar_url || null,
+            role: null,
+            status: "ACTIVE",
+          },
+          include: { freelancerProfile: true },
+        });
+      }
+
+      await appendAuditEvent({
+        actorId: user.id,
+        action: "USER_AUTHENTICATED_GITHUB",
+        objectType: "USER",
+        objectId: user.id,
+        metadata: { githubId: String(profile.id), role: user.role },
+      });
+
+      const { rawToken, expiresAt } = await createSession(user.id, req);
+      setSessionCookie(res, rawToken, expiresAt);
+
+      if (!user.role) {
+        res.redirect(`${frontendOrigin}/choose-role`);
+      } else if (user.role === "FREELANCER") {
+        res.redirect(`${frontendOrigin}/freelancer/dashboard`);
+      } else {
+        res.redirect(`${frontendOrigin}/client/dashboard`);
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /api/auth/github/callback - Handle code from Next.js proxy route
+router.post(
+  "/github/callback",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const parsed = githubCallbackSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError("Invalid GitHub callback payload", parsed.error.format());
+      }
+
+      const { code, state, simulated } = parsed.data;
+
+      if (simulated) {
+        const simEmail = "github.demo@nexum.local";
+        let user = await prisma.user.findFirst({
+          where: { email: { equals: simEmail, mode: "insensitive" } },
+          include: { freelancerProfile: true },
+        });
+
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email: simEmail,
+              name: "GitHub Developer",
+              githubId: "gh_simulated_999",
+              avatarUrl: "https://avatars.githubusercontent.com/u/9919?v=4",
+              role: null,
+              status: "ACTIVE",
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+
+        await appendAuditEvent({
+          actorId: user.id,
+          action: "USER_AUTHENTICATED_GITHUB",
+          objectType: "USER",
+          objectId: user.id,
+          metadata: { simulated: true, role: user.role },
+        });
+
+        const { rawToken, expiresAt } = await createSession(user.id, req);
+        setSessionCookie(res, rawToken, expiresAt);
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatarUrl: user.avatarUrl,
+          },
+          requiresRole: !user.role,
+        });
+        return;
+      }
+
+      if (!code) {
+        throw new ValidationError("Authorization code is required");
+      }
+
+      const expectedState = req.cookies?.nexum_gh_oauth_state;
+      if (expectedState && state && expectedState !== state) {
+        throw new ValidationError("OAuth state mismatch (potential CSRF attempt)");
+      }
+      res.clearCookie("nexum_gh_oauth_state", { path: "/" });
+
+      if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
+        throw new ValidationError("GitHub OAuth is not configured on the server");
+      }
+
+      const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "User-Agent": "Nexum-App",
+        },
+        body: JSON.stringify({
+          client_id: env.GITHUB_CLIENT_ID,
+          client_secret: env.GITHUB_CLIENT_SECRET,
+          code,
+          redirect_uri: env.GITHUB_CALLBACK_URL,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text().catch(() => "");
+        throw new UnauthorizedError(`GitHub token exchange failed: ${tokenRes.statusText}`);
+      }
+
+      const tokens = (await tokenRes.json()) as { access_token?: string; error?: string };
+      if (!tokens.access_token) {
+        throw new UnauthorizedError(`GitHub token error: ${tokens.error || "no access_token returned"}`);
+      }
+
+      const profileRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+          "User-Agent": "Nexum-App",
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+
+      if (!profileRes.ok) {
+        throw new UnauthorizedError("Failed to retrieve user profile from GitHub");
+      }
+
+      const profile = (await profileRes.json()) as {
+        id: number;
+        login: string;
+        name?: string;
+        avatar_url?: string;
+        email?: string;
+      };
+
+      let email = profile.email || "";
+      if (!email) {
+        const emailRes = await fetch("https://api.github.com/user/emails", {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            "User-Agent": "Nexum-App",
+            Accept: "application/vnd.github.v3+json",
+          },
+        });
+        if (emailRes.ok) {
+          const emails = (await emailRes.json()) as Array<{
+            email: string;
+            primary: boolean;
+            verified: boolean;
+          }>;
+          const primaryEmail = emails.find((e) => e.primary && e.verified) || emails.find((e) => e.verified) || emails[0];
+          if (primaryEmail) {
+            email = primaryEmail.email;
+          }
+        }
+      }
+
+      if (!email) {
+        email = `${profile.login}@users.noreply.github.com`;
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { githubId: String(profile.id) },
+            { email: { equals: normalizedEmail, mode: "insensitive" } },
+          ],
+        },
+        include: { freelancerProfile: true },
+      });
+
+      if (user) {
+        if (!user.githubId) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              githubId: String(profile.id),
+              avatarUrl: user.avatarUrl || profile.avatar_url,
+            },
+            include: { freelancerProfile: true },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: profile.name?.trim() || profile.login || normalizedEmail.split("@")[0],
+            githubId: String(profile.id),
+            avatarUrl: profile.avatar_url || null,
+            role: null,
+            status: "ACTIVE",
+          },
+          include: { freelancerProfile: true },
+        });
+      }
+
+      await appendAuditEvent({
+        actorId: user.id,
+        action: "USER_AUTHENTICATED_GITHUB",
+        objectType: "USER",
+        objectId: user.id,
+        metadata: { githubId: String(profile.id), role: user.role },
       });
 
       const { rawToken, expiresAt } = await createSession(user.id, req);

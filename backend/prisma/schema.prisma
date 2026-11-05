@@ -247,6 +247,7 @@ model User {
   googleId     String?  @unique
   avatarUrl    String?
   microsoftId  String?  @unique
+  githubId     String?  @unique
   preferences  Json?
   locale       String   @default("en-US")
   timezone     String   @default("UTC")

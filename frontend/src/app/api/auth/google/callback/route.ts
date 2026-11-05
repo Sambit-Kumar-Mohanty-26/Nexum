@@ -48,21 +48,34 @@ export async function GET(request: NextRequest) {
     const data = await backendRes.json();
     const user = data.user;
 
+    // IMPORTANT: Do NOT default role to "CLIENT" here.
+    // If role is null, the user must go through /choose-role first.
+    // We store null and let the redirect below send them to choose-role.
     const loggedInUser: DemoUser = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: (user.role as UserRole) || "CLIENT",
+      role: (user.role as UserRole) ?? null,
       avatar:
         user.avatarUrl ||
         (user.role === "FREELANCER"
           ? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=128&h=128&fit=crop&crop=faces"
           : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=faces"),
-      title: user.role === "FREELANCER" ? "Verified Freelancer" : "Verified Client",
+      title:
+        user.role === "FREELANCER"
+          ? "Verified Freelancer"
+          : user.role === "CLIENT"
+          ? "Verified Client"
+          : "New Member",
       companyOrHandle: `@${user.name?.toLowerCase().replace(/\s+/g, "_") || "user"}`,
       location: "Remote",
       timezone: "UTC",
-      statusBadge: user.role === "FREELANCER" ? "Verified Talent" : "Verified Buyer",
+      statusBadge:
+        user.role === "FREELANCER"
+          ? "Verified Talent"
+          : user.role === "CLIENT"
+          ? "Verified Buyer"
+          : "Pending Role",
       summary: "Authenticated securely via Google OAuth 2.0.",
       canLogin: true,
       isDemoData: false,
@@ -71,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Issue signed Next.js session cookie
     await setSession(loggedInUser);
 
-    // Determine target redirect
+    // Determine target redirect — null role ALWAYS goes to /choose-role
     const targetPath =
       data.requiresRole || !user.role
         ? "/choose-role"
@@ -95,4 +108,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

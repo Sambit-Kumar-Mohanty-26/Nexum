@@ -123,7 +123,9 @@ export default function LoginPage() {
 
       const result = await loginWithCredentials(email.trim(), password);
       if (result.success) {
-        if (result.user?.role === "FREELANCER") {
+        if (!result.user?.role) {
+          router.push("/choose-role");
+        } else if (result.user.role === "FREELANCER") {
           router.push("/freelancer/dashboard");
         } else {
           router.push("/client/dashboard");
