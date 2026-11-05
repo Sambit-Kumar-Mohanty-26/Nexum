@@ -2751,6 +2751,61 @@ export class ClientOverviewService {
         data: { status: "ACCEPTED", reviewedAt: new Date() },
       });
 
+      const amt = msRecord?.amountMinor || msRecord?.amountCents || target?.amountMinor || 0;
+      if (msRecord && amt > 0 && msRecord.amountMinor !== amt) {
+        await prisma.milestone.update({
+          where: { id: milestoneId },
+          data: { amountMinor: amt },
+        }).catch(() => {});
+      }
+
+      if (msRecord?.projectId) {
+        const agreement = await prisma.agreement.findFirst({
+          where: { projectId: msRecord.projectId },
+          select: { id: true, freelancerId: true },
+        });
+
+        if (agreement) {
+          const existingLedger = await prisma.ledgerEntry.findFirst({
+            where: { milestoneId, kind: "RELEASED" },
+          });
+
+          if (!existingLedger) {
+            await prisma.ledgerEntry.create({
+              data: {
+                userId: agreement.freelancerId,
+                projectId: msRecord.projectId,
+                milestoneId,
+                kind: "RELEASED",
+                amountMinor: amt,
+                currency: "USD",
+              },
+            }).catch(() => {});
+          }
+
+          const remainingUnaccepted = await prisma.milestone.count({
+            where: {
+              projectId: msRecord.projectId,
+              removedAt: null,
+              id: { not: milestoneId },
+              workStatus: { not: "ACCEPTED" },
+            },
+          });
+
+          if (remainingUnaccepted === 0) {
+            await prisma.project.update({
+              where: { id: msRecord.projectId },
+              data: { state: "COMPLETED" },
+            }).catch(() => {});
+
+            await prisma.agreement.update({
+              where: { id: agreement.id },
+              data: { status: "COMPLETED" },
+            }).catch(() => {});
+          }
+        }
+      }
+
       await prisma.auditEvent.create({
         data: {
           actorId: clientId,
@@ -2760,12 +2815,14 @@ export class ClientOverviewService {
           metadata: {
             title: msRecord?.title || target?.title || "Milestone Deliverable",
             projectId: msRecord?.projectId,
-            amountMinor: msRecord?.amountCents || msRecord?.amountMinor,
+            amountMinor: amt,
             timestamp: new Date().toISOString(),
           },
         },
       });
-    } catch {}
+    } catch (dbErr) {
+      console.warn("Could not persist milestone DB acceptance:", dbErr);
+    }
 
     const activities = this.auditActivities.get(clientId) || [];
     activities.unshift({

@@ -552,8 +552,12 @@ export default function FreelancerOverviewView({
                               <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#4f46e5] transition-colors truncate">
                                 {proj.title}
                               </h3>
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-                                {proj.status === "ACTIVE" ? "In Progress" : proj.status}
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                proj.status === "COMPLETED"
+                                  ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+                              }`}>
+                                {proj.status === "COMPLETED" ? "Completed" : proj.status === "ACTIVE" ? "In Progress" : proj.status}
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5 truncate">

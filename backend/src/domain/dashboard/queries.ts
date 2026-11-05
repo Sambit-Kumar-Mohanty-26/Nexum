@@ -1,5 +1,5 @@
 import { prisma } from "../../prisma.js";
-import { LedgerEntryKind, MilestoneWorkStatus, ProjectState, ChangeRequestStatus } from "@prisma/client";
+import { LedgerEntryKind, MilestoneWorkStatus, ProjectState, ChangeRequestStatus, PaymentState } from "@prisma/client";
 import { calculateProfileCompleteness } from "../../lib/profileCompleteness.js";
 
 export interface ActiveProjectItem {
@@ -98,9 +98,9 @@ export async function getActiveProjects(freelancerId: string): Promise<{ count: 
   const agreements = await prisma.agreement.findMany({
     where: {
       freelancerId,
-      status: "ACTIVE",
+      status: { in: ["ACTIVE", "COMPLETED"] },
       project: {
-        state: { in: [ProjectState.ACTIVE, ProjectState.MATCHING, ProjectState.NEGOTIATING] },
+        state: { in: [ProjectState.ACTIVE, ProjectState.MATCHING, ProjectState.NEGOTIATING, ProjectState.COMPLETED] },
       },
     },
     include: {
@@ -114,19 +114,31 @@ export async function getActiveProjects(freelancerId: string): Promise<{ count: 
     orderBy: { updatedAt: "desc" },
   });
 
-  const items: ActiveProjectItem[] = agreements.map((agr: any) => {
-    const total = agr.milestones.length;
-    const accepted = agr.milestones.filter((m: any) => m.workStatus === MilestoneWorkStatus.ACCEPTED).length;
-    return {
+  const items: ActiveProjectItem[] = [];
+
+  for (const agr of agreements) {
+    let milestones = agr.milestones;
+    if (milestones.length === 0) {
+      milestones = await prisma.milestone.findMany({
+        where: { projectId: agr.projectId, removedAt: null },
+      });
+    }
+
+    const total = milestones.length;
+    const accepted = milestones.filter((m: any) => m.workStatus === MilestoneWorkStatus.ACCEPTED).length;
+    const isCompleted = (total > 0 && accepted === total) || agr.project.state === ProjectState.COMPLETED || agr.status === "COMPLETED";
+    const status = isCompleted ? "COMPLETED" : "ACTIVE";
+
+    items.push({
       id: agr.project.id,
       title: agr.project.title,
       client: agr.project.client,
-      status: agr.project.state,
+      status,
       agreementId: agr.id,
       milestonesTotal: total,
       milestonesAccepted: accepted,
-    };
-  });
+    });
+  }
 
   return { count: items.length, items };
 }
@@ -292,6 +304,25 @@ export async function getEarningsSnapshot(freelancerId: string): Promise<{
     } else if (entry.kind === LedgerEntryKind.HOLD) {
       totalOnHold += entry.amountMinor;
     }
+  }
+
+  // Fail-safe reconciliation: also include accepted milestones if not already in ledger
+  const acceptedMilestones = await prisma.milestone.findMany({
+    where: {
+      OR: [
+        { agreement: { freelancerId }, workStatus: MilestoneWorkStatus.ACCEPTED, state: PaymentState.CAPTURED },
+        { project: { agreement: { freelancerId } }, workStatus: MilestoneWorkStatus.ACCEPTED, state: PaymentState.CAPTURED },
+      ],
+      removedAt: null,
+    },
+  });
+
+  const milestoneTotalMinor = acceptedMilestones.reduce(
+    (sum, m) => sum + (m.amountMinor || m.amountCents || 0),
+    0
+  );
+  if (milestoneTotalMinor > totalReleased) {
+    totalReleased = milestoneTotalMinor;
   }
 
   const availableMinor = Math.max(0, totalReleased - totalWithdrawn);
