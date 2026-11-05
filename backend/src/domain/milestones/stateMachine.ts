@@ -116,7 +116,8 @@ export function transitionMilestone(
       if (
         currentStatus === MilestoneWorkStatus.READY_TO_SUBMIT ||
         currentStatus === MilestoneWorkStatus.REVISIONS_REQUESTED ||
-        currentStatus === MilestoneWorkStatus.IN_PROGRESS
+        currentStatus === MilestoneWorkStatus.IN_PROGRESS ||
+        currentStatus === MilestoneWorkStatus.UPCOMING
       ) {
         return { newStatus: MilestoneWorkStatus.AWAITING_CLIENT_REVIEW };
       }

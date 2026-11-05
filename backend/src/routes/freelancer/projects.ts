@@ -714,7 +714,7 @@ router.get("/active", async (req: Request, res: Response, next: NextFunction): P
               title: currentMilestone.title,
               workStatus: currentMilestone.workStatus,
               dueDate: currentMilestone.dueDate ? currentMilestone.dueDate.toISOString() : null,
-              amountMinor: currentMilestone.amountMinor,
+              amountMinor: currentMilestone.amountMinor || currentMilestone.amountCents || 0,
             }
           : null,
         milestones: milestones.map((m: any, idx: number) => {
@@ -725,6 +725,8 @@ router.get("/active", async (req: Request, res: Response, next: NextFunction): P
             payStatus = "FUNDING_PENDING";
           }
 
+          const mAmount = m.amountMinor || m.amountCents || 0;
+
           return {
             id: m.id,
             number: m.sequence ?? (idx + 1),
@@ -732,8 +734,8 @@ router.get("/active", async (req: Request, res: Response, next: NextFunction): P
             description: m.description || "",
             deliverablesSummary: typeof m.deliverables === "string" ? m.deliverables : "Verified milestone deliverables",
             acceptanceCriteria: Array.isArray(m.criteria) ? m.criteria : [],
-            amountCents: m.amountMinor,
-            amountDisplay: `$${(m.amountMinor / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })} USD`,
+            amountCents: mAmount,
+            amountDisplay: `$${(mAmount / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })} USD`,
             currency: m.currency || "USD",
             dueDate: m.dueDate ? new Date(m.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No deadline",
             submittedAt: m.submissions && m.submissions.length > 0 ? new Date(m.submissions[0].submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : undefined,

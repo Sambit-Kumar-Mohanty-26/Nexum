@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   X,
   UploadCloud,
@@ -24,6 +24,9 @@ export default function MilestoneSubmissionModal({
   onClose,
   onSubmit,
 }: MilestoneSubmissionModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const [completionNote, setCompletionNote] = useState(
     "All acceptance criteria have been implemented, tested and deployed to staging for client review."
   );
@@ -34,13 +37,30 @@ export default function MilestoneSubmissionModal({
     "https://github.com/shopkart/storefront/pull/15"
   );
   const [demoUrl, setDemoUrl] = useState("https://staging.shopkart.nexum.dev");
-  const [attachmentName, setAttachmentName] = useState("delivery-artifacts-v1.zip");
+  const [attachmentName, setAttachmentName] = useState("deliverables-package.zip");
   const [attachmentSize, setAttachmentSize] = useState("4.8 MB");
   const [checkedCriteria, setCheckedCriteria] = useState<string[]>(
     milestone.acceptanceCriteria
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setAttachmentName(file.name);
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      setAttachmentSize(`${sizeMb} MB`);
+    }
+  };
+
+  const displayAmount =
+    milestone.amountDisplay && milestone.amountDisplay !== "$0 USD"
+      ? milestone.amountDisplay
+      : milestone.amountCents
+      ? `$${(milestone.amountCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })} USD`
+      : "";
 
   const toggleCriterion = (criterion: string) => {
     setCheckedCriteria((prev) =>
@@ -98,7 +118,7 @@ export default function MilestoneSubmissionModal({
               Submit Milestone Deliverable
             </h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate max-w-sm">
-              {milestone.title} ({milestone.amountDisplay})
+              {milestone.title} {displayAmount ? `(${displayAmount})` : ""}
             </p>
           </div>
           <button
@@ -178,23 +198,34 @@ export default function MilestoneSubmissionModal({
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Deliverable Artifacts / Archive
             </label>
-            <div className="p-3.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-between">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="p-3.5 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#4f46e5]/60 hover:bg-slate-50/80 bg-slate-50 flex items-center justify-between cursor-pointer transition"
+            >
               <div className="flex items-center gap-2.5">
                 <UploadCloud className="w-5 h-5 text-indigo-600" />
                 <div>
                   <p className="text-xs font-bold text-slate-800">{attachmentName}</p>
-                  <p className="text-[10px] text-slate-400">{attachmentSize} · SHA-256 verified</p>
+                  <p className="text-[10px] text-slate-400">
+                    {attachmentSize} · {selectedFile ? "Selected from local machine" : "SHA-256 verified"}
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setAttachmentName("updated-deliverables.zip");
-                  setAttachmentSize("6.1 MB");
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
                 }}
-                className="py-1 px-2 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                className="py-1 px-2.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-[10px] font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer shadow-2xs"
               >
-                Replace
+                Choose File / Replace
               </button>
             </div>
           </div>
