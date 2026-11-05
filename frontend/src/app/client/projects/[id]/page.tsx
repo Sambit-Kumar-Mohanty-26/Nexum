@@ -75,11 +75,11 @@ function ProjectWorkspaceContent() {
         const live = await fetchProjectById(projectId);
         if (live && isMounted) {
           setIsLiveLoaded(true);
-          const proposal = live.proposals?.[0];
-          const freelancer = proposal?.freelancer;
+          const acceptedProposal = live.proposals?.find((p: any) => p.status === "ACCEPTED");
+          const freelancer = live.contractor || acceptedProposal?.freelancer;
           const rawMilestones = (live.milestones && live.milestones.length > 0)
             ? live.milestones
-            : (proposal?.milestones || []);
+            : (acceptedProposal?.milestones || []);
 
           // Status & lifecycle derivation
           let status: ProjectLifecycleStatus = "IN_PROGRESS";
@@ -165,7 +165,13 @@ function ProjectWorkspaceContent() {
           const mappedMilestones: MilestoneItem[] = rawMilestones.map((m: any, idx: number) => {
             const amountVal = m.amountCents ? m.amountCents / 100 : (parseFloat(m.amount) || 0);
             const isReleased = m.state === "CAPTURED" || m.status === "RELEASED";
-            const isInReview = m.state === "APPROVED" || m.state === "SUBMITTED" || m.status === "IN_REVIEW";
+            const isInReview = Boolean(
+              freelancer && (
+                m.workStatus === "AWAITING_CLIENT_REVIEW" ||
+                m.workStatus === "SUBMITTED" ||
+                m.status === "IN_REVIEW"
+              )
+            );
             return {
               id: m.id || `ms_${idx + 1}`,
               number: idx + 1,
@@ -188,7 +194,7 @@ function ProjectWorkspaceContent() {
             .filter((m) => m.status === "RELEASED")
             .reduce((sum, m) => sum + (parseFloat(m.amount.replace(/[^0-9.]/g, "")) || 0), 0);
           const escrowVal = mappedMilestones
-            .filter((m) => m.status === "IN_REVIEW" || m.status === "FUNDED")
+            .filter((m) => (m.status === "IN_REVIEW" || m.status === "FUNDED") && freelancer)
             .reduce((sum, m) => sum + (parseFloat(m.amount.replace(/[^0-9.]/g, "")) || 0), 0);
 
           const nextDue = mappedMilestones.find((m) => m.status !== "RELEASED")?.title || "All milestones completed";
@@ -260,7 +266,7 @@ function ProjectWorkspaceContent() {
               proposedBudget: `$${((p.amountCents || live.budgetCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`,
               estimatedTimeline: live.timelineDuration || "Sprint schedule",
               coverLetter: p.coverLetter || "Experienced developer ready to execute deliverables with automated test assert logs.",
-              status: p.status === "ACCEPTED" ? "ACCEPTED" : "UNDER_REVIEW",
+              status: p.status === "ACCEPTED" ? "ACCEPTED" : (p.status === "REJECTED" || p.status === "DECLINED") ? "DECLINED" : "UNDER_REVIEW",
               submittedDate: "Recent",
             })),
             workspaceQuestions: live.workspaceQuestions || [],

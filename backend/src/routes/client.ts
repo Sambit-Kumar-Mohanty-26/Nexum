@@ -308,6 +308,7 @@ router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: "Proposal not found" });
     }
 
+    const effectiveClientId = (req.body?.clientId as string) || (req.query?.clientId as string) || proposal.project.clientId;
     const currentVersion = proposal.versions[0];
     const now = new Date();
 
@@ -326,13 +327,29 @@ router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
         where: { projectId: proposal.projectId },
       });
 
-      if (!existingAgreement && currentVersion) {
-        const { terms: agTerms, contentHash } = createAgreementTermsFromProposalVersion(currentVersion);
+      if (!existingAgreement) {
+        const { terms: agTerms, contentHash } = currentVersion
+          ? createAgreementTermsFromProposalVersion(currentVersion)
+          : {
+              terms: {
+                scope: proposal.project.description || "Project scope",
+                deliverables: [],
+                exclusions: [],
+                assumptions: [],
+                paymentModel: "FIXED_PRICE" as const,
+                currency: proposal.project.currency || "USD",
+                totalAmountMinor: proposal.project.budgetCents || 0,
+                durationWeeks: 4,
+                milestones: [],
+              },
+              contentHash: `hash_${proposal.id}`,
+            };
+
         await tx.agreement.create({
           data: {
             projectId: proposal.projectId,
             proposalId: proposal.id,
-            clientId: proposal.project.clientId || clientId,
+            clientId: effectiveClientId,
             freelancerId: proposal.freelancerId,
             status: AgreementStatus.ACTIVE,
             versions: {
@@ -360,7 +377,7 @@ router.post("/proposals/:id/accept", async (req: Request, res: Response) => {
       // 4. Record append-only audit event
       await tx.auditEvent.create({
         data: {
-          actorId: clientId,
+          actorId: effectiveClientId,
           action: "PROPOSAL_ACCEPTED",
           objectType: "PROPOSAL",
           objectId: proposal.id,
@@ -403,6 +420,7 @@ router.post("/proposals/:id/reject", async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: "Proposal not found" });
     }
 
+    const effectiveClientId = (req.body?.clientId as string) || (req.query?.clientId as string) || proposal.project.clientId;
     const now = new Date();
 
     await prisma.$transaction(async (tx) => {
@@ -417,7 +435,7 @@ router.post("/proposals/:id/reject", async (req: Request, res: Response) => {
 
       await tx.auditEvent.create({
         data: {
-          actorId: clientId,
+          actorId: effectiveClientId,
           action: "PROPOSAL_REJECTED",
           objectType: "PROPOSAL",
           objectId: proposal.id,
