@@ -170,7 +170,9 @@ async function handleSearchProjects(req: Request, res: Response, next: NextFunct
 
     // Category filter
     if (category && category.trim() && category !== "All Categories" && category !== "All") {
-      where.category = { equals: category.trim(), mode: "insensitive" };
+      const catTrim = category.trim();
+      const firstWord = catTrim.split(" ")[0];
+      where.category = { contains: firstWord, mode: "insensitive" };
     }
 
     // Experience Level filter

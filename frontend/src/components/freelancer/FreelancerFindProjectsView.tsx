@@ -5,6 +5,7 @@ import {
   searchFreelancerProjects,
   saveFreelancerProject,
   unsaveFreelancerProject,
+  getLocalProjects,
 } from "@/lib/api-client";
 import {
   Search,
@@ -217,6 +218,64 @@ const OPPORTUNITIES: ProjectOpportunity[] = [
   },
 ];
 
+function mapClientProjectToOpportunity(p: any): ProjectOpportunity {
+  const budgetCents = p.budgetCents || 0;
+  const budgetAmt = budgetCents > 0 ? budgetCents / 100 : parseFloat(p.budgetAmount) || 0;
+  return {
+    id: p.id,
+    title: p.title || p.name || "Untitled Project",
+    clientName: p.clientName || p.client?.name || "Client",
+    clientCompany: p.clientCompany || p.client?.company || (p.clientName ? `${p.clientName} Team` : "Client Team"),
+    location: p.location || "Remote",
+    experienceLevel: (p.experienceLevel === "EXPERT"
+      ? "Expert"
+      : p.experienceLevel === "MID"
+      ? "Intermediate"
+      : "Entry Level") as any,
+    category: (p.category || "Full Stack Development") as any,
+    budget:
+      p.budgetType === "Hourly"
+        ? `$${budgetAmt.toFixed(2)}/hour`
+        : `$${budgetAmt.toLocaleString("en-US", { minimumFractionDigits: 2 })} fixed`,
+    budgetAmount: budgetAmt,
+    budgetType: p.budgetType === "Hourly" ? "Hourly" : "Fixed Price",
+    proposalsCount: 0,
+    hiringState: "Still Selecting",
+    postedTime: p.lastUpdated || "Recently",
+    matchScore: 95,
+    description: p.description || p.overview || "",
+    skills:
+      Array.isArray(p.skills) && p.skills.length > 0
+        ? p.skills
+        : Array.isArray(p.requiredSkills) && p.requiredSkills.length > 0
+        ? p.requiredSkills
+        : ["Web Development", "TypeScript"],
+    isVerified: true,
+    escrowStatus: "Pre-Funded in Escrow",
+  };
+}
+
+function loadLocalOpportunities(): ProjectOpportunity[] {
+  if (typeof window === "undefined") return OPPORTUNITIES;
+  try {
+    const raw = getLocalProjects();
+    const published = (raw || [])
+      .filter((p: any) => p && p.status !== "DRAFT" && p.state !== "DRAFT")
+      .map(mapClientProjectToOpportunity);
+
+    const map = new Map<string, ProjectOpportunity>();
+    // User's own published client projects first
+    for (const p of published) map.set(p.id, p);
+    // Baseline opportunities
+    for (const opp of OPPORTUNITIES) {
+      if (!map.has(opp.id)) map.set(opp.id, opp);
+    }
+    return Array.from(map.values());
+  } catch {
+    return OPPORTUNITIES;
+  }
+}
+
 interface FreelancerFindProjectsViewProps {
   onApplyProject: (project: ProjectOpportunity) => void;
   showToast: (msg: string) => void;
@@ -242,10 +301,10 @@ export default function FreelancerFindProjectsView({
   const [sortBy, setSortBy] = useState<"newest" | "budget_high" | "match_high" | "fewest_proposals">("newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Interaction state
+  // Interaction state - initialized with user's client projects and baseline opportunities
   const [savedProjectIds, setSavedProjectIds] = useState<string[]>([]);
   const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
-  const [backendProjects, setBackendProjects] = useState<ProjectOpportunity[]>([]);
+  const [backendProjects, setBackendProjects] = useState<ProjectOpportunity[]>(() => loadLocalOpportunities());
   const [isLiveLoaded, setIsLiveLoaded] = useState(false);
 
   // Load live projects from Express backend
@@ -259,8 +318,12 @@ export default function FreelancerFindProjectsView({
     })
       .then((res) => {
         if (!isCurrent) return;
-        if (res.success && res.projects) {
-          const mapped: ProjectOpportunity[] = res.projects.map((p) => {
+        const localOpp = loadLocalOpportunities();
+        const map = new Map<string, ProjectOpportunity>();
+
+        // 1. Add server live projects if returned
+        if (res.success && Array.isArray(res.projects) && res.projects.length > 0) {
+          const mappedServer: ProjectOpportunity[] = res.projects.map((p) => {
             const hasCents = typeof p.budgetCents === "number" && !isNaN(p.budgetCents);
             const budgetAmt = p.budgetAmount ?? (hasCents ? p.budgetCents / 100 : 0);
             return {
@@ -292,16 +355,23 @@ export default function FreelancerFindProjectsView({
               escrowStatus: p.client?.isVerified ? "Pre-Funded in Escrow" : "Verified Payment Method",
             };
           });
-          setBackendProjects(mapped);
+          for (const s of mappedServer) map.set(s.id, s);
+        }
+
+        // 2. Add local client projects and baseline opportunities
+        for (const loc of localOpp) {
+          if (!map.has(loc.id)) map.set(loc.id, loc);
+        }
+
+        setBackendProjects(Array.from(map.values()));
+        if (res.success && res.projects) {
           setSavedProjectIds(res.projects.filter((p) => p.isSaved).map((p) => p.id));
-        } else {
-          setBackendProjects([]);
         }
         setIsLiveLoaded(true);
       })
       .catch(() => {
         if (isCurrent) {
-          setBackendProjects([]);
+          setBackendProjects(loadLocalOpportunities());
           setIsLiveLoaded(true);
         }
       });
@@ -350,7 +420,7 @@ export default function FreelancerFindProjectsView({
 
   // Filter & Sort Logic
   const filteredProjects = useMemo(() => {
-    const baseList = isLiveLoaded ? backendProjects : [];
+    const baseList = backendProjects.length > 0 ? backendProjects : OPPORTUNITIES;
     return baseList.filter((opp) => {
       // 1. Text Search (title, company, description, skills)
       const q = searchQuery.toLowerCase().trim();

@@ -5,24 +5,9 @@
 
 import { AppNotification } from "./notifications-data";
 
-const rawBackendUrl =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  process.env.BACKEND_URL ||
-  "http://localhost:4000";
-
-const isBrowser = typeof window !== "undefined";
-const isRemoteHost =
-  isBrowser &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1";
-
-const isLocalhostConfigured =
-  !process.env.NEXT_PUBLIC_BACKEND_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL.includes("localhost") ||
-  process.env.NEXT_PUBLIC_BACKEND_URL.includes("127.0.0.1");
-
-export const BACKEND_URL =
-  isRemoteHost && isLocalhostConfigured ? "" : rawBackendUrl;
+// In Next.js client-side code, all API requests must use relative paths ("")
+// to route through Next.js proxy route handlers, ensuring same-origin cookie delivery and zero CORS issues in production.
+export const BACKEND_URL = "";
 
 export interface BackendHealthResponse {
   status: string;
@@ -3737,7 +3722,7 @@ export const api = {
 
 const LOCAL_CLIENT_PROJECTS_KEY = "nexum_client_projects";
 
-function getLocalProjects(): any[] {
+export function getLocalProjects(): any[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(LOCAL_CLIENT_PROJECTS_KEY);
