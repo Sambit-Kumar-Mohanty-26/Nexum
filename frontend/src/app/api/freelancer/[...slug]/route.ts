@@ -120,17 +120,28 @@ export async function POST(
     "http://localhost:3000";
 
   try {
-    const body = await request.json().catch(() => ({}));
+    const contentType = request.headers.get("content-type") || "";
+    let forwardBody: any;
+    const forwardHeaders: Record<string, string> = {
+      Origin: originHeader,
+      "x-nexum-internal": "true",
+      ...(user?.id ? { "x-user-id": user.id } : {}),
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+    };
+
+    if (contentType.includes("multipart/form-data")) {
+      forwardBody = await request.formData();
+      // Leave Content-Type header unset so fetch sets multipart boundary automatically
+    } else {
+      const body = await request.json().catch(() => ({}));
+      forwardBody = JSON.stringify(body);
+      forwardHeaders["Content-Type"] = "application/json";
+    }
+
     const res = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Origin": originHeader,
-        "x-nexum-internal": "true",
-        ...(user?.id ? { "x-user-id": user.id } : {}),
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-      },
-      body: JSON.stringify(body),
+      headers: forwardHeaders,
+      body: forwardBody,
       cache: "no-store",
     });
 

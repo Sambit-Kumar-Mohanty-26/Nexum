@@ -358,6 +358,13 @@ export interface CreateProjectInput {
     deliverables?: string[];
   }>;
   skills?: string[];
+  uploadedDocument?: {
+    name: string;
+    size?: string;
+    type?: string;
+    uploadedAt?: string;
+    dataUrl?: string;
+  };
 }
 
 const DEFAULT_RECOMMENDED_FREELANCERS: RecommendedFreelancerItem[] = [
@@ -441,6 +448,13 @@ export interface ProjectCardData {
   experienceLevel?: "ENTRY" | "INTERMEDIATE" | "EXPERT";
   englishLevel?: "CONVERSATIONAL" | "FLUENT" | "NATIVE";
   visibility?: "PUBLIC" | "INVITE_ONLY";
+  uploadedDocument?: {
+    name: string;
+    size?: string;
+    type?: string;
+    uploadedAt?: string;
+    dataUrl?: string;
+  };
 }
 
 const STABLE_NOW = 1793365200000;
@@ -1705,6 +1719,7 @@ export class ClientOverviewService {
       proposals: [],
       milestones: formattedMilestones,
       changeRequests: existingIndex >= 0 ? currentList[existingIndex].changeRequests || [] : [],
+      uploadedDocument: input.uploadedDocument || undefined,
     };
 
     // Attempt to persist to database if connected
@@ -1792,6 +1807,7 @@ export class ClientOverviewService {
         englishLevel: input.englishLevel,
         visibility: input.visibility,
         milestones: formattedMilestones,
+        uploadedDocument: input.uploadedDocument,
       };
 
       const existingBrief = await prisma.projectBriefVersion.findFirst({
@@ -2326,6 +2342,7 @@ export class ClientOverviewService {
           milestones: mappedMilestones.length > 0 ? mappedMilestones : (brief.milestones || []),
           proposals: mappedProposals,
           contractor,
+          uploadedDocument: brief.uploadedDocument || undefined,
         };
       }
     } catch {

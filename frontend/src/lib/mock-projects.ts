@@ -118,6 +118,13 @@ export interface ProjectDetailData {
     exclusions: string[];
     acceptanceCriteria: string[];
     version: string;
+    uploadedDocument?: {
+      name: string;
+      size?: string;
+      type?: string;
+      uploadedAt?: string;
+      dataUrl?: string;
+    };
   };
   milestones: MilestoneItem[];
   proposals: ProposalItem[];

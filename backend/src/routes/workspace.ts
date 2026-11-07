@@ -21,23 +21,32 @@ router.get("/projects", async (req: Request, res: Response) => {
       return res.json({ success: true, count: 0, data: [] });
     }
 
-    // Query Prisma database
+    // Query Prisma database - strictly only projects with an accepted proposal or active agreement
     const dbProjects = await prisma.project.findMany({
       where:
         role === "FREELANCER"
           ? {
               OR: [
-                { agreement: { freelancerId: userId } },
-                { proposals: { some: { freelancerId: userId } } },
-                { opportunities: { some: { freelancerId: userId } } },
-                { agreement: { freelancer: { email: userId } } },
-                { proposals: { some: { freelancer: { email: userId } } } },
+                { agreement: { freelancerId: userId, status: "ACTIVE" } },
+                { proposals: { some: { freelancerId: userId, status: "ACCEPTED" } } },
+                { agreement: { freelancer: { email: userId }, status: "ACTIVE" } },
+                { proposals: { some: { freelancer: { email: userId }, status: "ACCEPTED" } } },
               ],
             }
           : {
-              OR: [
-                { clientId: userId },
-                { client: { email: userId } },
+              AND: [
+                {
+                  OR: [
+                    { clientId: userId },
+                    { client: { email: userId } },
+                  ],
+                },
+                {
+                  OR: [
+                    { agreement: { status: "ACTIVE" } },
+                    { proposals: { some: { status: "ACCEPTED" } } },
+                  ],
+                },
               ],
             },
       include: {
@@ -50,6 +59,7 @@ router.get("/projects", async (req: Request, res: Response) => {
           },
         },
         proposals: {
+          where: { status: "ACCEPTED" },
           include: {
             freelancer: { select: { id: true, name: true, email: true } },
             milestones: { orderBy: { orderIndex: "asc" } },
@@ -66,64 +76,68 @@ router.get("/projects", async (req: Request, res: Response) => {
       orderBy: { updatedAt: "desc" },
     });
 
-    // Map projects into WorkspaceProject format
-    const mapped = dbProjects.map((p) => {
-      const activeProposal = p.proposals?.[0];
-      const freelancer = p.agreement?.freelancer || activeProposal?.freelancer || null;
-      const lastMsg = p.workspaceConversation?.messages?.[0];
-      const nextMeeting = p.workspaceConversation?.meetings?.[0];
+    // Map projects into WorkspaceProject format - only projects with connected freelancer
+    const mapped = dbProjects
+      .map((p) => {
+        const activeProposal = p.proposals?.[0];
+        const freelancer = p.agreement?.freelancer || activeProposal?.freelancer || null;
+        if (!freelancer) return null;
 
-      const rawMilestones = (activeProposal?.milestones && activeProposal.milestones.length > 0)
-        ? activeProposal.milestones
-        : (p.agreement?.milestones && p.agreement.milestones.length > 0)
-        ? p.agreement.milestones
-        : (p.projectMilestones && p.projectMilestones.length > 0)
-        ? p.projectMilestones
-        : [];
+        const lastMsg = p.workspaceConversation?.messages?.[0];
+        const nextMeeting = p.workspaceConversation?.meetings?.[0];
 
-      return {
-        id: p.id,
-        name: p.title,
-        shortName: p.title.split('–')[0].split('-')[0].trim(),
-        iconType: p.title.toLowerCase().includes('cart') ? 'cart' : p.title.toLowerCase().includes('fit') ? 'phone' : 'chart',
-        freelancerName: freelancer?.name || 'Pending Assignment',
-        freelancerAvatar: (freelancer as any)?.avatar || '',
-        clientName: p.client?.name || 'Client',
-        clientAvatar: (p.client as any)?.avatar || '',
-        status: p.state === 'ACTIVE' ? 'Active project' : p.state,
-        statusColor: p.state === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-slate-100 text-slate-700 border-slate-200',
-        budget: '$' + (p.budgetCents / 100).toLocaleString(),
-        duration: p.deadline ? (Math.max(1, Math.round((new Date(p.deadline).getTime() - new Date(p.createdAt).getTime()) / (7 * 24 * 3600 * 1000))) + ' weeks') : 'Flexible',
-        startDate: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-        agreementVersion: 'v' + (activeProposal?.version || 1),
-        unreadCount: 0,
-        lastMessagePreview: lastMsg?.mediatedContent || lastMsg?.originalContent || 'Workspace ready for collaboration',
-        lastActivityTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active',
-        canSee: true,
-        paymentNote: 'Milestone funds secured via PayPal Orders REST v2 Escrow.',
-        upcomingMeeting: nextMeeting ? {
-          title: nextMeeting.title,
-          time: nextMeeting.confirmedSlot
-            ? new Date(nextMeeting.confirmedSlot).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
-            : Array.isArray(nextMeeting.proposedSlots) && nextMeeting.proposedSlots.length > 0
-              ? typeof nextMeeting.proposedSlots[0] === 'object' && nextMeeting.proposedSlots[0] !== null
-                ? (nextMeeting.proposedSlots[0] as any).startTime
-                  ? new Date((nextMeeting.proposedSlots[0] as any).startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
-                  : String((nextMeeting.proposedSlots[0] as any).id || 'Upcoming')
-                : String(nextMeeting.proposedSlots[0])
-              : 'Upcoming',
-        } : undefined,
-        milestones: rawMilestones.map((m: any, idx: number) => ({
-          id: m.id,
-          number: idx + 1,
-          title: m.title,
-          amount: '$' + (((m.amountCents || m.amountMinor || 0) / 100).toLocaleString()),
-          dueDate: m.deadline ? new Date(m.deadline).toLocaleDateString() : (m.dueDate ? new Date(m.dueDate).toLocaleDateString() : 'Scheduled'),
-          status: m.state,
-          statusColor: m.state === 'APPROVED' || m.state === 'CAPTURED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200',
-        })),
-      };
-    });
+        const rawMilestones = (activeProposal?.milestones && activeProposal.milestones.length > 0)
+          ? activeProposal.milestones
+          : (p.agreement?.milestones && p.agreement.milestones.length > 0)
+          ? p.agreement.milestones
+          : (p.projectMilestones && p.projectMilestones.length > 0)
+          ? p.projectMilestones
+          : [];
+
+        return {
+          id: p.id,
+          name: p.title,
+          shortName: p.title.split('–')[0].split('-')[0].trim(),
+          iconType: p.title.toLowerCase().includes('cart') ? 'cart' : p.title.toLowerCase().includes('fit') ? 'phone' : 'chart',
+          freelancerName: freelancer?.name || 'Assigned Freelancer',
+          freelancerAvatar: (freelancer as any)?.avatar || '',
+          clientName: p.client?.name || 'Client',
+          clientAvatar: (p.client as any)?.avatar || '',
+          status: p.state === 'ACTIVE' ? 'Active project' : p.state,
+          statusColor: p.state === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-slate-100 text-slate-700 border-slate-200',
+          budget: '$' + (p.budgetCents / 100).toLocaleString(),
+          duration: p.deadline ? (Math.max(1, Math.round((new Date(p.deadline).getTime() - new Date(p.createdAt).getTime()) / (7 * 24 * 3600 * 1000))) + ' weeks') : 'Flexible',
+          startDate: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+          agreementVersion: 'v' + (activeProposal?.version || 1),
+          unreadCount: 0,
+          lastMessagePreview: lastMsg?.mediatedContent || lastMsg?.originalContent || 'Workspace ready for collaboration',
+          lastActivityTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active',
+          canSee: true,
+          paymentNote: 'Milestone funds secured via PayPal Orders REST v2 Escrow.',
+          upcomingMeeting: nextMeeting ? {
+            title: nextMeeting.title,
+            time: nextMeeting.confirmedSlot
+              ? new Date(nextMeeting.confirmedSlot).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+              : Array.isArray(nextMeeting.proposedSlots) && nextMeeting.proposedSlots.length > 0
+                ? typeof nextMeeting.proposedSlots[0] === 'object' && nextMeeting.proposedSlots[0] !== null
+                  ? (nextMeeting.proposedSlots[0] as any).startTime
+                    ? new Date((nextMeeting.proposedSlots[0] as any).startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                    : String((nextMeeting.proposedSlots[0] as any).id || 'Upcoming')
+                  : String(nextMeeting.proposedSlots[0])
+                : 'Upcoming',
+          } : undefined,
+          milestones: rawMilestones.map((m: any, idx: number) => ({
+            id: m.id,
+            number: idx + 1,
+            title: m.title,
+            amount: '$' + (((m.amountCents || m.amountMinor || 0) / 100).toLocaleString()),
+            dueDate: m.deadline ? new Date(m.deadline).toLocaleDateString() : (m.dueDate ? new Date(m.dueDate).toLocaleDateString() : 'Scheduled'),
+            status: m.state,
+            statusColor: m.state === 'APPROVED' || m.state === 'CAPTURED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200',
+          })),
+        };
+      })
+      .filter(Boolean);
 
     res.json({
       success: true,
@@ -151,6 +165,43 @@ router.get("/projects", async (req: Request, res: Response) => {
 router.get("/projects/:projectId/timeline", async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
+
+    // Verify whether this project has an accepted proposal or active agreement
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        agreement: true,
+        proposals: {
+          where: { status: "ACCEPTED" },
+        },
+      },
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Project not found",
+          details: { projectId },
+        },
+      });
+    }
+
+    const hasAcceptedProposalOrAgreement =
+      Boolean(project.agreement) || project.proposals.length > 0;
+
+    if (!hasAcceptedProposalOrAgreement) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Workspace connection and chat are only available after a proposal is accepted by the client.",
+          details: { projectId },
+        },
+      });
+    }
+
     const conversation = await workspaceService.getOrCreateWorkspaceConversation(projectId);
     res.json({
       success: true,
@@ -160,7 +211,11 @@ router.get("/projects/:projectId/timeline", async (req: Request, res: Response) 
     console.error("Fetch workspace timeline error:", err);
     res.status(500).json({
       success: false,
-      error: err instanceof Error ? err.message : "Failed to fetch workspace timeline",
+      error: {
+        code: "INTERNAL_ERROR",
+        message: err instanceof Error ? err.message : "Failed to fetch workspace timeline",
+        details: null,
+      },
     });
   }
 });
@@ -177,7 +232,47 @@ router.post("/projects/:projectId/messages", async (req: Request, res: Response)
     if (!senderId || !content) {
       return res.status(400).json({
         success: false,
-        error: "senderId and content are required",
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "senderId and content are required",
+          details: null,
+        },
+      });
+    }
+
+    // Verify whether this project has an accepted proposal or active agreement
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        agreement: true,
+        proposals: {
+          where: { status: "ACCEPTED" },
+        },
+      },
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Project not found",
+          details: { projectId },
+        },
+      });
+    }
+
+    const hasAcceptedProposalOrAgreement =
+      Boolean(project.agreement) || project.proposals.length > 0;
+
+    if (!hasAcceptedProposalOrAgreement) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Cannot send messages: workspace chat is only unlocked after a proposal is accepted by the client.",
+          details: { projectId },
+        },
       });
     }
 
@@ -199,7 +294,11 @@ router.post("/projects/:projectId/messages", async (req: Request, res: Response)
     console.error("Send workspace message error:", err);
     res.status(500).json({
       success: false,
-      error: err instanceof Error ? err.message : "Failed to send message",
+      error: {
+        code: "INTERNAL_ERROR",
+        message: err instanceof Error ? err.message : "Failed to send message",
+        details: null,
+      },
     });
   }
 });

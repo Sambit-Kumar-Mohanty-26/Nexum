@@ -28,11 +28,16 @@ export interface FileStorageAdapter {
 
 export class LocalDiskStorageAdapter implements FileStorageAdapter {
   private baseDir: string;
+  private memoryCache = new Map<string, Buffer>();
 
   constructor(baseDir = path.resolve(process.cwd(), "uploads")) {
     this.baseDir = baseDir;
-    if (!fs.existsSync(this.baseDir)) {
-      fs.mkdirSync(this.baseDir, { recursive: true });
+    try {
+      if (!fs.existsSync(this.baseDir)) {
+        fs.mkdirSync(this.baseDir, { recursive: true });
+      }
+    } catch (e) {
+      console.warn("Could not create local disk uploads directory (using memory fallback):", e);
     }
   }
 
@@ -50,15 +55,24 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
   }
 
   async save(storageKey: string, data: Buffer): Promise<void> {
-    const fullPath = this.resolvePath(storageKey);
-    const parentDir = path.dirname(fullPath);
-    if (!fs.existsSync(parentDir)) {
-      fs.mkdirSync(parentDir, { recursive: true });
+    try {
+      const fullPath = this.resolvePath(storageKey);
+      const parentDir = path.dirname(fullPath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      await fs.promises.writeFile(fullPath, data);
+    } catch (err) {
+      console.warn(`Local disk write failed for ${storageKey}, using in-memory store:`, err);
+      this.memoryCache.set(storageKey, data);
     }
-    await fs.promises.writeFile(fullPath, data);
   }
 
   async getStream(storageKey: string): Promise<NodeJS.ReadableStream> {
+    if (this.memoryCache.has(storageKey)) {
+      const { Readable } = await import("stream");
+      return Readable.from(this.memoryCache.get(storageKey)!);
+    }
     const fullPath = this.resolvePath(storageKey);
     if (!fs.existsSync(fullPath)) {
       throw new Error(`File not found at storage path: ${storageKey}`);
@@ -67,6 +81,9 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
   }
 
   async getBuffer(storageKey: string): Promise<Buffer> {
+    if (this.memoryCache.has(storageKey)) {
+      return this.memoryCache.get(storageKey)!;
+    }
     const fullPath = this.resolvePath(storageKey);
     if (!fs.existsSync(fullPath)) {
       throw new Error(`File not found at storage path: ${storageKey}`);
@@ -75,13 +92,19 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
   }
 
   async delete(storageKey: string): Promise<void> {
-    const fullPath = this.resolvePath(storageKey);
-    if (fs.existsSync(fullPath)) {
-      await fs.promises.unlink(fullPath).catch(() => {});
+    this.memoryCache.delete(storageKey);
+    try {
+      const fullPath = this.resolvePath(storageKey);
+      if (fs.existsSync(fullPath)) {
+        await fs.promises.unlink(fullPath).catch(() => {});
+      }
+    } catch {
+      // Ignored
     }
   }
 
   async exists(storageKey: string): Promise<boolean> {
+    if (this.memoryCache.has(storageKey)) return true;
     const fullPath = this.resolvePath(storageKey);
     return fs.existsSync(fullPath);
   }

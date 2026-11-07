@@ -279,6 +279,8 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
           project: {
             include: {
               client: { select: { id: true, name: true } },
+              briefVersions: { orderBy: { version: "desc" }, take: 1 },
+              projectMilestones: { orderBy: { orderIndex: "asc" } },
             },
           },
           versions: {
@@ -357,16 +359,38 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
           avatarLetter: p.project.client.name ? p.project.client.name[0].toUpperCase() : "C",
           avatarBg: "bg-indigo-600 text-white",
         },
-        clientBrief: {
-          description: p.project.description,
-          category: p.project.category || "General",
-          budgetRange: p.project.budgetCents ? `$${(p.project.budgetCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "Custom",
-          duration: currentVer?.estimatedDurationWeeks ? `${currentVer.estimatedDurationWeeks} weeks` : "Flexible",
-          deadline: "Flexible",
-          requiredSkills: p.project.skills || [],
-          technicalRequirements: [],
-          acceptanceCriteria: [],
-        },
+        clientBrief: (() => {
+          const brief = (p.project.briefVersions?.[0]?.structuredBrief as any) || {};
+          const technicalRequirements = Array.isArray(brief.scopeOfWork) && brief.scopeOfWork.length > 0
+            ? brief.scopeOfWork
+            : (brief.detailedRequirements
+                ? brief.detailedRequirements
+                    .split("\n")
+                    .map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim())
+                    .filter(Boolean)
+                : p.project.skills || []);
+
+          const acceptanceCriteria = Array.isArray(p.project.projectMilestones) && p.project.projectMilestones.length > 0
+            ? p.project.projectMilestones.map((m: any) => m.title)
+            : (Array.isArray(brief.milestones) ? brief.milestones.map((m: any) => m.title) : []);
+
+          const duration = brief.timelineDuration || (currentVer?.estimatedDurationWeeks ? `${currentVer.estimatedDurationWeeks} weeks` : "Flexible");
+          const uploadedDocument = brief.uploadedDocument || undefined;
+
+          return {
+            description: p.project.description,
+            category: p.project.category || "General",
+            budgetRange: p.project.budgetCents ? `$${(p.project.budgetCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "Custom",
+            duration,
+            deadline: p.project.deadline ? new Date(p.project.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Flexible",
+            requiredSkills: p.project.skills || [],
+            technicalRequirements,
+            acceptanceCriteria,
+            uploadedDocument,
+            objectives: brief.goals ? brief.goals.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
+            technicalArchitecture: (p.project.skills || []).join(", "),
+          };
+        })(),
         offer: {
           summary: currentVer?.scopeText || currentVer?.scope || "Proposal offer submitted",
           approach: "Agile delivery with verifiable milestones",
@@ -618,6 +642,8 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction): Prom
         project: {
           include: {
             client: { select: { id: true, name: true } },
+            briefVersions: { orderBy: { version: "desc" }, take: 1 },
+            projectMilestones: { orderBy: { orderIndex: "asc" } },
           },
         },
         versions: {
@@ -673,19 +699,39 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction): Prom
         submittedAt: v.submittedAt ? v.submittedAt.toISOString() : null,
         createdAt: v.createdAt.toISOString(),
       })),
-      projectDetails: {
-        id: proposal.project.id,
-        title: proposal.project.title,
-        description: proposal.project.description,
-        category: proposal.project.category || "General",
-        skills: proposal.project.skills || [],
-        budgetType: proposal.project.budgetType,
-        budgetCents: proposal.project.budgetCents,
-        budgetMinCents: proposal.project.budgetMinCents,
-        budgetMaxCents: proposal.project.budgetMaxCents,
-        currency: proposal.project.currency,
-        location: proposal.project.location || "Remote",
-      },
+      projectDetails: (() => {
+        const brief = (proposal.project.briefVersions?.[0]?.structuredBrief as any) || {};
+        const technicalRequirements = Array.isArray(brief.scopeOfWork) && brief.scopeOfWork.length > 0
+          ? brief.scopeOfWork
+          : (brief.detailedRequirements
+              ? brief.detailedRequirements.split("\n").map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean)
+              : proposal.project.skills || []);
+        const acceptanceCriteria = Array.isArray(proposal.project.projectMilestones) && proposal.project.projectMilestones.length > 0
+          ? proposal.project.projectMilestones.map((m: any) => m.title)
+          : (Array.isArray(brief.milestones) ? brief.milestones.map((m: any) => m.title) : []);
+        const duration = brief.timelineDuration || (currentVersion?.estimatedDurationWeeks ? `${currentVersion.estimatedDurationWeeks} weeks` : "Flexible");
+
+        return {
+          id: proposal.project.id,
+          title: proposal.project.title,
+          description: proposal.project.description,
+          category: proposal.project.category || "General",
+          skills: proposal.project.skills || [],
+          budgetType: proposal.project.budgetType,
+          budgetCents: proposal.project.budgetCents,
+          budgetMinCents: proposal.project.budgetMinCents,
+          budgetMaxCents: proposal.project.budgetMaxCents,
+          currency: proposal.project.currency,
+          location: proposal.project.location || "Remote",
+          duration,
+          deadline: proposal.project.deadline ? new Date(proposal.project.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Flexible",
+          technicalRequirements,
+          acceptanceCriteria,
+          uploadedDocument: brief.uploadedDocument || undefined,
+          objectives: brief.goals ? brief.goals.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
+          technicalArchitecture: (proposal.project.skills || []).join(", "),
+        };
+      })(),
       client: {
         id: proposal.project.client.id,
         displayName: proposal.project.client.name,

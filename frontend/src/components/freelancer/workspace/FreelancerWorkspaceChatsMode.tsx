@@ -276,28 +276,32 @@ export default function FreelancerWorkspaceChatsMode({
           }
 
           if (convo.messages && convo.messages.length > 0) {
-            const mapped: TimelineItem[] = convo.messages.map((m: any) => ({
-              id: m.id,
-              type: m.type as any,
-              senderName:
-                m.sender?.name || (m.senderRole === "FREELANCER" ? "You (Freelancer)" : "Client"),
-              timestamp: new Date(m.createdAt).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              bubbleText: m.content || m.originalContent,
-              rawMessage: m.originalContent,
-              summaryText: m.metadata?.summaryText || m.content,
-              badgeText:
-                m.metadata?.badgeText || (m.senderRole === "FREELANCER" ? "Delivered" : "Verified"),
-              badgeType: m.metadata?.badgeType || "green",
-              sha256Seal: m.sha256Seal,
-              counterofferDetails: m.metadata?.counterofferDetails,
-              meetingDetails: m.metadata?.meetingDetails,
-              deliverableDetails: m.metadata?.deliverableDetails,
-              notetakerDetails: m.metadata?.notetakerDetails,
-              actions: m.metadata?.actions,
-            }));
+            const mapped: TimelineItem[] = convo.messages.map((m: any) => {
+              const meta = m.metadata || {};
+              const bubbleText = m.originalContent || m.content || meta.summaryText || "";
+              return {
+                id: m.id,
+                type: m.type as any,
+                senderName:
+                  m.sender?.name || (m.senderRole === "FREELANCER" ? "You (Freelancer)" : (selectedProject?.clientName || "Client")),
+                timestamp: new Date(m.createdAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                bubbleText,
+                rawMessage: m.originalContent || m.content,
+                summaryText: meta.summaryText || bubbleText,
+                badgeText:
+                  meta.badgeText || (m.senderRole === "FREELANCER" ? "Delivered" : "Verified"),
+                badgeType: meta.badgeType || "green",
+                sha256Seal: m.sha256Seal,
+                counterofferDetails: meta.counterofferDetails,
+                meetingDetails: meta.meetingDetails,
+                deliverableDetails: meta.deliverableDetails,
+                notetakerDetails: meta.notetakerDetails,
+                actions: meta.actions,
+              };
+            });
             setTimeline(mapped);
           } else {
             setTimeline([]);
@@ -322,6 +326,58 @@ export default function FreelancerWorkspaceChatsMode({
     };
     loadState();
   }, [selectedProjectId]);
+
+  // Live polling: seamlessly poll for incoming messages every 3 seconds so messages like "hi" appear in real-time
+  useEffect(() => {
+    if (!selectedProjectId) return;
+
+    const pollInterval = setInterval(() => {
+      getWorkspaceTimeline(selectedProjectId)
+        .then((res) => {
+          if (res.success && res.data?.messages) {
+            const mapped: TimelineItem[] = res.data.messages.map((m: any) => {
+              const meta = m.metadata || {};
+              const bubbleText = m.originalContent || m.content || meta.summaryText || "";
+              return {
+                id: m.id,
+                type: m.type as any,
+                senderName:
+                  m.sender?.name || (m.senderRole === "FREELANCER" ? "You (Freelancer)" : (selectedProject?.clientName || "Client")),
+                timestamp: new Date(m.createdAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                bubbleText,
+                rawMessage: m.originalContent || m.content,
+                summaryText: meta.summaryText || bubbleText,
+                badgeText:
+                  meta.badgeText || (m.senderRole === "FREELANCER" ? "Delivered" : "Verified"),
+                badgeType: meta.badgeType || "green",
+                sha256Seal: m.sha256Seal,
+                counterofferDetails: meta.counterofferDetails,
+                meetingDetails: meta.meetingDetails,
+                deliverableDetails: meta.deliverableDetails,
+                notetakerDetails: meta.notetakerDetails,
+                actions: meta.actions,
+              };
+            });
+
+            setTimeline((prev) => {
+              if (
+                prev.length !== mapped.length ||
+                (mapped.length > 0 && prev[prev.length - 1]?.id !== mapped[mapped.length - 1]?.id)
+              ) {
+                return mapped;
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [selectedProjectId, selectedProject?.clientName]);
 
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === "DONE" ? "IN_PROGRESS" : "DONE";
@@ -359,7 +415,7 @@ export default function FreelancerWorkspaceChatsMode({
     // 1. Add freelancer message
     const freelancerMsg: TimelineItem = {
       id: `fmsg_${Date.now()}`,
-      type: "client_bubble",
+      type: "freelancer_bubble",
       senderName: "You (Freelancer)",
       timestamp: nowTime,
       bubbleText: text,
@@ -370,9 +426,10 @@ export default function FreelancerWorkspaceChatsMode({
 
     try {
       await sendWorkspaceMessage(selectedProjectId, {
-        senderId: "usr_freelancer_sambit",
+        senderId: user?.id || "usr_freelancer_sambit",
         senderRole: "FREELANCER",
         content: text,
+        type: "freelancer_bubble",
       });
     } catch (err) {
       console.warn("Offline message fallback", err);
@@ -869,8 +926,8 @@ export default function FreelancerWorkspaceChatsMode({
                   <>
                     {/* Timeline Items */}
                     {timeline.map((item) => {
-                if (item.type === "client_bubble") {
-                  const isYou = item.senderName.includes("You");
+                if (item.type === "client_bubble" || item.type === "freelancer_bubble") {
+                  const isYou = item.senderName.includes("You") || item.type === "freelancer_bubble";
                   return (
                     <div
                       key={item.id}

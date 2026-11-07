@@ -266,11 +266,18 @@ router.get(
         ? profile?.onboardingStatus === "COMPLETE"
         : true;
 
+    const currentAvatar =
+      user.avatarUrl ||
+      ((user.preferences as any)?.avatar as string) ||
+      null;
+
     res.json({
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      avatarUrl: currentAvatar,
+      avatar: currentAvatar,
       onboarding: {
         required: user.role === Role.FREELANCER && !isOnboarded,
         status: profile?.onboardingStatus || "NOT_STARTED",

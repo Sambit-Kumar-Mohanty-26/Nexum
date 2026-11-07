@@ -92,7 +92,11 @@ describe("Projects & Drafts Lifecycle with Consensus Spec", () => {
     expect(published.state).toBe("ACTIVE");
     const afterPublish = await clientOverviewService.getProjects({ clientId });
     expect(afterPublish.stats.countsByStatus.DRAFT).toBe(0);
-    expect(afterPublish.stats.countsByStatus.IN_REVIEW + afterPublish.stats.countsByStatus.IN_PROGRESS).toBe(1);
+    const activeCount =
+      (afterPublish.stats.countsByStatus.FINDING_FREELANCERS || 0) +
+      (afterPublish.stats.countsByStatus.IN_REVIEW || 0) +
+      (afterPublish.stats.countsByStatus.IN_PROGRESS || 0);
+    expect(activeCount).toBe(1);
 
     // 7. Delete the project
     const deleteRes = await clientOverviewService.deleteProject(draft.id, clientId);

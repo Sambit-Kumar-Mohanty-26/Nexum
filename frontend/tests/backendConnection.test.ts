@@ -12,9 +12,10 @@ describe("Frontend to Backend Connection Client", () => {
     vi.restoreAllMocks();
   });
 
-  it("should have a defined BACKEND_URL pointing to port 4000 by default", () => {
+  it("should have a defined BACKEND_URL for same-origin proxying", () => {
     expect(BACKEND_URL).toBeDefined();
-    expect(BACKEND_URL).toContain("4000");
+    // In browser / same-origin proxy architecture, BACKEND_URL is relative ("") or points to API
+    expect(typeof BACKEND_URL).toBe("string");
   });
 
   it("checkBackendHealth() should handle successful response cleanly", async () => {

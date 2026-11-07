@@ -325,33 +325,47 @@ export default function FreelancerProjectsMilestonesView({
             setSelectedProjectTasks([]);
           }
 
+          const activeProj = projects.find((p) => p.id === selectedProjectId);
+          const uploadedDoc = (activeProj as any)?.uploadedDocument;
+          const clientPrdDoc = uploadedDoc ? {
+            id: `client_doc_${selectedProjectId}`,
+            name: uploadedDoc.name,
+            fileType: uploadedDoc.type || "application/pdf",
+            fileSize: uploadedDoc.size || "Original Document",
+            uploadedBy: "CLIENT" as const,
+            uploadedByName: activeProj?.client?.name || "Client",
+            uploadDate: activeProj?.startDate || "Intake",
+            downloadUrl: uploadedDoc.dataUrl || undefined,
+          } : null;
+
+          const baseFiles = clientPrdDoc ? [clientPrdDoc] : [];
+
           if (filesRes.success && Array.isArray(filesRes.files)) {
-            setSelectedProjectFiles(
-              filesRes.files.map((f: any) => {
-                const sizeStr =
-                  f.sizeBytes > 1024 * 1024
-                    ? `${(f.sizeBytes / (1024 * 1024)).toFixed(1)} MB`
-                    : `${Math.round(f.sizeBytes / 1024)} KB`;
-                return {
-                  id: f.fileId || f.id,
-                  name: f.name,
-                  fileType: f.mime || "Document",
-                  fileSize: sizeStr,
-                  uploadedBy: "FREELANCER",
-                  uploadedByName: f.uploader?.name || "Member",
-                  uploadDate: f.createdAt
-                    ? new Date(f.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : "",
-                  downloadUrl: `/api/files/${f.fileId || f.id}`,
-                };
-              })
-            );
+            const mappedFiles = filesRes.files.map((f: any) => {
+              const sizeStr =
+                f.sizeBytes > 1024 * 1024
+                  ? `${(f.sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+                  : `${Math.round(f.sizeBytes / 1024)} KB`;
+              return {
+                id: f.fileId || f.id,
+                name: f.name,
+                fileType: f.mime || "Document",
+                fileSize: sizeStr,
+                uploadedBy: f.uploadedBy === "CLIENT" ? ("CLIENT" as const) : ("FREELANCER" as const),
+                uploadedByName: f.uploader?.name || "Member",
+                uploadDate: f.createdAt
+                  ? new Date(f.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "",
+                downloadUrl: `/api/files/${f.fileId || f.id}`,
+              };
+            });
+            setSelectedProjectFiles([...baseFiles, ...mappedFiles]);
           } else {
-            setSelectedProjectFiles([]);
+            setSelectedProjectFiles(baseFiles);
           }
         }
       } catch {

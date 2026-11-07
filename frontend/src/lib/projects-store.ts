@@ -28,6 +28,13 @@ export interface StoredProject extends ProjectCardData {
     deliverables?: string[];
   }>;
   clientId?: string;
+  uploadedDocument?: {
+    name: string;
+    size?: string;
+    type?: string;
+    uploadedAt?: string;
+    dataUrl?: string;
+  };
 }
 
 const INITIAL_PROJECTS: StoredProject[] = [
@@ -297,6 +304,7 @@ export function saveProjectToStore(payload: any, clientId = "usr_client_alex"): 
     englishLevel: payload.englishLevel || "FLUENT",
     visibility: payload.visibility || "PUBLIC",
     milestones: formattedMilestones,
+    uploadedDocument: payload.uploadedDocument || (existingIdx >= 0 ? list[existingIdx].uploadedDocument : undefined),
     needsAction: false,
     hasDeltaChange: false,
     clientId,

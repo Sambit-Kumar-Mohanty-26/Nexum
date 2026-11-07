@@ -80,9 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.avatarUrl) {
-          setUser((prev) => (prev ? { ...prev, avatar: data.avatarUrl } : prev));
-        }
+        const savedUrl = data.avatarUrl || avatarUrl;
+        setUser((prev) => {
+          if (!prev) return prev;
+          if (typeof window !== "undefined") {
+            try {
+              if (prev.id) localStorage.setItem(`nexum_user_avatar_${prev.id}`, savedUrl);
+              if (prev.email) localStorage.setItem(`nexum_user_avatar_${prev.email}`, savedUrl);
+            } catch {}
+          }
+          return { ...prev, avatar: savedUrl };
+        });
         return true;
       }
       return false;
@@ -131,12 +139,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [updatePresence]);
 
+  const restoreCachedAvatar = (u: DemoUser | null): DemoUser | null => {
+    if (!u || typeof window === "undefined") return u;
+    try {
+      const cached =
+        (u.id ? localStorage.getItem(`nexum_user_avatar_${u.id}`) : null) ||
+        (u.email ? localStorage.getItem(`nexum_user_avatar_${u.email}`) : null);
+      if (cached && cached.trim()) {
+        return { ...u, avatar: cached };
+      }
+    } catch {}
+    return u;
+  };
+
   const refreshUser = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user || null);
+        setUser(restoreCachedAvatar(data.user || null));
       } else {
         setUser(null);
       }
@@ -155,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((res) => (res.ok ? res.json() : { user: null }))
       .then((data) => {
         if (isMounted) {
-          setUser(data.user || null);
+          setUser(restoreCachedAvatar(data.user || null));
           setIsLoading(false);
         }
       })

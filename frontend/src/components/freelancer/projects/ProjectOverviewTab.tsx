@@ -9,6 +9,7 @@ import {
   Cpu,
 } from "lucide-react";
 import { FreelancerProjectItem } from "@/lib/freelancer-projects-types";
+import ProjectUploadedDocumentCard from "@/components/ProjectUploadedDocumentCard";
 
 interface ProjectOverviewTabProps {
   project: FreelancerProjectItem;
@@ -21,8 +22,32 @@ export default function ProjectOverviewTab({
   onNavigateToTab,
   onOpenWorkspace,
 }: ProjectOverviewTabProps) {
+  const uploadedDoc = (project as any).uploadedDocument || undefined;
+
   return (
     <div className="space-y-6">
+      {/* Original Client Specification Document (PDF - Only if uploaded by client) */}
+      {uploadedDoc && (
+        <div className="space-y-1.5">
+          <h3 className="text-xs font-bold text-slate-500">
+            Client Intake Document
+          </h3>
+          <ProjectUploadedDocumentCard
+            document={uploadedDoc}
+            projectTitle={project.title}
+            category={project.techTags?.join(", ") || "Engineering"}
+            budget={project.totalBudgetDisplay}
+            timeline={project.dueDate}
+            overview={project.description}
+            objectives={project.milestones.map((m) => m.title)}
+            technicalArchitecture={project.techTags.join(", ")}
+            functionalRequirements={project.milestones.map((m) => `${m.title}: ${m.deliverablesSummary || "Milestone deliverables"}`)}
+            acceptanceCriteria={project.milestones.flatMap((m) => m.acceptanceCriteria || [])}
+            clientName={project.client.name}
+          />
+        </div>
+      )}
+
       {/* 1. Project Brief & Scope Summary */}
       <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">

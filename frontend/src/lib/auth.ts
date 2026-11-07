@@ -235,12 +235,20 @@ export async function updateSessionPresence(presence: UserPresenceStatus): Promi
 export async function updateSessionAvatar(avatar: string): Promise<DemoUser | null> {
   const user = await getCurrentUser();
   if (!user) return null;
+  // If avatar is a large data URL, avoid overflowing the browser's 4096-byte cookie limit
+  const cookieAvatar =
+    avatar.startsWith("data:") && avatar.length > 1500
+      ? user.avatar && !user.avatar.startsWith("data:") && !user.avatar.includes("googleusercontent")
+        ? user.avatar
+        : ""
+      : avatar;
+
   const updatedUser: DemoUser = {
     ...user,
-    avatar,
+    avatar: cookieAvatar,
   };
   await setSession(updatedUser);
-  return updatedUser;
+  return { ...updatedUser, avatar: cookieAvatar || avatar };
 }
 
 // Update current session hiring status

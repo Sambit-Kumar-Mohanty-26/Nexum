@@ -281,10 +281,38 @@ export class WorkspaceService {
       };
     }
 
+    // Ensure sender exists in DB to prevent foreign key violation if mock/demo user
+    let effectiveSenderId = params.senderId;
+    const existingSender = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: params.senderId },
+          { email: params.senderId },
+        ],
+      },
+    });
+
+    if (existingSender) {
+      effectiveSenderId = existingSender.id;
+    } else {
+      // Find project client or freelancer as fallback
+      const project = await prisma.project.findUnique({
+        where: { id: params.projectId },
+        include: { agreement: true },
+      });
+      if (project) {
+        if (params.senderRole === "CLIENT" && project.clientId) {
+          effectiveSenderId = project.clientId;
+        } else if (params.senderRole === "FREELANCER" && project.agreement?.freelancerId) {
+          effectiveSenderId = project.agreement.freelancerId;
+        }
+      }
+    }
+
     const message = await prisma.workspaceMessage.create({
       data: {
         conversationId: conversation.id,
-        senderId: params.senderId,
+        senderId: effectiveSenderId,
         senderRole: params.senderRole,
         type: params.type || (params.senderRole === "CLIENT" ? "client_bubble" : "freelancer_bubble"),
         origin: params.origin || "WEB",

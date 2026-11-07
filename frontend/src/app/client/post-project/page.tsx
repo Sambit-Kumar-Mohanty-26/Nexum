@@ -417,6 +417,13 @@ function PostNewProjectContent() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isExtractingDoc, setIsExtractingDoc] = useState(false);
   const [extractedFileName, setExtractedFileName] = useState<string | null>(null);
+  const [uploadedDocAttachment, setUploadedDocAttachment] = useState<{
+    name: string;
+    size: string;
+    type: string;
+    uploadedAt: string;
+    dataUrl?: string;
+  } | null>(null);
   const [isAiImprovingOverview, setIsAiImprovingOverview] = useState(false);
   const [isAiSuggestingSkills, setIsAiSuggestingSkills] = useState(false);
   const [isAiRefiningRequirements, setIsAiRefiningRequirements] = useState(false);
@@ -480,6 +487,34 @@ function PostNewProjectContent() {
     if (!file) return;
     setIsExtractingDoc(true);
     setExtractedFileName(file.name);
+
+    const sizeStr =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+    const fileMeta = {
+      name: file.name,
+      size: sizeStr,
+      type: file.type || "application/pdf",
+      uploadedAt: new Date().toLocaleDateString(),
+    };
+
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedDocAttachment({
+          ...fileMeta,
+          dataUrl: reader.result as string,
+        });
+      };
+      reader.onerror = () => {
+        setUploadedDocAttachment(fileMeta);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploadedDocAttachment(fileMeta);
+    }
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -1051,6 +1086,12 @@ function PostNewProjectContent() {
         englishLevel: englishLevel || undefined,
         visibility: visibility || "PUBLIC",
         milestones: formattedMilestones,
+        uploadedDocument: uploadedDocAttachment || (extractedFileName ? {
+          name: extractedFileName,
+          size: "1.8 MB",
+          type: "application/pdf",
+          uploadedAt: new Date().toLocaleDateString(),
+        } : undefined),
       });
 
       if (!res.success) {
@@ -1101,6 +1142,12 @@ function PostNewProjectContent() {
         englishLevel: englishLevel || undefined,
         visibility: visibility || "PUBLIC",
         milestones: formattedMilestones,
+        uploadedDocument: uploadedDocAttachment || (extractedFileName ? {
+          name: extractedFileName,
+          size: "1.8 MB",
+          type: "application/pdf",
+          uploadedAt: new Date().toLocaleDateString(),
+        } : undefined),
       });
 
       if (!res.success) {

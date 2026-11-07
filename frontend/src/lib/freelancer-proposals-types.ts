@@ -91,6 +91,15 @@ export interface FreelancerProposalItem {
     requiredSkills: string[];
     technicalRequirements: string[];
     acceptanceCriteria: string[];
+    objectives?: string[];
+    technicalArchitecture?: string;
+    uploadedDocument?: {
+      name: string;
+      size?: string;
+      type?: string;
+      uploadedAt?: string;
+      dataUrl?: string;
+    };
   };
   offer: {
     summary: string;

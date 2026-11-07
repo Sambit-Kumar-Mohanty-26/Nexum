@@ -257,14 +257,15 @@ export default function WorkspaceChatsMode({
             const mapped: TimelineItem[] = convo.messages.map((m: any) => {
               const timeStr = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               const meta = m.metadata || {};
+              const bubbleText = m.originalContent || m.content || meta.summaryText || "";
               return {
                 id: m.id,
                 type: m.type as any,
-                senderName: m.sender?.name || (m.senderRole === "CLIENT" ? "You" : "Freelancer"),
+                senderName: m.sender?.name || (m.senderRole === "CLIENT" ? "You" : (selectedProject?.freelancerName || "Freelancer")),
                 timestamp: timeStr,
-                bubbleText: m.content || m.originalContent,
-                rawMessage: m.originalContent,
-                summaryText: meta.summaryText || m.content,
+                bubbleText,
+                rawMessage: m.originalContent || m.content,
+                summaryText: meta.summaryText || bubbleText,
                 badgeText: meta.badgeText || (m.senderRole === "CLIENT" ? "Delivered" : "Verified"),
                 badgeType: meta.badgeType || "green",
                 sha256Seal: m.sha256Seal,
@@ -302,6 +303,54 @@ export default function WorkspaceChatsMode({
     loadWorkspaceState();
   }, [selectedProjectId]);
 
+  // Live polling: seamlessly poll for incoming messages every 3 seconds so messages like "hi" appear in real-time
+  useEffect(() => {
+    if (!selectedProjectId) return;
+
+    const pollInterval = setInterval(() => {
+      getWorkspaceTimeline(selectedProjectId)
+        .then((res) => {
+          if (res.success && res.data?.messages) {
+            const mapped: TimelineItem[] = res.data.messages.map((m: any) => {
+              const timeStr = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              const meta = m.metadata || {};
+              const bubbleText = m.originalContent || m.content || meta.summaryText || "";
+              return {
+                id: m.id,
+                type: m.type as any,
+                senderName: m.sender?.name || (m.senderRole === "CLIENT" ? "You" : (selectedProject?.freelancerName || "Freelancer")),
+                timestamp: timeStr,
+                bubbleText,
+                rawMessage: m.originalContent || m.content,
+                summaryText: meta.summaryText || bubbleText,
+                badgeText: meta.badgeText || (m.senderRole === "CLIENT" ? "Delivered" : "Verified"),
+                badgeType: meta.badgeType || "green",
+                sha256Seal: m.sha256Seal,
+                counterofferDetails: meta.counterofferDetails,
+                meetingDetails: meta.meetingDetails,
+                deliverableDetails: meta.deliverableDetails,
+                notetakerDetails: meta.notetakerDetails,
+                actions: meta.actions,
+              };
+            });
+
+            setTimeline((prev) => {
+              if (
+                prev.length !== mapped.length ||
+                (mapped.length > 0 && prev[prev.length - 1]?.id !== mapped[mapped.length - 1]?.id)
+              ) {
+                return mapped;
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [selectedProjectId, selectedProject?.freelancerName]);
+
   // Check if input contains scope / price keywords
   const hasScopeOrPriceKeywords =
     /(\$|price|quote|scope|cost|fee|budget|timeline|delay|discount|reduce|counteroffer)/i.test(
@@ -336,7 +385,7 @@ export default function WorkspaceChatsMode({
     try {
       // Send to backend workspace API
       const res = await sendWorkspaceMessage(selectedProjectId, {
-        senderId: "usr_client_alex",
+        senderId: user?.id || "usr_client_alex",
         senderRole: "CLIENT",
         content: text,
       });
@@ -1216,7 +1265,7 @@ export default function WorkspaceChatsMode({
                   );
                 }
 
-                // CARD TYPE B: Standard Client bubble
+                // CARD TYPE B: Standard Client bubble (outgoing)
                 if (item.type === "client_bubble") {
                   return (
                     <div key={item.id} className="flex justify-end animate-in fade-in duration-150">
@@ -1226,6 +1275,21 @@ export default function WorkspaceChatsMode({
                           <span>{item.timestamp}</span>
                         </div>
                         <p className="text-white whitespace-pre-wrap">{item.bubbleText}</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Incoming Freelancer bubble (left-aligned)
+                if (item.type === "freelancer_bubble") {
+                  return (
+                    <div key={item.id} className="flex justify-start animate-in fade-in duration-150">
+                      <div className="max-w-[78%] bg-white border border-slate-200/90 text-slate-900 rounded-2xl rounded-tl-xs p-3.5 sm:p-4 text-xs sm:text-[13px] leading-relaxed shadow-xs space-y-1.5">
+                        <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400">
+                          <span className="font-semibold text-slate-700">{item.senderName}</span>
+                          <span>{item.timestamp}</span>
+                        </div>
+                        <p className="text-slate-800 whitespace-pre-wrap">{item.bubbleText}</p>
                       </div>
                     </div>
                   );

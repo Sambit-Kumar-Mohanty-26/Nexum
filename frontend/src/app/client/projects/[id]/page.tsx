@@ -39,6 +39,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getProjectById, ProjectDetailData, MOCK_PROJECTS, ProjectLifecycleStatus, MilestoneItem } from "@/lib/mock-projects";
 import { fetchProjectById, acceptClientProposal, rejectClientProposal, approveClientMilestone } from "@/lib/api-client";
 import MilestoneAutomatedChecksCard from "@/components/MilestoneAutomatedChecksCard";
+import ProjectUploadedDocumentCard from "@/components/ProjectUploadedDocumentCard";
 
 type ProjectTab =
   | "overview"
@@ -228,7 +229,7 @@ function ProjectWorkspaceContent() {
                 }
               : undefined,
             briefAndPrd: {
-              version: "v1.0 (Canonical)",
+              version: "v1.0",
               overview: live.description || live.detailedRequirements || "Project requirements and technical deliverables spec.",
               objectives: live.goals
                 ? live.goals.split(",").map((g: string) => g.trim()).filter(Boolean)
@@ -256,6 +257,7 @@ function ProjectWorkspaceContent() {
               exclusions: [
                 "Unilateral scope deviations without cryptographically signed Section 14 amendment",
               ],
+              uploadedDocument: live.uploadedDocument || undefined,
             },
             milestones: mappedMilestones,
             proposals: (live.proposals || []).map((p: any) => ({
@@ -990,26 +992,44 @@ function ProjectWorkspaceContent() {
                     <h2 className="text-lg font-black text-slate-900 font-heading">
                       Product Requirements Document (PRD)
                     </h2>
-                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {projectData.briefAndPrd.version}
-                    </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Canonical requirements locked under cryptographic SHA-256 seal.
+                    Requirements and technical specifications for milestone execution.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => showToast("Exporting canonical PRD as PDF/Markdown...")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition"
+                    onClick={() => showToast("Exporting PRD as PDF/Markdown...")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download PRD</span>
                   </button>
                 </div>
               </div>
+
+              {/* Original Uploaded PDF / Client Attachment (Only shown if uploaded during creation) */}
+              {projectData.briefAndPrd.uploadedDocument && (
+                <div className="space-y-1.5">
+                  <h3 className="text-xs font-bold text-slate-500">
+                    Client Intake Document
+                  </h3>
+                  <ProjectUploadedDocumentCard
+                    document={projectData.briefAndPrd.uploadedDocument}
+                    projectTitle={projectData.name}
+                    category={projectData.category}
+                    budget={projectData.totalBudget}
+                    overview={projectData.briefAndPrd.overview}
+                    objectives={projectData.briefAndPrd.objectives}
+                    technicalArchitecture={projectData.briefAndPrd.technicalArchitecture}
+                    functionalRequirements={projectData.briefAndPrd.functionalRequirements}
+                    acceptanceCriteria={projectData.briefAndPrd.acceptanceCriteria}
+                    clientName="You (Client)"
+                  />
+                </div>
+              )}
 
               {/* 1. Project Overview */}
               <div className="space-y-2">
