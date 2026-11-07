@@ -266,6 +266,24 @@ export default function ClientOverview({
     if (user?.avatar) score += 15;
     return Math.min(100, score);
   }, [activeProjects.length, upcomingMilestones.length, user?.avatar]);
+
+  const formatActivityTime = (rawTime?: string) => {
+    if (!rawTime) return "Just now";
+    if (rawTime === "Just now" || rawTime.includes("ago")) return rawTime;
+
+    const parsed = new Date(rawTime);
+    if (isNaN(parsed.getTime())) return rawTime;
+
+    return parsed.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
       {/* Toast Notification Banner */}
@@ -746,7 +764,7 @@ export default function ClientOverview({
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-slate-900">{act.title}</p>
                     <span className="text-[11px] text-slate-400 shrink-0 font-mono">
-                      {act.timestamp || act.time}
+                      {formatActivityTime(act.timestamp || act.time)}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{act.detail}</p>

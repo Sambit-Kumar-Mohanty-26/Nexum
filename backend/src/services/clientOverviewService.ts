@@ -1608,7 +1608,7 @@ export class ClientOverviewService {
           type: "CONSENSUS",
           title: a.action,
           detail: `Cryptographic audit verified for ${a.objectType} #${a.objectId}`,
-          timestamp: new Date(a.timestamp).toLocaleTimeString(),
+          timestamp: a.timestamp instanceof Date ? a.timestamp.toISOString() : new Date(a.timestamp).toISOString(),
         }));
       }
     } catch {
@@ -1878,37 +1878,34 @@ export class ClientOverviewService {
           agreementVersion: "canonical_v1.0",
           canonicalSpecHash: `canonical_v1.0_#${projectId.slice(-8)}`,
           freelancer: {
-            name: "Elena Rostova",
-            role: "Full-Stack AI Architect",
-            avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
-            rating: "5.0",
+            name: "Unassigned Freelancer",
+            role: "Awaiting Proposal Acceptance",
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80",
+            rating: "—",
           },
           dueDate: m.deadline ? new Date(m.deadline).toLocaleDateString() : "Scheduled",
           dueDateTimestamp: m.deadline ? new Date(m.deadline).getTime() : Date.now() + (idx + 1) * 7 * 86400000,
           isOverdue: false,
-          daysRemainingOrOverdue: idx === 0 ? "Under review" : `${(idx + 1) * 7} days remaining`,
+          daysRemainingOrOverdue: m.days ? `${m.days} days scheduled` : `${(idx + 1) * 14} days scheduled`,
           amount: amountStr,
           currency: input.currency || "USD",
-          workflowStatus: idx === 0 ? "AWAITING_REVIEW" : "UPCOMING",
-          workflowStatusLabel: idx === 0 ? "Awaiting Review" : "Upcoming",
-          workflowStatusColor: idx === 0 ? "bg-amber-50 text-amber-800 border-amber-200/90" : "bg-slate-100 text-slate-700 border-slate-200",
+          workflowStatus: "UPCOMING",
+          workflowStatusLabel: "Upcoming",
+          workflowStatusColor: "bg-slate-100 text-slate-700 border-slate-200",
           nextClientAction: {
-            label: idx === 0 ? "Review Deliverables & Test Logs" : "View Milestone Scope",
-            description: idx === 0 ? "Deliverables submitted for review." : "Scheduled sprint milestone.",
-            actionType: idx === 0 ? "REVIEW_SUBMISSION" : "VIEW_MILESTONE",
+            label: "View Milestone Scope",
+            description: "Scheduled sprint milestone. Open for proposal matching.",
+            actionType: "VIEW_MILESTONE",
           },
-          paymentState: idx === 0 ? "ESCROW_FUNDED" : "UNFUNDED",
-          paymentStateLabel: idx === 0 ? "Pre-Funded in Sandbox Escrow" : "Unfunded",
-          paymentStateColor: idx === 0 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200",
+          paymentState: "UNFUNDED",
+          paymentStateLabel: "Unfunded",
+          paymentStateColor: "bg-slate-100 text-slate-600 border-slate-200",
           scopeOverview: input.detailedRequirements || input.description || "Milestone deliverables spec.",
           acceptanceCriteria: [
-            { id: `ac_${m.id}_1`, criterion: `${m.title} deliverables verification passed`, isMet: idx === 0 },
-            { id: `ac_${m.id}_2`, criterion: "Automated test assert coverage > 90%", isMet: idx === 0 },
+            { id: `ac_${m.id}_1`, criterion: `${m.title} deliverables verification passed`, isMet: false },
+            { id: `ac_${m.id}_2`, criterion: "Automated test assert coverage > 90%", isMet: false },
           ],
-          deliverables: idx === 0 ? [
-            { id: `del_${m.id}_1`, title: "deliverable-package.zip", type: "FILE", size: "2.4 MB", submittedAt: "Today" },
-            { id: `del_${m.id}_2`, title: "test-assert-logs.txt", type: "TEST_LOG", size: "64 KB", submittedAt: "Today" },
-          ] : [],
+          deliverables: [],
           activities: [
             {
               id: `act_${m.id}_init`,
@@ -2022,11 +2019,18 @@ export class ClientOverviewService {
       let statusLabel = "In Progress";
       let statusColor = "bg-blue-50 text-blue-700 border-blue-200/80";
 
+      const hasAssignedContractor = Boolean(
+        p.freelancer?.name ||
+        p.freelancerId ||
+        p.agreement?.freelancerId ||
+        p.agreement?.freelancer
+      );
+
       if (p.state === "DRAFT") {
         cardStatus = "DRAFT";
         statusLabel = "Draft";
         statusColor = "bg-slate-100 text-slate-700 border-slate-200";
-      } else if (p.state === "MATCHING" || p.state === "INTAKE") {
+      } else if (p.state === "MATCHING" || p.state === "INTAKE" || (!hasAssignedContractor && p.state !== "COMPLETED" && p.state !== "DISPUTED")) {
         cardStatus = "FINDING_FREELANCERS";
         statusLabel = "Finding Freelancers";
         statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200/80";
@@ -2605,6 +2609,32 @@ export class ClientOverviewService {
       });
 
       if (dbMilestones && dbMilestones.length > 0) {
+        // Sanitize any previously cached milestones that have no active freelancer agreement
+        for (const m of list) {
+          const matchingDb = dbMilestones.find((dbm) => dbm.id === m.id);
+          if (matchingDb && !matchingDb.project?.agreement?.freelancer) {
+            m.freelancer = {
+              name: "Unassigned Freelancer",
+              role: "Awaiting Proposal Acceptance",
+              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80",
+              rating: "—",
+            };
+            m.workflowStatus = "UPCOMING";
+            m.workflowStatusLabel = "Upcoming";
+            m.workflowStatusColor = "bg-slate-100 text-slate-700 border-slate-200";
+            m.paymentState = "UNFUNDED";
+            m.paymentStateLabel = "Unfunded";
+            m.paymentStateColor = "bg-slate-100 text-slate-600 border-slate-200";
+            m.deliverables = [];
+            m.daysRemainingOrOverdue = `${m.number * 14} days scheduled`;
+            m.nextClientAction = {
+              label: "View Milestone Scope",
+              description: "Scheduled sprint milestone. Open for proposal matching.",
+              actionType: "VIEW_MILESTONE",
+            };
+          }
+        }
+
         const existingIds = new Set(list.map((m) => m.id));
         for (const dbm of dbMilestones) {
           if (!existingIds.has(dbm.id)) {

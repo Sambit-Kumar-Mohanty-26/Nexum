@@ -86,8 +86,9 @@ export function stripMarkdownStars(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     // Remove italic asterisks: *text* -> text
     .replace(/(^|[^\*])\*([^\*\n]+)\*([^\*]|$)/g, "$1$2$3")
-    // Convert asterisk bullet lists to dot bullets: * item -> • item
+    // Convert asterisk and dash bullet lists to dot bullets: * item / - item -> • item
     .replace(/^(\s*)\*\s+/gm, "$1• ")
+    .replace(/^(\s*)-\s+/gm, "$1• ")
     // Remove markdown heading hashes: ### Heading -> Heading
     .replace(/^#{1,6}\s+/gm, "")
     // Remove code backticks: `code` -> code
@@ -236,7 +237,7 @@ Return ONLY valid JSON matching this schema:
   "keyGoals": ["string (MUST select 1 to 3 items from canonical options: 'Build a new product', 'Integrate AI/ML', 'Improve existing system', 'Fix issues / maintenance')"],
   "customGoal": "string (optional specific custom outcome if any, or empty string)", 
   "requiredSkills": ["string (5-8 required tech skills)"],
-  "detailedRequirements": "string (markdown bullet points with clear technical acceptance criteria)",
+  "detailedRequirements": "string (bullet points using '•' with clear technical acceptance criteria, NO markdown asterisks, NO stars)",
   "scopeOfWork": ["string (e.g. Frontend development, Backend development, Database design, Testing and deployment)"],
   "estimatedBudgetCents": number (optional budget in integer cents, e.g. 500000 for $5000),
   "estimatedTimelineWeeks": number (optional estimated duration in weeks)
@@ -268,7 +269,7 @@ Return ONLY valid JSON matching this schema:
           requiredSkills: Array.isArray(parsed.requiredSkills) && parsed.requiredSkills.length > 0
             ? parsed.requiredSkills
             : ["TypeScript", "Next.js", "PostgreSQL"],
-          detailedRequirements: parsed.detailedRequirements || "• Implement robust, type-safe API endpoints\n• Adhere to milestone acceptance criteria",
+          detailedRequirements: stripMarkdownStars(parsed.detailedRequirements) || "• Implement robust, type-safe API endpoints\n• Adhere to milestone acceptance criteria",
           scopeOfWork: Array.isArray(parsed.scopeOfWork) && parsed.scopeOfWork.length > 0
             ? parsed.scopeOfWork
             : ["Frontend development", "Backend development"],
@@ -496,7 +497,7 @@ Return ONLY valid JSON:
     const reqLines = lines
       .filter((l) => /^[-*•\d.]\s+/.test(l) && l.length > 15)
       .slice(0, 6)
-      .map((l) => `• ${l.replace(/^[-*•\d.]\s+/, "")}`);
+      .map((l) => `• ${stripMarkdownStars(l.replace(/^[-*•\d.]\s+/, ""))}`);
 
     const detailedRequirements = reqLines.length > 0
       ? reqLines.join("\n")
