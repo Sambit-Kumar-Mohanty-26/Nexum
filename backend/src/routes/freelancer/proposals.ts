@@ -13,6 +13,8 @@ import {
 } from "../../lib/errors.js";
 import { appendAuditEvent } from "../../lib/audit.js";
 import { defaultStorage } from "../../lib/files.js";
+import { s3Client, S3_BUCKET } from "../../lib/storage.js";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { canonicalJson, hashVersion } from "../../domain/proposals/canonicalJson.js";
 import { transitionProposal } from "../../domain/proposals/stateMachine.js";
 import { getNextAction } from "../../domain/proposals/nextAction.js";
@@ -26,10 +28,9 @@ const upload = multer({
 
 const router = Router();
 
-// Enforce authentication, role boundary & onboarded check across all freelancer routes
+// Enforce authentication & role boundary across all freelancer routes
 router.use(requireAuth);
 router.use(requireRole(Role.FREELANCER));
-router.use(requireOnboarded);
 
 // Magic byte validation for attachments: PDF, PNG, JPG, DOCX
 function validateAttachmentMagicBytes(buffer: Buffer): { valid: boolean; mime: string } {
@@ -85,6 +86,14 @@ function validateAttachmentMagicBytes(buffer: Buffer): { valid: boolean; mime: s
 router.get("/summary", async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const freelancerId = req.user!.id;
+    const freelancerEmail = req.user!.email;
+
+    const userWhere: any = {
+      OR: [
+        { freelancerId },
+        ...(freelancerEmail ? [{ freelancer: { email: { equals: freelancerEmail, mode: "insensitive" } } }] : []),
+      ],
+    };
 
     const [
       allCount,
@@ -98,16 +107,16 @@ router.get("/summary", async (req: Request, res: Response, next: NextFunction): 
       rejectedCount,
       withdrawnCount,
     ] = await Promise.all([
-      prisma.proposal.count({ where: { freelancerId } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.DRAFT } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.SUBMITTED } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.UNDER_REVIEW } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.SHORTLISTED } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.INTERVIEW_DISCUSSION } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.COUNTEROFFER_RECEIVED } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.ACCEPTED } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.REJECTED } }),
-      prisma.proposal.count({ where: { freelancerId, status: ProposalStatus.WITHDRAWN } }),
+      prisma.proposal.count({ where: userWhere }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.DRAFT } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.SUBMITTED } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.UNDER_REVIEW } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.SHORTLISTED } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.INTERVIEW_DISCUSSION } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.COUNTEROFFER_RECEIVED } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.ACCEPTED } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.REJECTED } }),
+      prisma.proposal.count({ where: { ...userWhere, status: ProposalStatus.WITHDRAWN } }),
     ]);
 
     res.status(200).json({
@@ -117,7 +126,7 @@ router.get("/summary", async (req: Request, res: Response, next: NextFunction): 
         totalProposals: allCount,
         draft: draftCount,
         submitted: submittedCount,
-        underReview: underReviewCount,
+        underReview: underReviewCount + submittedCount,
         shortlisted: shortlistedCount,
         interview: interviewCount,
         interviewDiscussion: interviewCount,
@@ -230,39 +239,57 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
     } = parsed.data;
 
     const freelancerId = req.user!.id;
+    const freelancerEmail = req.user!.email;
 
-    const where: any = {
-      freelancerId,
+    const userWhere: any = {
+      OR: [
+        { freelancerId },
+        ...(freelancerEmail ? [{ freelancer: { email: { equals: freelancerEmail, mode: "insensitive" } } }] : []),
+      ],
     };
 
+    const andConditions: any[] = [userWhere];
+
     if (status) {
-      where.status = status;
+      if (status === "UNDER_REVIEW") {
+        andConditions.push({
+          status: { in: [ProposalStatus.UNDER_REVIEW, ProposalStatus.SUBMITTED] },
+        });
+      } else {
+        andConditions.push({ status });
+      }
     }
 
     if (category && category !== "ALL" && category !== "All Categories") {
-      where.project = {
-        ...where.project,
-        category: { equals: category, mode: "insensitive" },
-      };
+      andConditions.push({
+        project: {
+          category: { equals: category, mode: "insensitive" },
+        },
+      });
     }
 
     if (q && q.trim()) {
       const term = q.trim();
-      where.OR = [
-        { project: { title: { contains: term, mode: "insensitive" } } },
-        { project: { client: { name: { contains: term, mode: "insensitive" } } } },
-      ];
+      andConditions.push({
+        OR: [
+          { project: { title: { contains: term, mode: "insensitive" } } },
+          { project: { client: { name: { contains: term, mode: "insensitive" } } } },
+        ],
+      });
     }
 
     if (submittedFrom || submittedTo) {
-      where.submittedAt = {};
+      const dateCond: any = {};
       if (submittedFrom) {
-        where.submittedAt.gte = new Date(submittedFrom);
+        dateCond.gte = new Date(submittedFrom);
       }
       if (submittedTo) {
-        where.submittedAt.lte = new Date(submittedTo);
+        dateCond.lte = new Date(submittedTo);
       }
+      andConditions.push({ submittedAt: dateCond });
     }
+
+    const where: any = { AND: andConditions };
 
     let orderBy: any = { createdAt: "desc" };
     if (sort === "oldest") {
@@ -278,9 +305,35 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
         include: {
           project: {
             include: {
-              client: { select: { id: true, name: true } },
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  createdAt: true,
+                  preferences: true,
+                  avatarUrl: true,
+                  clientAgreements: { select: { id: true } },
+                },
+              },
               briefVersions: { orderBy: { version: "desc" }, take: 1 },
               projectMilestones: { orderBy: { orderIndex: "asc" } },
+              workspaceConversation: {
+                include: {
+                  messages: {
+                    orderBy: { createdAt: "asc" },
+                    take: 20,
+                    select: {
+                      id: true,
+                      senderId: true,
+                      senderRole: true,
+                      originalContent: true,
+                      mediatedContent: true,
+                      createdAt: true,
+                    },
+                  },
+                },
+              },
             },
           },
           versions: {
@@ -326,49 +379,75 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
         }
       }
 
-      return {
-        id: p.id,
-        projectId: p.projectId,
-        projectTitle: p.project.title,
-        clientName: p.project.client.name,
-        skills: p.project.skills || [],
-        amountDisplay,
-        amountMinor,
-        currency: currentVer?.currency || p.project.currency || "USD",
-        durationWeeks: currentVer?.estimatedDurationWeeks || null,
-        status: p.status,
-        statusLabel: getStatusLabel(p.status),
-        statusBadgeColor: getStatusBadgeColor(p.status),
-        categoryIcon: getCategoryIcon(p.project.category),
-        submittedAt: p.submittedAt ? p.submittedAt.toISOString() : null,
-        submittedDate: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Draft",
-        submittedTime: p.submittedAt ? new Date(p.submittedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "",
-        lastActivityAt: p.lastActivityAt.toISOString(),
-        currentVersionNumber: currentVer?.versionNumber ?? currentVer?.version ?? 1,
-        nextAction: nextAct,
-        client: {
-          id: p.project.client.id,
-          name: p.project.client.name,
-          companyName: `${p.project.client.name} Corp`,
-          verified: true,
-          industry: p.project.category || "Technology",
-          companySize: "10–50 employees",
-          location: p.project.location || "Remote",
-          postedDate: p.project.createdAt ? new Date(p.project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
-          totalHires: 12,
-          avatarLetter: p.project.client.name ? p.project.client.name[0].toUpperCase() : "C",
-          avatarBg: "bg-indigo-600 text-white",
-        },
+        const convMessages = ((p.project as any).workspaceConversation?.messages || []) as any[];
+        const hasClientInitiated = convMessages.some((m: any) => m.senderRole === "CLIENT");
+
+        return {
+          id: p.id,
+          projectId: p.projectId,
+          projectTitle: p.project.title,
+          clientName: p.project.client.name,
+          skills: p.project.skills || [],
+          amountDisplay,
+          amountMinor,
+          currency: currentVer?.currency || p.project.currency || "USD",
+          durationWeeks: currentVer?.estimatedDurationWeeks || null,
+          status: p.status,
+          statusLabel: getStatusLabel(p.status),
+          statusBadgeColor: getStatusBadgeColor(p.status),
+          rejectionFeedback: p.rejectionFeedback || null,
+          categoryIcon: getCategoryIcon(p.project.category),
+          submittedAt: p.submittedAt ? p.submittedAt.toISOString() : null,
+          submittedDate: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Draft",
+          submittedTime: p.submittedAt ? new Date(p.submittedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "",
+          lastActivityAt: p.lastActivityAt.toISOString(),
+          currentVersionNumber: currentVer?.versionNumber ?? currentVer?.version ?? 1,
+          nextAction: nextAct,
+          hasClientInitiated: hasClientInitiated || p.status === ProposalStatus.INTERVIEW_DISCUSSION || p.status === ProposalStatus.ACCEPTED,
+          messagesCount: convMessages.length,
+          conversationMessages: convMessages.map((m: any) => ({
+            id: m.id,
+            senderId: m.senderId,
+            senderRole: m.senderRole,
+            content: m.mediatedContent || m.originalContent || "",
+            timestamp: new Date(m.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+          })),
+        client: (() => {
+          const clientPrefs = (p.project.client.preferences as any) || {};
+          const clientName = p.project.client.name || "Client";
+          const companyName = clientPrefs.companyName || clientPrefs.company || clientName;
+          const memberSince = p.project.client.createdAt ? new Date(p.project.client.createdAt).getFullYear() : 2026;
+          const totalHires = Array.isArray(p.project.client.clientAgreements) ? p.project.client.clientAgreements.length : 0;
+          return {
+            id: p.project.client.id,
+            name: clientName,
+            companyName: companyName,
+            verified: Boolean(clientPrefs.verified || p.project.client.email),
+            industry: p.project.category || "General",
+            companySize: clientPrefs.companySize || "",
+            location: p.project.location || clientPrefs.location || "Remote",
+            postedDate: p.project.createdAt ? new Date(p.project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
+            totalHires: totalHires,
+            memberSince: memberSince,
+            avatarLetter: clientName ? clientName[0].toUpperCase() : "C",
+            avatarBg: "bg-indigo-600 text-white",
+          };
+        })(),
         clientBrief: (() => {
           const brief = (p.project.briefVersions?.[0]?.structuredBrief as any) || {};
           const technicalRequirements = Array.isArray(brief.scopeOfWork) && brief.scopeOfWork.length > 0
             ? brief.scopeOfWork
             : (brief.detailedRequirements
-                ? brief.detailedRequirements
-                    .split("\n")
-                    .map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim())
-                    .filter(Boolean)
-                : p.project.skills || []);
+              ? brief.detailedRequirements
+                .split("\n")
+                .map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim())
+                .filter(Boolean)
+              : p.project.skills || []);
 
           const acceptanceCriteria = Array.isArray(p.project.projectMilestones) && p.project.projectMilestones.length > 0
             ? p.project.projectMilestones.map((m: any) => m.title)
@@ -404,14 +483,15 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
             name: a.file.originalName,
             fileType: a.file.mime,
             fileSize: `${Math.round(a.file.sizeBytes / 1024)} KB`,
-            uploadDate: "Recently",
+            uploadDate: a.file.createdAt ? new Date(a.file.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recently",
+            downloadUrl: `/api/freelancer/files/${a.file.id}`,
           })),
           milestones: (Array.isArray(currentVer?.milestonesJson) ? (currentVer.milestonesJson as any[]) : []).map((m: any, idx: number) => ({
             id: `m-${idx + 1}`,
             orderIndex: idx + 1,
             title: m.title || `Milestone ${idx + 1}`,
-            amount: m.amountMinor ? `$${(m.amountMinor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "$0",
-            duration: "2 weeks",
+            amount: m.amountMinor ? `$${(m.amountMinor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : (m.amount ? (String(m.amount).startsWith("$") ? m.amount : `$${parseFloat(m.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}`) : "$0.00"),
+            duration: m.durationWeeks ? `${m.durationWeeks} weeks` : (m.days ? `${Math.ceil(m.days / 7)} weeks` : "2 weeks"),
             acceptanceCriteria: m.criteria || [],
           })),
         },
@@ -426,15 +506,178 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
           expiresAt: "Open for review",
         } : undefined,
         techTags: p.project.skills || [],
-        messagesCount: 0,
-        activityTrail: ((p as any).events || []).map((e: any) => ({
-          id: e.id,
-          title: e.type,
-          description: `Proposal event: ${e.toStatus || e.type}`,
-          actor: e.actorRole === Role.CLIENT ? p.project.client.name : "Freelancer",
-          timestamp: new Date(e.createdAt).toLocaleDateString(),
-          type: (e.toStatus === "ACCEPTED" ? "ACCEPTED" : e.toStatus === "REJECTED" ? "REJECTED" : "SUBMITTED") as any,
-        })),
+        activityTrail: (() => {
+          const eventsList = (p.events || []) as any[];
+          const trail: any[] = [];
+          const clientName = p.project.client.name || "Client";
+
+          // Format existing DB events
+          for (const e of eventsList) {
+            const actor = e.actorRole === Role.CLIENT ? clientName : "Freelancer";
+            const dateStr = new Date(e.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            });
+
+            if (e.type === "CREATED") {
+              trail.push({
+                id: e.id,
+                title: "Draft Proposal Created",
+                description: "Initial proposal draft initialized with scope and milestone estimate.",
+                actor,
+                timestamp: dateStr,
+                type: "CREATED",
+              });
+            } else if (e.type === "SUBMITTED" || e.toStatus === ProposalStatus.SUBMITTED) {
+              trail.push({
+                id: e.id,
+                title: "Proposal Submitted to Client",
+                description: `Formal candidate proposal (${amountDisplay}) submitted for client review.`,
+                actor,
+                timestamp: dateStr,
+                type: "SUBMITTED",
+              });
+            } else if (e.type === "COUNTEROFFER" || e.toStatus === ProposalStatus.COUNTEROFFER_RECEIVED) {
+              trail.push({
+                id: e.id,
+                title: "Client Counteroffer Received",
+                description: "Client proposed adjusted scope and milestone terms.",
+                actor,
+                timestamp: dateStr,
+                type: "COUNTEROFFER",
+              });
+            } else if (e.toStatus === ProposalStatus.SHORTLISTED) {
+              trail.push({
+                id: e.id,
+                title: "Proposal Shortlisted",
+                description: "Client shortlisted your proposal for final selection.",
+                actor,
+                timestamp: dateStr,
+                type: "SHORTLISTED",
+              });
+            } else if (e.toStatus === ProposalStatus.ACCEPTED) {
+              trail.push({
+                id: e.id,
+                title: "Proposal Accepted & Contract Ratified",
+                description: "Client approved your proposal terms. Project workspace activated.",
+                actor,
+                timestamp: dateStr,
+                type: "ACCEPTED",
+              });
+            } else if (e.toStatus === ProposalStatus.REJECTED) {
+              trail.push({
+                id: e.id,
+                title: "Proposal Declined",
+                description: p.rejectionFeedback ? `Declined: "${p.rejectionFeedback}"` : "Client declined this proposal.",
+                actor,
+                timestamp: dateStr,
+                type: "REJECTED",
+              });
+            } else {
+              trail.push({
+                id: e.id,
+                title: e.type.replace(/_/g, " "),
+                description: `Proposal event: ${e.toStatus || e.type}`,
+                actor,
+                timestamp: dateStr,
+                type: e.toStatus || "SUBMITTED",
+              });
+            }
+          }
+
+          // If the proposal is SUBMITTED or UNDER_REVIEW, synthesize missing progression entries
+          const hasSubmitted = trail.some((t) => t.type === "SUBMITTED");
+          if (!hasSubmitted && (p.submittedAt || p.status !== ProposalStatus.DRAFT)) {
+            const subDate = p.submittedAt ? new Date(p.submittedAt) : new Date(p.createdAt);
+            trail.push({
+              id: `ev-sub-${p.id}`,
+              title: "Proposal Formally Submitted",
+              description: `Candidate terms and quote of ${amountDisplay} submitted to client for bilateral review.`,
+              actor: "Freelancer",
+              timestamp: subDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+              type: "SUBMITTED",
+            });
+          }
+
+          if (p.status === ProposalStatus.UNDER_REVIEW) {
+            trail.push({
+              id: `ev-review-${p.id}`,
+              title: "Under Client Review",
+              description: `${clientName} opened and is evaluating your proposed milestones and technical approach.`,
+              actor: clientName,
+              timestamp: new Date(p.lastActivityAt || p.submittedAt || p.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+              type: "VIEWED",
+            });
+          } else if (p.status === ProposalStatus.SHORTLISTED) {
+            trail.push({
+              id: `ev-shortlist-${p.id}`,
+              title: "Candidate Shortlisted",
+              description: `${clientName} shortlisted this proposal for final agreement.`,
+              actor: clientName,
+              timestamp: new Date(p.lastActivityAt || p.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+              type: "SHORTLISTED",
+            });
+          } else if (p.status === ProposalStatus.ACCEPTED) {
+            const hasAccepted = trail.some((t) => t.type === "ACCEPTED");
+            if (!hasAccepted) {
+              trail.push({
+                id: `ev-accepted-${p.id}`,
+                title: "Proposal Accepted & Contract Ratified",
+                description: `${clientName} approved your proposal terms. Project workspace activated.`,
+                actor: clientName,
+                timestamp: new Date(p.lastActivityAt || p.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+                type: "ACCEPTED",
+              });
+            }
+          } else if (p.status === ProposalStatus.REJECTED) {
+            const hasRejected = trail.some((t) => t.type === "REJECTED");
+            if (!hasRejected) {
+              trail.push({
+                id: `ev-rejected-${p.id}`,
+                title: "Proposal Declined",
+                description: p.rejectionFeedback ? `Declined with feedback: "${p.rejectionFeedback}"` : `${clientName} declined this proposal.`,
+                actor: clientName,
+                timestamp: new Date(p.lastActivityAt || p.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+                type: "REJECTED",
+              });
+            }
+          }
+
+          return trail;
+        })(),
       };
     });
 
@@ -511,35 +754,22 @@ export async function handleCreateDraftProposal(req: Request, res: Response, nex
       where: {
         projectId,
         freelancerId,
-        status: { not: ProposalStatus.WITHDRAWN },
+        status: { notIn: [ProposalStatus.WITHDRAWN, ProposalStatus.REJECTED] },
       },
     });
 
     if (existingLive) {
-      if (existingLive.status === ProposalStatus.REJECTED) {
-        throw new ConflictError(
-          "Freelancer was previously rejected for this project and cannot re-apply",
-          "PROPOSAL_REJECTED_CANNOT_REAPPLY"
-        );
+      if (existingLive.status === ProposalStatus.DRAFT) {
+        res.status(200).json({
+          success: true,
+          proposal: existingLive,
+          message: "Existing draft proposal retrieved.",
+        });
+        return;
       }
       throw new ConflictError(
         "A live proposal already exists for this project",
         "LIVE_PROPOSAL_EXISTS"
-      );
-    }
-
-    // Also check if any past rejected proposal exists for this freelancer
-    const pastRejected = await prisma.proposal.findFirst({
-      where: {
-        projectId,
-        freelancerId,
-        status: ProposalStatus.REJECTED,
-      },
-    });
-    if (pastRejected) {
-      throw new ConflictError(
-        "Freelancer was previously rejected for this project and cannot re-apply",
-        "PROPOSAL_REJECTED_CANNOT_REAPPLY"
       );
     }
 
@@ -635,13 +865,29 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction): Prom
   try {
     const { id } = req.params;
     const freelancerId = req.user!.id;
+    const userWhere = {
+      OR: [
+        { freelancerId },
+        ...(req.user!.email ? [{ freelancer: { email: { equals: req.user!.email, mode: "insensitive" as const } } }] : []),
+      ],
+    };
 
     const proposal = await prisma.proposal.findFirst({
-      where: { id, freelancerId },
+      where: { id, ...userWhere },
       include: {
         project: {
           include: {
-            client: { select: { id: true, name: true } },
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                createdAt: true,
+                preferences: true,
+                avatarUrl: true,
+                clientAgreements: { select: { id: true } },
+              },
+            },
             briefVersions: { orderBy: { version: "desc" }, take: 1 },
             projectMilestones: { orderBy: { orderIndex: "asc" } },
           },
@@ -704,8 +950,8 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction): Prom
         const technicalRequirements = Array.isArray(brief.scopeOfWork) && brief.scopeOfWork.length > 0
           ? brief.scopeOfWork
           : (brief.detailedRequirements
-              ? brief.detailedRequirements.split("\n").map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean)
-              : proposal.project.skills || []);
+            ? brief.detailedRequirements.split("\n").map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean)
+            : proposal.project.skills || []);
         const acceptanceCriteria = Array.isArray(proposal.project.projectMilestones) && proposal.project.projectMilestones.length > 0
           ? proposal.project.projectMilestones.map((m: any) => m.title)
           : (Array.isArray(brief.milestones) ? brief.milestones.map((m: any) => m.title) : []);
@@ -901,6 +1147,18 @@ router.post("/:id/submit", async (req: Request, res: Response, next: NextFunctio
       select: { id: true },
     });
     const ownedPortfolioIds = ownedPortfolios.map((p) => p.id);
+
+    // Ensure deliverables exist (fallback to milestonesJson if not populated)
+    if (
+      (!Array.isArray(currentVersion.deliverables) || currentVersion.deliverables.length === 0) &&
+      Array.isArray(currentVersion.milestonesJson) &&
+      (currentVersion.milestonesJson as any[]).length > 0
+    ) {
+      currentVersion.deliverables = (currentVersion.milestonesJson as any[]).map((m: any, idx: number) => ({
+        title: m.title || `Milestone ${idx + 1} Deliverable`,
+        description: "Milestone deliverable package",
+      }));
+    }
 
     // Validate for submit
     const validation = validateForSubmit(currentVersion, proposal.project, ownedPortfolioIds);
@@ -1535,7 +1793,24 @@ router.post(
       const storageKey = `proposals/${id}/${Date.now()}_${crypto.randomBytes(6).toString("hex")}${fileExt}`;
       const sha256 = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
 
-      await defaultStorage.save(storageKey, req.file.buffer);
+      // Persist to S3 Object Storage if configured, or default storage adapter
+      if (s3Client) {
+        try {
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: S3_BUCKET,
+              Key: storageKey,
+              Body: req.file.buffer,
+              ContentType: magic.mime,
+            })
+          );
+        } catch (err) {
+          console.warn("[Proposals] S3 upload failed, falling back to disk:", err);
+          await defaultStorage.save(storageKey, req.file.buffer);
+        }
+      } else {
+        await defaultStorage.save(storageKey, req.file.buffer);
+      }
 
       const [fileRecord, attachment] = await prisma.$transaction(async (tx) => {
         const f = await tx.file.create({
@@ -1630,7 +1905,7 @@ router.delete("/:id/attachments/:attachmentId", async (req: Request, res: Respon
     });
 
     if (attachment.file?.storageKey) {
-      await defaultStorage.delete(attachment.file.storageKey).catch(() => {});
+      await defaultStorage.delete(attachment.file.storageKey).catch(() => { });
     }
 
     res.status(200).json({

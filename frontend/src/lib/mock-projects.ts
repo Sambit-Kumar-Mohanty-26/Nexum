@@ -31,6 +31,7 @@ export interface MilestoneItem {
 
 export interface ProposalItem {
   id: string;
+  freelancerId?: string;
   freelancerName: string;
   freelancerRole: string;
   avatar: string;
@@ -39,7 +40,24 @@ export interface ProposalItem {
   estimatedTimeline: string;
   coverLetter: string;
   status: "ACCEPTED" | "UNDER_REVIEW" | "DECLINED";
+  rejectionFeedback?: string;
   submittedDate: string;
+  approach?: string;
+  proposedMilestones?: Array<{
+    id?: string;
+    title: string;
+    amount?: number | string;
+    amountMinor?: number;
+    days?: number;
+    durationWeeks?: number;
+    criteria?: string[];
+  }>;
+  attachments?: Array<{
+    id: string;
+    name: string;
+    size?: string;
+    url: string;
+  }>;
 }
 
 export interface ScopeChangeItem {

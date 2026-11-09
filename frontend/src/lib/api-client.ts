@@ -1597,6 +1597,35 @@ export async function submitProposal(id: string): Promise<{
   }
 }
 
+export async function uploadProposalAttachment(
+  proposalId: string,
+  file: File
+): Promise<{
+  success: boolean;
+  attachment?: any;
+  error?: string;
+}> {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${BACKEND_URL}/api/freelancer/proposals/${proposalId}/attachments`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      return { success: false, error: json.error?.message || `HTTP ${res.status}` };
+    }
+    return { success: true, attachment: json.attachment };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to upload proposal attachment",
+    };
+  }
+}
+
 export async function reviseProposal(
   id: string,
   expectedVersionId: string,
@@ -1855,6 +1884,29 @@ export async function fetchFreelancerAgreement(id: string): Promise<{
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to fetch agreement",
+    };
+  }
+}
+
+/**
+ * Fetch full bilateral service and escrow agreement with active version markdown and approvals
+ */
+export async function fetchAgreementDetails(idOrProjectId: string): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/agreements/${idOrProjectId}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    const json = await res.json();
+    return json;
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to fetch agreement details",
     };
   }
 }

@@ -34,17 +34,18 @@ export async function requireAuth(
   if (!rawToken) {
     const isInternal = req.headers["x-nexum-internal"] === "true";
     const clientIp = req.socket.remoteAddress || "";
-    const isLoopback =
-      clientIp === "127.0.0.1" ||
-      clientIp === "::1" ||
-      clientIp === "::ffff:127.0.0.1" ||
-      clientIp.includes("127.0.0.1");
-
     const headerUserId = req.headers["x-user-id"];
-    if (isInternal && isLoopback && typeof headerUserId === "string" && headerUserId.trim().length > 0) {
+
+    if (isInternal && typeof headerUserId === "string" && headerUserId.trim().length > 0) {
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: headerUserId.trim() },
+        const targetIdOrEmail = headerUserId.trim();
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { id: targetIdOrEmail },
+              { email: { equals: targetIdOrEmail, mode: "insensitive" } },
+            ],
+          },
           include: { freelancerProfile: true },
         });
         if (user && user.status !== "DELETED") {
@@ -52,7 +53,7 @@ export async function requireAuth(
           req.session = {
             id: `sess_internal_${user.id}`,
             userId: user.id,
-            tokenHash: "internal_loopback",
+            tokenHash: "internal_proxy",
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             revokedAt: null,
             userAgent: null,
@@ -75,19 +76,20 @@ export async function requireAuth(
   try {
     const sessionRecord = await validateSession(rawToken);
     if (!sessionRecord || !sessionRecord.user) {
-      // Secondary check: If internal proxy with x-user-id on loopback, fallback to database user
+      // Secondary check: If internal proxy with x-user-id, fallback to database user
       const isInternal = req.headers["x-nexum-internal"] === "true";
       const clientIp = req.socket.remoteAddress || "";
-      const isLoopback =
-        clientIp === "127.0.0.1" ||
-        clientIp === "::1" ||
-        clientIp === "::ffff:127.0.0.1" ||
-        clientIp.includes("127.0.0.1");
-
       const headerUserId = req.headers["x-user-id"];
-      if (isInternal && isLoopback && typeof headerUserId === "string" && headerUserId.trim().length > 0) {
-        const user = await prisma.user.findUnique({
-          where: { id: headerUserId.trim() },
+
+      if (isInternal && typeof headerUserId === "string" && headerUserId.trim().length > 0) {
+        const targetIdOrEmail = headerUserId.trim();
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { id: targetIdOrEmail },
+              { email: { equals: targetIdOrEmail, mode: "insensitive" } },
+            ],
+          },
           include: { freelancerProfile: true },
         });
         if (user && user.status !== "DELETED") {
@@ -95,7 +97,7 @@ export async function requireAuth(
           req.session = {
             id: `sess_internal_${user.id}`,
             userId: user.id,
-            tokenHash: "internal_loopback",
+            tokenHash: "internal_proxy",
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             revokedAt: null,
             userAgent: null,

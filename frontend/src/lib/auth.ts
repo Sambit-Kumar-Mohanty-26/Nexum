@@ -45,7 +45,7 @@ async function signPayload(data: string): Promise<string> {
     .replace(/=+$/, "");
 }
 
-// Verify HMAC-SHA256 signature
+// Verify HMAC-SHA256 signature using the environment session secret
 async function verifySignature(data: string, signatureBase64Url: string): Promise<boolean> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -158,7 +158,9 @@ export async function getCurrentUser(): Promise<DemoUser | null> {
     const backendUrl =
       process.env.BACKEND_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
-      "http://localhost:4000";
+      (process.env.VERCEL === "1" || process.env.NODE_ENV === "production"
+        ? "https://nexum-79g2.onrender.com"
+        : "http://localhost:4000");
     try {
       const res = await fetch(`${backendUrl}/api/auth/me`, {
         headers: {

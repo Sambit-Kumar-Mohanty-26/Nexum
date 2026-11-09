@@ -48,6 +48,7 @@ import ProposeMeetingModal from "@/components/client/workspace/ProposeMeetingMod
 import SubmitDeliverableModal from "./SubmitDeliverableModal";
 import ProjectHandoverBanner from "@/components/handover/ProjectHandoverBanner";
 import HandoverChecklistView from "@/components/handover/HandoverChecklistView";
+import BilateralContractModal from "@/components/workspace/BilateralContractModal";
 import {
   getWorkspaceTimeline,
   sendWorkspaceMessage,
@@ -90,6 +91,7 @@ export default function FreelancerWorkspaceChatsMode({
   const [files, setFiles] = useState<Array<{ name: string; size: string; date: string; type: string }>>([]);
   const [agreementHash, setAgreementHash] = useState<string>("canonical_v1.0_pending");
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState<
     | "chat"
     | "overview"
@@ -103,6 +105,8 @@ export default function FreelancerWorkspaceChatsMode({
     | "activity"
     | "meetings"
   >("chat");
+
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
 
   // Handover Protocol State
   const [handoverData, setHandoverData] = useState<ProjectHandoverData | null>(null);
@@ -300,6 +304,7 @@ export default function FreelancerWorkspaceChatsMode({
                 deliverableDetails: meta.deliverableDetails,
                 notetakerDetails: meta.notetakerDetails,
                 actions: meta.actions,
+                metadata: meta,
               };
             });
             setTimeline(mapped);
@@ -325,7 +330,7 @@ export default function FreelancerWorkspaceChatsMode({
         .catch(() => setHandoverData(null));
     };
     loadState();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, refreshTrigger]);
 
   // Live polling: seamlessly poll for incoming messages every 3 seconds so messages like "hi" appear in real-time
   useEffect(() => {
@@ -359,6 +364,7 @@ export default function FreelancerWorkspaceChatsMode({
                 deliverableDetails: meta.deliverableDetails,
                 notetakerDetails: meta.notetakerDetails,
                 actions: meta.actions,
+                metadata: meta,
               };
             });
 
@@ -1133,6 +1139,163 @@ export default function FreelancerWorkspaceChatsMode({
                           </button>
                         )}
                       </div>
+                    </div>
+                  );
+                }
+
+                // CARD TYPE G: AI Bilateral Contract Synthesis Draft Card
+                if (item.type === "CONTRACT_DRAFT") {
+                  const meta = (item as any).metadata || {};
+                  const totalFormatted = meta.totalAmountMinor ? `$${(meta.totalAmountMinor / 100).toFixed(2)} USD` : "";
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-5 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-indigo-950">
+                          <Sparkles className="w-4 h-4 text-indigo-600" />
+                          <span>Nexum Protocol · AI Contract Synthesis</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          v{meta.versionNumber || 1}.0 Bilateral Draft
+                        </span>
+                      </div>
+
+                      <div
+                        onClick={() => setIsContractModalOpen(true)}
+                        className="p-4 rounded-xl bg-white border border-indigo-100 hover:border-indigo-300 transition space-y-2 text-xs shadow-2xs cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-100 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
+                              MD
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition flex items-center gap-1.5">
+                                <span>{meta.contractName || "Contract_Agreement_v1.0.md"}</span>
+                                <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition" />
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                Synchronized {meta.milestonesCount || "all"} milestones {totalFormatted && `· Total Value: ${totalFormatted}`}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="hidden sm:inline-flex text-[11px] font-semibold text-indigo-600 group-hover:underline">
+                            Read Agreement →
+                          </span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed pt-1 whitespace-pre-line">
+                          {item.bubbleText || item.summaryText}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsContractModalOpen(true)}
+                          className="px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer border border-indigo-200/90 shadow-2xs flex items-center gap-1.5"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>View Complete Agreement</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab("files");
+                            showToast("Opened Project Files tab with synthesized contract.");
+                          }}
+                          className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition cursor-pointer shadow-2xs flex items-center gap-1.5"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-slate-500" />
+                          <span>View in Files Vault</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              showToast("Ratifying Contract Agreement v1.0...");
+                              const targetAgId = meta.agreementId || selectedProjectId;
+                              const res = await fetch(`/api/agreements/${targetAgId}/approve`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ versionNumber: meta.versionNumber || 1, role: "FREELANCER" }),
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                showToast(data.message || "Contract ratified! Awaiting client escrow deposit.");
+                                setRefreshTrigger((n) => n + 1);
+                              } else {
+                                showToast(data.error || "Failed to approve agreement");
+                              }
+                            } catch {
+                              showToast("Approval request failed.");
+                            }
+                          }}
+                          className="px-4 py-2 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Ratify & Authorize Agreement</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // CARD TYPE H: Agreement Ratified Notification Card
+                if (item.type === "AGREEMENT_RATIFIED") {
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-emerald-950">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>Contract Ratified by Both Parties</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Escrow Deposit Pending
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                        {item.bubbleText || item.summaryText}
+                      </p>
+                    </div>
+                  );
+                }
+
+                // CARD TYPE I: Escrow Locked System Notification Card
+                if (item.type === "ESCROW_LOCKED") {
+                  const meta = (item as any).metadata || {};
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl border border-emerald-300 bg-emerald-50/70 text-xs text-slate-800 space-y-2 shadow-2xs animate-in fade-in duration-150"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                          <Lock className="w-4 h-4 text-emerald-600" />
+                          <span>Escrow Locked by Client · {item.timestamp}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-800 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span>PayPal Verified Escrow ✓</span>
+                        </span>
+                      </div>
+                      <p className="text-emerald-950 font-medium leading-relaxed pl-5.5">
+                        {item.bubbleText || item.summaryText}
+                      </p>
+                      {meta.paypalOrderId && (
+                        <div className="pl-5.5 text-[10px] font-mono text-emerald-700 flex items-center gap-2">
+                          <span>Order: {meta.paypalOrderId}</span>
+                          <span>•</span>
+                          <span>Capture: {meta.paypalCaptureId || "HELD_IN_ESCROW"}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -2432,6 +2595,18 @@ export default function FreelancerWorkspaceChatsMode({
           </div>
         </div>
       )}
+
+      {/* Bilateral Complete Agreement & Escrow Governance Modal */}
+      <BilateralContractModal
+        isOpen={isContractModalOpen}
+        onClose={() => setIsContractModalOpen(false)}
+        projectId={selectedProjectId}
+        userRole="FREELANCER"
+        onAgreementRatified={() => {
+          setRefreshTrigger((n) => n + 1);
+          showToast("Bilateral agreement ratified! Awaiting client escrow deposit.");
+        }}
+      />
     </div>
   );
 }

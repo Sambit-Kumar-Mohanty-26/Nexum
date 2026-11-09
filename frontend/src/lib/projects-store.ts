@@ -2,6 +2,8 @@
 import { ProjectCardData, ProjectLifecycleStatus } from "@/components/client/ClientProjectsView";
 
 export interface StoredProject extends ProjectCardData {
+  title?: string;
+  state?: string;
   budgetCents?: number;
   currency?: string;
   category?: string;
@@ -278,6 +280,7 @@ export function saveProjectToStore(payload: any, clientId = "usr_client_alex"): 
   const projectRecord: StoredProject = {
     id,
     name: payload.title || payload.name || "Untitled Specification",
+    title: payload.title || payload.name || "Untitled Specification",
     description: payload.description || payload.overview || "Project requirements and deliverables spec",
     status: cardStatus,
     statusLabel,
@@ -290,6 +293,7 @@ export function saveProjectToStore(payload: any, clientId = "usr_client_alex"): 
     nextMilestoneDueTimestamp: null,
     totalBudget: totalBudgetStr,
     budgetCents,
+    state: payload.state || (cardStatus === "DRAFT" ? "DRAFT" : "MATCHING"),
     currency: payload.currency || "USD",
     category: payload.category || "Web Development",
     subcategory: payload.subcategory || "",
@@ -357,17 +361,17 @@ export function getAllOpenProjectsFromStore(): StoredProject[] {
 
   for (const list of storeMap.values()) {
     for (const p of list) {
-      if (p.status !== "DRAFT" && !seenIds.has(p.id)) {
+      const isDraftOrCompleted =
+        p.status === "DRAFT" ||
+        p.status === "COMPLETED" ||
+        p.state === "DRAFT" ||
+        p.state === "COMPLETED" ||
+        p.state === "CANCELLED";
+      const isOpenPosting = !isDraftOrCompleted && !p.freelancer;
+      if (isOpenPosting && !seenIds.has(p.id)) {
         seenIds.add(p.id);
         openProjects.push(p);
       }
-    }
-  }
-
-  for (const p of INITIAL_PROJECTS) {
-    if (p.status !== "DRAFT" && !seenIds.has(p.id)) {
-      seenIds.add(p.id);
-      openProjects.push(p);
     }
   }
 

@@ -45,6 +45,8 @@ const searchProjectsSchema = z.object({
 function buildVisibilityWhere(freelancerId: string): Prisma.ProjectWhereInput {
   return {
     state: { in: [ProjectState.MATCHING, ProjectState.ACTIVE, ProjectState.INTAKE] },
+    // Only show projects that are not assigned to someone
+    agreement: null,
     AND: [
       {
         OR: [
@@ -78,13 +80,15 @@ function serializeProjectOpportunity(project: any, isSaved: boolean = false) {
       : `$${(budgetCents! / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
     : "Budget not specified";
 
+  const brief = project.briefVersions?.[0]?.structuredBrief || null;
+
   return {
     id: project.id,
     title: project.title,
     description: project.description,
-    category: project.category || "General",
-    skills: project.skills || [],
-    experienceLevel: project.experienceLevel || "MID",
+    category: project.category || brief?.category || "General",
+    skills: project.skills && project.skills.length > 0 ? project.skills : (brief?.requiredSkills || []),
+    experienceLevel: project.experienceLevel || brief?.experienceLevel || "MID",
     budgetType: project.budgetType === "HOURLY" ? "Hourly" : "Fixed-price",
     budgetCents,
     budgetMinCents: project.budgetMinCents ?? null,
@@ -95,6 +99,8 @@ function serializeProjectOpportunity(project: any, isSaved: boolean = false) {
     location: project.location || "Remote",
     visibility: project.visibility,
     state: project.state,
+    isFilled: Boolean(project.agreement),
+    agreementId: project.agreement?.id || null,
     postedAt: project.createdAt.toISOString(),
     proposalsCount: project._count?.proposals || 0,
     isSaved,
@@ -104,6 +110,30 @@ function serializeProjectOpportunity(project: any, isSaved: boolean = false) {
       company: project.client.name ? `${project.client.name} Team` : "Client",
       location: project.location || "Remote",
     },
+    // Detailed specification fields from brief
+    timelineDuration: brief?.timelineDuration || "4 weeks",
+    scopeOfWork: Array.isArray(brief?.scopeOfWork) ? brief.scopeOfWork : [],
+    detailedRequirements: brief?.detailedRequirements || null,
+    milestones: Array.isArray(brief?.milestones) ? brief.milestones : [],
+    goals: project.goals || brief?.goals || "",
+    uploadedDocument: project.projectFiles?.[0]
+      ? {
+          name: project.projectFiles[0].name,
+          size: `${Math.round(((project.projectFiles[0].file?.sizeBytes || 2100000) / 1024 / 1024) * 10) / 10} MB`,
+          uploadedAt: project.projectFiles[0].createdAt,
+          url: `/api/files/${project.projectFiles[0].fileId}`,
+          dataUrl: undefined,
+        }
+      : (brief?.uploadedDocument && brief.uploadedDocument.name)
+      ? {
+          name: brief.uploadedDocument.name,
+          size: brief.uploadedDocument.size || "1.8 MB",
+          type: brief.uploadedDocument.type || "application/pdf",
+          uploadedAt: brief.uploadedDocument.uploadedAt || project.createdAt.toISOString(),
+          url: brief.uploadedDocument.url || undefined,
+          dataUrl: brief.uploadedDocument.dataUrl || undefined,
+        }
+      : null,
   };
 }
 
@@ -222,7 +252,7 @@ async function handleSearchProjects(req: Request, res: Response, next: NextFunct
 
     const skip = (page - 1) * limit;
 
-    const [total, projects, userBookmarks] = await Promise.all([
+    const [total, projects, userBookmarks, freelancerProfile, submittedProposals] = await Promise.all([
       prisma.project.count({ where }),
       prisma.project.findMany({
         where,
@@ -238,13 +268,38 @@ async function handleSearchProjects(req: Request, res: Response, next: NextFunct
         where: { freelancerId },
         select: { projectId: true },
       }),
+      prisma.freelancerProfile.findUnique({
+        where: { userId: freelancerId },
+        select: { skills: true },
+      }),
+      prisma.proposal.findMany({
+        where: { freelancerId, status: { not: "WITHDRAWN" } },
+        select: { projectId: true },
+      }),
     ]);
 
     const bookmarkedSet = new Set(userBookmarks.map((b) => b.projectId));
+    const appliedSet = new Set(submittedProposals.map((pr) => pr.projectId));
+    const freelancerSkills = (freelancerProfile?.skills || []).map((s: string) => s.toLowerCase());
 
-    const serializedProjects = projects.map((p) =>
-      serializeProjectOpportunity(p, bookmarkedSet.has(p.id))
-    );
+    const serializedProjects = projects.map((p) => {
+      const serialized = serializeProjectOpportunity(p, bookmarkedSet.has(p.id));
+      let matchScore = 0;
+      const projectSkills = (p.skills || []).map((s: string) => s.toLowerCase());
+      if (projectSkills.length > 0 && freelancerSkills.length > 0) {
+        const matched = projectSkills.filter((ps: string) =>
+          freelancerSkills.some((fs: string) => fs.includes(ps) || ps.includes(fs))
+        );
+        if (matched.length > 0) {
+          matchScore = Math.round((matched.length / projectSkills.length) * 100);
+        }
+      }
+      return {
+        ...serialized,
+        matchScore,
+        isApplied: appliedSet.has(p.id),
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -858,6 +913,19 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction): Prom
       include: {
         client: { select: { id: true, name: true } },
         _count: { select: { proposals: true } },
+        briefVersions: {
+          orderBy: { version: "desc" },
+          take: 1,
+        },
+        projectFiles: {
+          include: {
+            file: true,
+          },
+          take: 5,
+        },
+        agreement: {
+          select: { id: true, freelancerId: true, status: true },
+        },
         invitations: {
           where: { freelancerId },
           select: { id: true, status: true },

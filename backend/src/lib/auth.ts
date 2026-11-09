@@ -104,25 +104,23 @@ export function verifyHmacSessionToken(token: string): { userId: string; exp: nu
       .digest("base64url");
 
     if (
-      signature.length !== expectedSig.length ||
-      !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))
+      signature.length === expectedSig.length &&
+      crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))
     ) {
-      return null;
+      const raw = Buffer.from(payloadEncoded, "base64url").toString("utf-8");
+      const data = JSON.parse(raw);
+      if (data.userId && (!data.exp || Date.now() / 1000 <= data.exp)) {
+        return {
+          userId: data.userId,
+          exp: data.exp || Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+        };
+      }
     }
-
-    const raw = Buffer.from(payloadEncoded, "base64url").toString("utf-8");
-    const data = JSON.parse(raw);
-    if (!data.userId || (data.exp && Date.now() / 1000 > data.exp)) {
-      return null;
-    }
-
-    return {
-      userId: data.userId,
-      exp: data.exp || Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
-    };
   } catch {
     return null;
   }
+
+  return null;
 }
 
 /**
@@ -191,11 +189,11 @@ export async function revokeSession(rawToken: string): Promise<boolean> {
   const tokenHash = hashSessionToken(rawToken);
 
   try {
-    await prisma.session.update({
-      where: { tokenHash },
+    const res = await prisma.session.updateMany({
+      where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    return true;
+    return res.count > 0;
   } catch {
     return false;
   }

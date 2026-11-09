@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   searchFreelancerProjects,
   saveFreelancerProject,
@@ -24,6 +26,7 @@ import {
   ShieldCheck,
   ArrowRight,
   ChevronDown,
+  Eye,
 } from "lucide-react";
 
 export interface ProjectOpportunity {
@@ -46,177 +49,6 @@ export interface ProjectOpportunity {
   isVerified: boolean;
   escrowStatus: "Pre-Funded in Escrow" | "Verified Payment Method" | "Dual Consensus Ready";
 }
-
-const OPPORTUNITIES: ProjectOpportunity[] = [
-  {
-    id: "opp_1",
-    title: "Let's Collaborate on HAV's Website Redesign",
-    clientName: "Markus Becker",
-    clientCompany: "HAV Creative Studio",
-    location: "Germany",
-    experienceLevel: "Entry Level",
-    category: "Web Design",
-    budget: "$15.00/hour",
-    budgetAmount: 15,
-    budgetType: "Hourly",
-    proposalsCount: 15,
-    hiringState: "Still Selecting",
-    postedTime: "15 mins ago",
-    matchScore: 94,
-    description:
-      "We are looking for a creative person who can redesign & build beautiful landing pages in modern responsive frameworks with clean typography.",
-    skills: ["UI Design", "Web Design", "Landing Page", "Web Development", "Figma"],
-    isVerified: true,
-    escrowStatus: "Pre-Funded in Escrow",
-  },
-  {
-    id: "opp_2",
-    title: "Build/Edit Landing Page for Online Course",
-    clientName: "David Sterling",
-    clientCompany: "EduScale Global",
-    location: "United States",
-    experienceLevel: "Entry Level",
-    category: "Web Design",
-    budget: "$20.00/hour",
-    budgetAmount: 20,
-    budgetType: "Hourly",
-    proposalsCount: 20,
-    hiringState: "Still Selecting",
-    postedTime: "20 mins ago",
-    matchScore: 89,
-    description:
-      "Have a current landing page for my online course already. Need a designer to polish the layout, improve conversion flow, and add high-converting CTA sections.",
-    skills: ["Website Redesign", "Web Design", "Landing Page", "Graphic Design", "UI/UX"],
-    isVerified: true,
-    escrowStatus: "Verified Payment Method",
-  },
-  {
-    id: "opp_3",
-    title: "Web Designer for E-Commerce Website",
-    clientName: "Rahim Chowdhury",
-    clientCompany: "Bengal Retail Co.",
-    location: "India",
-    experienceLevel: "Intermediate",
-    category: "Web Design",
-    budget: "$25.00/hour",
-    budgetAmount: 25,
-    budgetType: "Hourly",
-    proposalsCount: 15,
-    hiringState: "Still Selecting",
-    postedTime: "25 mins ago",
-    matchScore: 92,
-    description:
-      "Install new e-commerce responsive theme, redesign navigation menu, layout product catalog grids, and create custom mobile checkout views.",
-    skills: ["Web Design", "Responsive Design", "Web Development", "Tailwind CSS", "Shopify"],
-    isVerified: true,
-    escrowStatus: "Pre-Funded in Escrow",
-  },
-  {
-    id: "opp_4",
-    title: "SaaS Dashboard Redesign & Design System Architect",
-    clientName: "Emily Tremblay",
-    clientCompany: "CloudPeak Analytics",
-    location: "Canada",
-    experienceLevel: "Expert",
-    category: "Web Design",
-    budget: "$50.00/hour",
-    budgetAmount: 50,
-    budgetType: "Hourly",
-    proposalsCount: 19,
-    hiringState: "1 Interviewing",
-    postedTime: "35 mins ago",
-    matchScore: 97,
-    description:
-      "We're looking for a design systems architect who can help us redesign our B2B SaaS analytics portal in Figma and translate tokens to Next.js Tailwind components.",
-    skills: ["Web Design", "Design Systems", "Figma", "Prototyping", "Next.js"],
-    isVerified: true,
-    escrowStatus: "Dual Consensus Ready",
-  },
-  {
-    id: "opp_5",
-    title: "Enterprise Smart Escrow Integration for Solana Pay",
-    clientName: "Arthur Vance",
-    clientCompany: "FinTech Labs Inc.",
-    location: "United States",
-    experienceLevel: "Expert",
-    category: "Smart Contracts",
-    budget: "$3,800.00 fixed",
-    budgetAmount: 3800,
-    budgetType: "Fixed Price",
-    proposalsCount: 8,
-    hiringState: "Still Selecting",
-    postedTime: "2 hours ago",
-    matchScore: 95,
-    description:
-      "Construct cross-border payment settlement rails with dual SHA-256 state consensus, cryptographic signature verification, and automated webhook recovery.",
-    skills: ["TypeScript", "Next.js", "Solana Pay", "PayPal REST v2", "State Machines"],
-    isVerified: true,
-    escrowStatus: "Pre-Funded in Escrow",
-  },
-  {
-    id: "opp_6",
-    title: "Multi-Tenant PDF Invoice Rendering Worker Pool",
-    clientName: "Elena Rostova",
-    clientCompany: "Apex Retail Group",
-    location: "United Kingdom",
-    experienceLevel: "Intermediate",
-    category: "Full Stack Development",
-    budget: "$2,800.00 fixed",
-    budgetAmount: 2800,
-    budgetType: "Fixed Price",
-    proposalsCount: 6,
-    hiringState: "Still Selecting",
-    postedTime: "4 hours ago",
-    matchScore: 91,
-    description:
-      "Design a zero-leak multi-tenant PDF invoice rendering worker pool using headless Chromium, AWS S3 signed uploads, and automated receipt generation.",
-    skills: ["Node.js", "TypeScript", "Puppeteer", "AWS S3", "Docker"],
-    isVerified: true,
-    escrowStatus: "Pre-Funded in Escrow",
-  },
-  {
-    id: "opp_7",
-    title: "High-Throughput Webhook Ingest Relay & Telemetry Simulator",
-    clientName: "Marcus Chen",
-    clientCompany: "Nova Cloud Inc.",
-    location: "Singapore",
-    experienceLevel: "Intermediate",
-    category: "Full Stack Development",
-    budget: "$75.00/hour",
-    budgetAmount: 75,
-    budgetType: "Hourly",
-    proposalsCount: 4,
-    hiringState: "Still Selecting",
-    postedTime: "1 day ago",
-    matchScore: 88,
-    description:
-      "Build a resilient webhook relay that captures order notifications, simulates failovers with chaos injection, and logs consensus hashes to our audit trail.",
-    skills: ["TypeScript", "Redis", "Go", "Next.js", "PayPal Sandbox"],
-    isVerified: true,
-    escrowStatus: "Dual Consensus Ready",
-  },
-  {
-    id: "opp_8",
-    title: "AI Customer Support Platform Copilot Integration",
-    clientName: "Sarah Jenkins",
-    clientCompany: "Aura Creative AI",
-    location: "Remote",
-    experienceLevel: "Expert",
-    category: "AI & Machine Learning",
-    budget: "$4,500.00 fixed",
-    budgetAmount: 4500,
-    budgetType: "Fixed Price",
-    proposalsCount: 11,
-    hiringState: "Still Selecting",
-    postedTime: "2 days ago",
-    matchScore: 96,
-    description:
-      "Integrate an autonomous multi-turn customer support copilot with streaming SSE events, vector embeddings, and verified milestone deliverable escrow.",
-    skills: ["Python", "OpenAI API", "LangChain", "Next.js 15", "Tailwind CSS"],
-    isVerified: true,
-    escrowStatus: "Pre-Funded in Escrow",
-  },
-];
 
 function mapClientProjectToOpportunity(p: any): ProjectOpportunity {
   const budgetCents = p.budgetCents || 0;
@@ -256,35 +88,34 @@ function mapClientProjectToOpportunity(p: any): ProjectOpportunity {
 }
 
 function loadLocalOpportunities(): ProjectOpportunity[] {
-  if (typeof window === "undefined") return OPPORTUNITIES;
+  if (typeof window === "undefined") return [];
   try {
     const raw = getLocalProjects();
     const published = (raw || [])
-      .filter((p: any) => p && p.status !== "DRAFT" && p.state !== "DRAFT")
+      .filter((p: any) => p && p.status !== "DRAFT" && p.state !== "DRAFT" && !p.freelancer)
       .map(mapClientProjectToOpportunity);
 
     const map = new Map<string, ProjectOpportunity>();
-    // User's own published client projects first
+    // User's own published client projects
     for (const p of published) map.set(p.id, p);
-    // Baseline opportunities
-    for (const opp of OPPORTUNITIES) {
-      if (!map.has(opp.id)) map.set(opp.id, opp);
-    }
     return Array.from(map.values());
   } catch {
-    return OPPORTUNITIES;
+    return [];
   }
 }
 
 interface FreelancerFindProjectsViewProps {
   onApplyProject: (project: ProjectOpportunity) => void;
   showToast: (msg: string) => void;
+  appliedProjectIds?: string[];
 }
 
 export default function FreelancerFindProjectsView({
   onApplyProject,
   showToast,
+  appliedProjectIds: parentAppliedIds,
 }: FreelancerFindProjectsViewProps) {
+  const router = useRouter();
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -301,15 +132,21 @@ export default function FreelancerFindProjectsView({
   const [sortBy, setSortBy] = useState<"newest" | "budget_high" | "match_high" | "fewest_proposals">("newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Interaction state - initialized with user's client projects and baseline opportunities
+  // Interaction state - initialized with real published client projects
   const [savedProjectIds, setSavedProjectIds] = useState<string[]>([]);
-  const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
+  const [internalAppliedIds, setInternalAppliedIds] = useState<string[]>([]);
+  const appliedProjectIds = useMemo(() => {
+    return Array.from(new Set([...(parentAppliedIds || []), ...internalAppliedIds]));
+  }, [parentAppliedIds, internalAppliedIds]);
+
   const [backendProjects, setBackendProjects] = useState<ProjectOpportunity[]>(() => loadLocalOpportunities());
+  const [isLoading, setIsLoading] = useState(true);
   const [isLiveLoaded, setIsLiveLoaded] = useState(false);
 
   // Load live projects from Express backend
   useEffect(() => {
     let isCurrent = true;
+    setIsLoading(true);
     searchFreelancerProjects({
       q: searchQuery,
       location: locationQuery,
@@ -348,7 +185,7 @@ export default function FreelancerFindProjectsView({
               hiringState:
                 (p.proposalsCount || 0) > 10 ? "Urgent Need" : (p.proposalsCount || 0) > 5 ? "1 Interviewing" : "Still Selecting",
               postedTime: p.postedAt ? new Date(p.postedAt).toLocaleDateString() : "Recently",
-              matchScore: 92,
+              matchScore: typeof (p as any).matchScore === "number" ? (p as any).matchScore : 0,
               description: p.description || "",
               skills: Array.isArray(p.skills) ? p.skills : [],
               isVerified: Boolean(p.client?.isVerified),
@@ -358,7 +195,7 @@ export default function FreelancerFindProjectsView({
           for (const s of mappedServer) map.set(s.id, s);
         }
 
-        // 2. Add local client projects and baseline opportunities
+        // 2. Add local client projects (no mock opportunities)
         for (const loc of localOpp) {
           if (!map.has(loc.id)) map.set(loc.id, loc);
         }
@@ -366,6 +203,10 @@ export default function FreelancerFindProjectsView({
         setBackendProjects(Array.from(map.values()));
         if (res.success && res.projects) {
           setSavedProjectIds(res.projects.filter((p) => p.isSaved).map((p) => p.id));
+          const serverApplied = res.projects.filter((p: any) => p.isApplied).map((p: any) => p.id);
+          if (serverApplied.length > 0) {
+            setInternalAppliedIds((prev) => Array.from(new Set([...prev, ...serverApplied])));
+          }
         }
         setIsLiveLoaded(true);
       })
@@ -374,12 +215,30 @@ export default function FreelancerFindProjectsView({
           setBackendProjects(loadLocalOpportunities());
           setIsLiveLoaded(true);
         }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
       isCurrent = false;
     };
   }, [searchQuery, locationQuery, selectedCategory, sortBy]);
+
+  // Support deep linking to apply modal from /freelancer/projects/[id]
+  useEffect(() => {
+    if (typeof window === "undefined" || !isLiveLoaded) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const applyId = urlParams.get("applyId");
+    if (applyId) {
+      const target = backendProjects.find((p) => p.id === applyId);
+      if (target) {
+        onApplyProject(target);
+      }
+    }
+  }, [backendProjects, isLiveLoaded, onApplyProject]);
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -412,15 +271,13 @@ export default function FreelancerFindProjectsView({
       showToast(`You have already submitted a proposal for ${opp.title}.`);
       return;
     }
-    // Call parent handler to open modal/flow
-    onApplyProject(opp);
-    // Mark as applied
-    setAppliedProjectIds((prev) => [...prev, opp.id]);
+    // Navigate directly to dedicated proposal & counteroffer page
+    router.push(`/freelancer/projects/${opp.id}/apply`);
   };
 
   // Filter & Sort Logic
   const filteredProjects = useMemo(() => {
-    const baseList = backendProjects.length > 0 ? backendProjects : OPPORTUNITIES;
+    const baseList = backendProjects;
     return baseList.filter((opp) => {
       // 1. Text Search (title, company, description, skills)
       const q = searchQuery.toLowerCase().trim();
@@ -850,23 +707,57 @@ export default function FreelancerFindProjectsView({
             </div>
           </div>
 
+          {/* Loading state skeleton */}
+          {isLoading && backendProjects.length === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="p-5 rounded-2xl border border-slate-200/70 bg-white animate-pulse space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="h-5 w-24 bg-slate-200 rounded-full" />
+                    <div className="h-4 w-16 bg-slate-100 rounded" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-5 w-3/4 bg-slate-200 rounded" />
+                    <div className="h-3 w-1/2 bg-slate-100 rounded" />
+                    <div className="h-10 w-full bg-slate-100 rounded" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-5 w-16 bg-slate-100 rounded" />
+                    <div className="h-5 w-20 bg-slate-100 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Empty state if nothing matches */}
-          {filteredProjects.length === 0 && (
+          {!isLoading && filteredProjects.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#4f46e5] mx-auto flex items-center justify-center">
                 <Search className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-slate-900">No matching projects found</h3>
+              <h3 className="text-base font-bold text-slate-900">
+                {backendProjects.length === 0
+                  ? "No open projects currently available"
+                  : "No matching projects found"}
+              </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Try widening your search terms or resetting filters to explore all available verified client projects.
+                {backendProjects.length === 0
+                  ? "Clients post new verified project scopes regularly. Check back soon or publish a project from the Client dashboard to test the real workflow."
+                  : "Try widening your search terms or resetting filters to explore all available verified client projects."}
               </p>
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="mt-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-[#4f46e5] text-white text-xs font-bold transition shadow-xs cursor-pointer"
-              >
-                Reset Filters
-              </button>
+              {backendProjects.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="mt-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-[#4f46e5] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
             </div>
           )}
 
@@ -890,10 +781,12 @@ export default function FreelancerFindProjectsView({
                         <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200/80">
                           {opp.experienceLevel}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
-                          <Sparkles className="w-2.5 h-2.5 text-purple-600" />
-                          <span>{opp.matchScore}% Match</span>
-                        </span>
+                        {opp.matchScore > 0 && (
+                          <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                            <span>{opp.matchScore}% Match</span>
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 text-slate-400 text-[11px]">
@@ -915,9 +808,11 @@ export default function FreelancerFindProjectsView({
 
                     {/* Middle Section: Title + Badges + Description Snippet */}
                     <div className="space-y-2">
-                      <h3 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#4f46e5] transition-colors leading-snug line-clamp-2">
-                        {opp.title}
-                      </h3>
+                      <Link href={`/freelancer/projects/${opp.id}`} className="block group/link">
+                        <h3 className="font-bold text-sm sm:text-base text-slate-900 group-hover/link:text-[#4f46e5] transition-colors leading-snug line-clamp-2 cursor-pointer">
+                          {opp.title}
+                        </h3>
+                      </Link>
 
                       {/* Verification + Location + Hiring Status */}
                       <div className="flex flex-wrap items-center gap-2 text-xs pt-0.5">
@@ -949,20 +844,30 @@ export default function FreelancerFindProjectsView({
                       </p>
                     </div>
 
-                    {/* Skill Tags */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {opp.skills.map((skill) => (
+                    {/* Compact Skill Tags */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 min-h-[26px]">
+                      {opp.skills.slice(0, 3).map((skill) => (
                         <span
                           key={skill}
-                          className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 text-[10px] font-medium border border-slate-200/70"
+                          title={skill}
+                          className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 text-[10px] font-medium border border-slate-200/70 truncate max-w-[170px]"
                         >
                           {skill}
                         </span>
                       ))}
+                      {opp.skills.length > 3 && (
+                        <Link
+                          href={`/freelancer/projects/${opp.id}`}
+                          title={opp.skills.slice(3).join(", ")}
+                          className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#4f46e5] text-[10px] font-bold border border-indigo-200/70 hover:bg-indigo-100 transition"
+                        >
+                          +{opp.skills.length - 3} more
+                        </Link>
+                      )}
                     </div>
 
-                    {/* Footer Row: Budget + Proposals Count + Apply Button */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                    {/* Footer Row: Budget + Proposals Count + Actions */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                       <div>
                         <div className="font-mono font-bold text-sm text-slate-900 flex items-center gap-1">
                           <span className="text-[#4f46e5] font-extrabold">$</span>
@@ -974,19 +879,29 @@ export default function FreelancerFindProjectsView({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleApply(opp)}
-                        disabled={isApplied}
-                        className={`px-4 py-2 rounded-xl font-bold text-xs transition cursor-pointer shadow-xs active:scale-98 shrink-0 flex items-center gap-1.5 ${
-                          isApplied
-                            ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                            : "bg-[#0f172a] hover:bg-[#4f46e5] text-white"
-                        }`}
-                      >
-                        <span>{isApplied ? "Applied ✓" : "Apply Now"}</span>
-                        {!isApplied && <ArrowRight className="w-3 h-3" />}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/freelancer/projects/${opp.id}`}
+                          className="px-2.5 py-1.5 rounded-xl font-bold text-xs text-slate-700 hover:text-indigo-600 border border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Details</span>
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApply(opp)}
+                          disabled={isApplied}
+                          className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer shadow-xs active:scale-98 shrink-0 flex items-center gap-1 ${
+                            isApplied
+                              ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                              : "bg-[#0f172a] hover:bg-[#4f46e5] text-white"
+                          }`}
+                        >
+                          <span>{isApplied ? "Applied ✓" : "Apply"}</span>
+                          {!isApplied && <ArrowRight className="w-3 h-3" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1014,10 +929,12 @@ export default function FreelancerFindProjectsView({
                           <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200/80">
                             {opp.experienceLevel}
                           </span>
-                          <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
-                            <Sparkles className="w-2.5 h-2.5 text-purple-600" />
-                            <span>{opp.matchScore}% Match</span>
-                          </span>
+                          {opp.matchScore > 0 && (
+                            <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                              <span>{opp.matchScore}% Match</span>
+                            </span>
+                          )}
                           <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-[10px] border border-emerald-200/80">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             <span>Verified Client</span>
@@ -1029,12 +946,22 @@ export default function FreelancerFindProjectsView({
                           <span className="text-slate-400 text-[11px]">· {opp.postedTime}</span>
                         </div>
 
-                        <h3 className="font-bold text-base text-slate-900 group-hover:text-[#4f46e5] transition-colors">
-                          {opp.title}
-                        </h3>
+                        <Link href={`/freelancer/projects/${opp.id}`} className="block group/link">
+                          <h3 className="font-bold text-base text-slate-900 group-hover/link:text-[#4f46e5] transition-colors cursor-pointer">
+                            {opp.title}
+                          </h3>
+                        </Link>
                       </div>
 
                       <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                        <Link
+                          href={`/freelancer/projects/${opp.id}`}
+                          className="px-3 py-2 rounded-xl font-bold text-xs text-slate-700 hover:text-indigo-600 border border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Details</span>
+                        </Link>
+
                         <button
                           type="button"
                           onClick={(e) => toggleSave(opp.id, e)}
@@ -1057,26 +984,36 @@ export default function FreelancerFindProjectsView({
                               : "bg-[#0f172a] hover:bg-[#4f46e5] text-white"
                           }`}
                         >
-                          <span>{isApplied ? "Applied ✓" : "Apply Now"}</span>
+                          <span>{isApplied ? "Applied ✓" : "Apply"}</span>
                           {!isApplied && <ArrowRight className="w-3 h-3" />}
                         </button>
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-500 leading-relaxed">
+                    <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
                       {opp.description}
                     </p>
 
                     <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <div className="flex flex-wrap gap-1.5">
-                        {opp.skills.map((skill) => (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {opp.skills.slice(0, 4).map((skill) => (
                           <span
                             key={skill}
-                            className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 text-[10px] font-medium border border-slate-200/70"
+                            title={skill}
+                            className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 text-[10px] font-medium border border-slate-200/70 truncate max-w-[200px]"
                           >
                             {skill}
                           </span>
                         ))}
+                        {opp.skills.length > 4 && (
+                          <Link
+                            href={`/freelancer/projects/${opp.id}`}
+                            title={opp.skills.slice(4).join(", ")}
+                            className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#4f46e5] text-[10px] font-bold border border-indigo-200/70 hover:bg-indigo-100 transition"
+                          >
+                            +{opp.skills.length - 4} more
+                          </Link>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-4 shrink-0">

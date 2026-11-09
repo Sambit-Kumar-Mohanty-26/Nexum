@@ -261,7 +261,7 @@ export const DEFAULT_FREELANCERS: FreelancerProfile[] = [
   {
     id: "usr_freelancer_rohan",
     name: "Rohan Verma",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
     title: "Senior Full-Stack & Payment Rails Engineer",
     type: "INDIVIDUAL",
     experienceLevel: "SENIOR",
@@ -317,7 +317,7 @@ export const DEFAULT_CLIENT_INVITATIONS: FreelancerInvitation[] = [
     id: "inv_1",
     freelancerId: "usr_freelancer_rohan",
     freelancerName: "Rohan Verma",
-    freelancerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+    freelancerAvatar: "",
     freelancerTitle: "Senior Full-Stack & Payment Rails Engineer",
     projectId: "proj_1",
     projectName: "Bilateral E-Commerce Payment Rails",
@@ -375,7 +375,7 @@ const DEFAULT_RECOMMENDED_FREELANCERS: RecommendedFreelancerItem[] = [
     skills: ["PayPal Orders v2", "Next.js", "PostgreSQL", "State Machines"],
     rate: "$65/hr",
     rating: "5.0 (28 jobs)",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
     availability: "Available now",
   },
   {
@@ -385,7 +385,7 @@ const DEFAULT_RECOMMENDED_FREELANCERS: RecommendedFreelancerItem[] = [
     skills: ["Next.js", "React", "TypeScript", "Tailwind CSS"],
     rate: "$60/hr",
     rating: "5.0 (15 jobs)",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
     availability: "Available now",
   },
   {
@@ -395,7 +395,7 @@ const DEFAULT_RECOMMENDED_FREELANCERS: RecommendedFreelancerItem[] = [
     skills: ["Web development", "Backend / API development", "TypeScript"],
     rate: "$60/hr",
     rating: "5.0 (12 jobs)",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
     availability: "Available now",
   },
 ];
@@ -1574,19 +1574,18 @@ export class ClientOverviewService {
             ? `$${Math.round(ratePref.preferredHourlyCents / 100)}/hr`
             : "$75/hr";
 
-          const avatarMap: Record<string, string> = {
-            usr_freelancer_elena: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
-            usr_freelancer_priya: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80",
-            usr_freelancer_marcus: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
-            usr_freelancer_rohan: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
-            usr_freelancer_sambit: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&q=80",
-            cmvuanz4u0000vgtkuq294rn2: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=128&q=80",
-          };
+          const rawAvatar = ((u.preferences as any)?.avatar) || (profile as any)?.avatarUrl || (profile as any)?.avatar || u.avatarUrl || null;
           const avatarUrl =
-            (profile as any)?.avatarUrl ||
-            avatarMap[u.id] ||
-            avatarMap[u.email || ""] ||
-            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80";
+            rawAvatar &&
+            typeof rawAvatar === "string" &&
+            !rawAvatar.includes("photo-1507003211169") &&
+            !rawAvatar.includes("photo-1534528741775") &&
+            !rawAvatar.includes("photo-1494790108377") &&
+            !rawAvatar.includes("photo-1500648767791") &&
+            !rawAvatar.includes("photo-1472099645785") &&
+            !rawAvatar.includes("photo-1519085360753")
+              ? rawAvatar
+              : null;
 
           return {
             id: u.id,
@@ -1595,7 +1594,7 @@ export class ClientOverviewService {
             skills: (profile?.skills as string[]) || ["TypeScript", "Full Stack"],
             rate: hourlyStr,
             rating: "5.0 (verified)",
-            avatar: avatarUrl,
+            avatar: avatarUrl || "",
             availability: profile?.availability || "Available now",
           };
         });
@@ -2179,8 +2178,9 @@ export class ClientOverviewService {
               name: freelancer.name,
               role: freelancer.freelancerProfile?.title || "Specialist",
               avatar:
-                freelancer.preferences?.avatar ||
-                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
+                freelancer.preferences?.avatar && !freelancer.preferences.avatar.includes("photo-1507003211169")
+                  ? freelancer.preferences.avatar
+                  : null,
             }
           : undefined,
         totalBudget: p.budgetCents > 0 ? `$${((p.budgetCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined,
@@ -2267,6 +2267,11 @@ export class ClientOverviewService {
                 orderBy: { version: "desc" },
                 take: 1,
               },
+              attachments: {
+                include: {
+                  file: true,
+                },
+              },
             },
           },
           changeRequests: true,
@@ -2295,6 +2300,12 @@ export class ClientOverviewService {
               id: prop.freelancer.id,
               name: prop.freelancer.name,
               email: prop.freelancer.email,
+              avatar:
+                prop.freelancer.avatarUrl && !prop.freelancer.avatarUrl.includes("photo-1507003211169") && !prop.freelancer.avatarUrl.includes("photo-1534528741775")
+                  ? prop.freelancer.avatarUrl
+                  : (prop.freelancer.preferences as any)?.avatar && !(prop.freelancer.preferences as any).avatar.includes("photo-1507003211169") && !(prop.freelancer.preferences as any).avatar.includes("photo-1534528741775")
+                  ? (prop.freelancer.preferences as any).avatar
+                  : null,
               freelancerProfile: prop.freelancer.freelancerProfile
                 ? {
                     title:
@@ -2310,6 +2321,22 @@ export class ClientOverviewService {
               latestVersion?.coverLetter ||
               "Experienced developer ready to execute deliverables with automated test assert logs.",
             milestones: dbProj.projectMilestones,
+            proposedMilestones: Array.isArray(latestVersion?.milestonesJson) && (latestVersion.milestonesJson as any[]).length > 0
+              ? latestVersion.milestonesJson
+              : dbProj.projectMilestones,
+            estimatedDurationWeeks: latestVersion?.estimatedDurationWeeks || null,
+            estimatedTimeline: latestVersion?.estimatedDurationWeeks
+              ? `${latestVersion.estimatedDurationWeeks} weeks`
+              : ((brief as any).timelineDuration || "Sprint schedule"),
+            approach: latestVersion?.approach || latestVersion?.scopeText || "",
+            attachments: (prop.attachments || []).map((att: any) => ({
+              id: att.id,
+              name: att.file?.originalName || "Proposal Attachment",
+              size: `${Math.round(((att.file?.sizeBytes || 1024) / 1024 / 1024) * 10) / 10} MB`,
+              sizeBytes: att.file?.sizeBytes || 0,
+              type: att.file?.mime || "application/pdf",
+              url: `/api/files/${att.fileId}`,
+            })),
           };
         });
 
@@ -2451,7 +2478,7 @@ export class ClientOverviewService {
             project: p.title,
             projectId: p.id,
             freelancer: freelancerName,
-            avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
+            avatar: "",
             type: "DELIVERABLE_SUBMISSION",
             amount: `$${((m.amountCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             dueNotice: "Pending client sign-off · PayPal funds locked in escrow",
@@ -3124,10 +3151,17 @@ export class ClientOverviewService {
           const skills = Array.isArray(profile?.skills) ? (profile.skills as string[]) : ["TypeScript", "Next.js", "Full-Stack"];
           const ratePrefs = (profile?.ratePreferences as Record<string, unknown>) || {};
           const parsedRate = typeof ratePrefs?.hourlyRateCents === "number" ? ratePrefs.hourlyRateCents : 6000;
+          const rawPrefAvatar = ((dbUser.preferences as Record<string, unknown>)?.avatar as string) || dbUser.avatarUrl || null;
+          const cleanAvatar =
+            rawPrefAvatar &&
+            !rawPrefAvatar.includes("photo-1507003211169") &&
+            !rawPrefAvatar.includes("photo-1534528741775")
+              ? rawPrefAvatar
+              : "";
           currentRoster.push({
             id: dbUser.id,
             name: dbUser.name,
-            avatar: ((dbUser.preferences as Record<string, unknown>)?.avatar as string) || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+            avatar: cleanAvatar,
             title: profile?.title || "Senior Software Engineer",
             type: "INDIVIDUAL",
             experienceLevel: "SENIOR",
@@ -3395,7 +3429,7 @@ export class ClientOverviewService {
       id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       freelancerId: payload.freelancerId,
       freelancerName: payload.freelancerName || freelancer?.name || "Verified Talent",
-      freelancerAvatar: payload.freelancerAvatar || freelancer?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+      freelancerAvatar: payload.freelancerAvatar || freelancer?.avatar || "",
       freelancerTitle: payload.freelancerTitle || freelancer?.title || "Contract Specialist",
       projectId: payload.projectId,
       projectName: payload.projectName || "Project Workspace",

@@ -14,8 +14,7 @@ import FreelancerEarningsPaymentsView from "@/components/freelancer/FreelancerEa
 import FreelancerSettingsView from "@/components/freelancer/FreelancerSettingsView";
 import { useAuth } from "@/context/AuthContext";
 import { DEMO_USERS } from "@/lib/auth-types";
-import { Send, FileCode, FileText } from "lucide-react";
-import { createDraftProposal, updateDraftProposal, submitProposal } from "@/lib/api-client";
+import { Send, FileCode, FileText, X } from "lucide-react";
 
 const VALID_TABS = [
   "dashboard",
@@ -57,12 +56,7 @@ function FreelancerDashboardContent() {
     "All test criteria met: PayPal REST v2 order capture verified, SHA-256 signature validation passing with mock payloads, idempotency cache deduplicates within 30s window."
   );
 
-  // Proposal modal state
-  const [showProposalModal, setShowProposalModal] = useState(false);
-  const [isSendingProposal, setIsSendingProposal] = useState(false);
-  const [proposalTargetProject, setProposalTargetProject] = useState<{ id?: string; title: string; budget: string; company: string } | null>(null);
-  const [proposalScope, setProposalScope] = useState("");
-  const [proposalQuote, setProposalQuote] = useState("");
+  const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -86,77 +80,9 @@ function FreelancerDashboardContent() {
     showToast("Deliverable submission updated & recorded to consensus ledger.");
   };
 
-  const handleApplyProjectFromFind = (project: { id?: string; title: string; budget: string; clientCompany: string }) => {
-    setProposalTargetProject({
-      id: project.id,
-      title: project.title,
-      budget: project.budget,
-      company: project.clientCompany,
-    });
-    setProposalQuote(project.budget.includes("-") ? "$4,200.00 USD" : project.budget);
-    setProposalScope(
-      "1. Architecture PRD and SHA-256 signature validation schema\n2. Primary implementation with test coverage\n3. Sandbox integration and QA signoff"
-    );
-    setShowProposalModal(true);
-  };
-
-  const handleSendProposal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!proposalTargetProject?.id) {
-      showToast("Error: No target project selected.");
-      return;
-    }
-
-    try {
-      setIsSendingProposal(true);
-      const cleanPrice = parseFloat(proposalQuote.replace(/[^0-9.]/g, "")) || 0;
-      const priceMinor = Math.round(cleanPrice * 100);
-
-      // 1. Create draft proposal in database
-      const draftRes = await createDraftProposal(proposalTargetProject.id);
-      if (!draftRes.success || !draftRes.proposal) {
-        showToast(draftRes.error || "Failed to create draft proposal.");
-        return;
-      }
-
-      const proposalId = draftRes.proposal.id;
-
-      // 2. Persist proposal scope and pricing
-      const updateRes = await updateDraftProposal(proposalId, {
-        totalAmountMinor: priceMinor,
-        paymentModel: "FIXED_PRICE",
-        coverLetter: proposalScope.trim(),
-        scopeText: proposalScope.trim(),
-        estimatedDurationWeeks: 4,
-        milestones: [
-          {
-            title: "Project Scope and Verification Delivery",
-            amountMinor: priceMinor,
-            durationWeeks: 4,
-            criteria: ["Full delivery of agreed scope", "Verification and acceptance"],
-          },
-        ],
-      });
-
-      if (!updateRes.success) {
-        showToast(updateRes.error || "Failed to update proposal details.");
-        return;
-      }
-
-      // 3. Formally submit proposal
-      const submitRes = await submitProposal(proposalId);
-      if (!submitRes.success) {
-        showToast(submitRes.error || "Failed to submit proposal to client.");
-        return;
-      }
-
-      setShowProposalModal(false);
-      showToast(`Proposal of ${proposalQuote} successfully sent to ${proposalTargetProject.company || "Client"}!`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to send proposal";
-      showToast(msg);
-    } finally {
-      setIsSendingProposal(false);
+  const handleApplyProjectFromFind = (project: { id?: string; title: string; budget: string; budgetAmount?: number; clientCompany: string }) => {
+    if (project.id) {
+      router.push(`/freelancer/projects/${project.id}/apply`);
     }
   };
 
@@ -221,11 +147,7 @@ function FreelancerDashboardContent() {
               onNavigateTab={handleTabChange}
               onSubmitDeliverableClick={() => setShowSubmitModal(true)}
               onReviewLeadClick={() => {
-                handleApplyProjectFromFind({
-                  title: "Enterprise Smart Escrow Integration for Solana Pay",
-                  budget: "$4,500.00 USD",
-                  clientCompany: "FinTech Labs Inc.",
-                });
+                handleTabChange("find_projects");
               }}
             />
           )}
@@ -235,6 +157,7 @@ function FreelancerDashboardContent() {
             <FreelancerFindProjectsView
               onApplyProject={handleApplyProjectFromFind}
               showToast={showToast}
+              appliedProjectIds={appliedProjectIds}
             />
           )}
 
@@ -370,77 +293,6 @@ function FreelancerDashboardContent() {
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Submit Deliverable</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Submit Proposal Modal */}
-      {showProposalModal && proposalTargetProject && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Submit Proposal
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {proposalTargetProject.title} · {proposalTargetProject.company}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowProposalModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSendProposal} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Your Fixed Price Quote ($ USD)
-                </label>
-                <input
-                  type="text"
-                  value={proposalQuote}
-                  onChange={(e) => setProposalQuote(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Proposed Scope & Milestone Roadmap
-                </label>
-                <textarea
-                  rows={4}
-                  value={proposalScope}
-                  onChange={(e) => setProposalScope(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowProposalModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSendingProposal}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{isSendingProposal ? "Submitting Proposal..." : "Send Proposal to Client"}</span>
                 </button>
               </div>
             </form>

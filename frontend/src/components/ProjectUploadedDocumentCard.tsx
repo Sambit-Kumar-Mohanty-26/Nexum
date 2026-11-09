@@ -23,6 +23,7 @@ export interface UploadedDocumentData {
   type?: string;
   uploadedAt?: string;
   dataUrl?: string;
+  url?: string;
 }
 
 export interface ProjectUploadedDocumentCardProps {
@@ -54,14 +55,16 @@ export default function ProjectUploadedDocumentCard({
 }: ProjectUploadedDocumentCardProps) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"embedded" | "formatted">(
-    document.dataUrl ? "embedded" : "formatted"
+    document.dataUrl || document.url ? "embedded" : "formatted"
   );
 
   const handleDownload = () => {
-    if (document.dataUrl) {
+    const fileSource = document.url || document.dataUrl;
+    if (fileSource) {
       const a = window.document.createElement("a");
-      a.href = document.dataUrl;
+      a.href = fileSource;
       a.download = document.name;
+      a.target = "_blank";
       window.document.body.appendChild(a);
       a.click();
       window.document.body.removeChild(a);
@@ -257,10 +260,10 @@ End of Document — Uploaded and verified on Nexum
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100/50">
-              {document.dataUrl && viewMode === "embedded" ? (
+              {(document.dataUrl || document.url) && viewMode === "embedded" ? (
                 <div className="w-full h-[680px] bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
                   <iframe
-                    src={document.dataUrl}
+                    src={document.dataUrl || document.url}
                     className="w-full h-full border-0"
                     title={document.name}
                   />

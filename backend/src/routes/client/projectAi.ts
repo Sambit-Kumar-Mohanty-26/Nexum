@@ -4,6 +4,7 @@ import { z } from "zod";
 import { openSourceAiService, stripMarkdownStars } from "../../services/openSourceAiService.js";
 import { extractTextFromDocx } from "../../lib/docxParser.js";
 import { geminiService } from "../../services/geminiService.js";
+import { uploadProjectDocumentArtifact, generatePresignedUploadUrl } from "../../lib/storage.js";
 
 const router = Router();
 const upload = multer({
@@ -98,8 +99,44 @@ router.post(
         });
       }
 
+      let uploadedDocMeta: {
+        name: string;
+        size: string;
+        type: string;
+        uploadedAt: string;
+        url?: string;
+        storageKey?: string;
+        storage?: string;
+      } | null = null;
+
+      if (req.file) {
+        try {
+          const storageResult = await uploadProjectDocumentArtifact({
+            buffer: req.file.buffer,
+            fileName: req.file.originalname,
+            contentType: req.file.mimetype || "application/pdf",
+          });
+
+          uploadedDocMeta = {
+            name: req.file.originalname,
+            size: `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`,
+            type: req.file.mimetype || "application/pdf",
+            uploadedAt: new Date().toISOString(),
+            url: storageResult.url,
+            storageKey: storageResult.key,
+            storage: storageResult.storage,
+          };
+        } catch (storageErr) {
+          console.warn("[ProjectAI] Object storage upload error:", storageErr);
+        }
+      }
+
       const extracted = await openSourceAiService.extractProjectFromDocument(documentText, fileName);
-      return res.json({ success: true, data: extracted });
+      return res.json({
+        success: true,
+        data: extracted,
+        uploadedDocument: uploadedDocMeta,
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Document extraction failed";
       return res.status(500).json({
@@ -112,6 +149,51 @@ router.post(
     }
   }
 );
+
+/**
+ * POST /api/client/projects/presigned-url
+ * Generates an S3 presigned upload URL or storage path for direct document upload.
+ */
+router.post("/projects/presigned-url", async (req: Request, res: Response) => {
+  try {
+    const { fileName, contentType = "application/pdf" } = req.body || {};
+    if (!fileName || typeof fileName !== "string") {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "fileName is required",
+          details: null,
+        },
+      });
+    }
+
+    const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const key = `project-documents/${Date.now()}-${sanitized}`;
+    const presigned = await generatePresignedUploadUrl({
+      key,
+      contentType,
+      expiresInSeconds: 900, // 15 mins
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        uploadUrl: presigned.uploadUrl,
+        key: presigned.key,
+        storage: presigned.storage,
+      },
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to generate presigned URL";
+    return res.status(500).json({
+      error: {
+        code: "PRESIGNED_URL_ERROR",
+        message: msg,
+        details: null,
+      },
+    });
+  }
+});
 
 /**
  * POST /api/client/projects/ai/assist

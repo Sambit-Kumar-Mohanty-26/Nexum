@@ -120,9 +120,15 @@ export default function FreelancerProposalsView({
   const filteredProposals = useMemo(() => {
     return proposals
       .filter((p) => {
-        // Status filter
-        if (selectedStatus !== "ALL" && p.status !== selectedStatus) {
-          return false;
+        // Status filter (treat SUBMITTED as UNDER_REVIEW for client evaluation)
+        if (selectedStatus !== "ALL") {
+          if (selectedStatus === "UNDER_REVIEW") {
+            if (p.status !== "UNDER_REVIEW" && p.status !== "SUBMITTED") {
+              return false;
+            }
+          } else if (p.status !== selectedStatus) {
+            return false;
+          }
         }
 
         // Project Type filter
@@ -265,7 +271,7 @@ export default function FreelancerProposalsView({
     if (liveSummary) {
       return {
         totalProposals: liveSummary.totalProposals ?? (liveSummary as any).all ?? proposals.length,
-        underReview: liveSummary.underReview ?? 0,
+        underReview: (liveSummary.underReview ?? 0) + ((liveSummary as any).submitted ?? 0),
         shortlisted: liveSummary.shortlisted ?? 0,
         interview: liveSummary.interview ?? (liveSummary as any).interviewDiscussion ?? 0,
         accepted: liveSummary.accepted ?? 0,
@@ -472,12 +478,6 @@ export default function FreelancerProposalsView({
                     proposal={selectedProposal}
                     onEditProposal={() => setShowEditModal(true)}
                     onReviewCounteroffer={() => setShowCounterofferModal(true)}
-                    onSendFollowUp={() => {
-                      setActiveTab("messages");
-                      showToast(
-                        `Opened discussion thread for ${selectedProposal.client.companyName}.`
-                      );
-                    }}
                     showToast={showToast}
                   />
                 )}
@@ -531,6 +531,11 @@ export default function FreelancerProposalsView({
 
       {showBuilderModal && (
         <ProposalBuilderModal
+          existingProposals={proposals}
+          onSelectExistingProposal={(propId) => {
+            setSelectedProposalId(propId);
+            setShowBuilderModal(false);
+          }}
           onClose={() => setShowBuilderModal(false)}
           onSubmitNewProposal={handleAddNewProposal}
         />

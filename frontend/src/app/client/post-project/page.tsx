@@ -32,6 +32,7 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopHeader from "@/components/DashboardTopHeader";
 import { useAuth } from "@/context/AuthContext";
 import { fetchProjectById, saveProject } from "@/lib/api-client";
+import UserAvatar from "@/components/UserAvatar";
 
 const PROJECT_CATEGORIES: Record<string, string[]> = {
   "Web Development": ["Full Stack Development", "Frontend / Next.js", "Backend & APIs", "E-Commerce"],
@@ -106,7 +107,7 @@ const MATCHING_FREELANCERS_PREVIEW = [
     rating: "5.0",
     skills: ["PayPal v2", "Next.js", "PostgreSQL", "State Machines"],
     rate: "$65/hr",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
   },
   {
     name: "Sambit Kumar Mohanty",
@@ -114,7 +115,7 @@ const MATCHING_FREELANCERS_PREVIEW = [
     rating: "5.0",
     skills: ["Next.js", "React", "TypeScript", "Tailwind CSS"],
     rate: "$60/hr",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
   },
   {
     name: "Chandrasekhar",
@@ -122,7 +123,7 @@ const MATCHING_FREELANCERS_PREVIEW = [
     rating: "5.0",
     skills: ["Web development", "Backend / API development", "TypeScript"],
     rate: "$60/hr",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+    avatar: "",
   },
 ];
 
@@ -523,8 +524,16 @@ function PostNewProjectContent() {
         body: formData,
       });
       const json = await res.json();
-      if (json.success && json.data) {
-        const d = json.data;
+      if (json.success) {
+        if (json.uploadedDocument) {
+          setUploadedDocAttachment((prev) => ({
+            ...fileMeta,
+            ...(prev?.dataUrl ? { dataUrl: prev.dataUrl } : {}),
+            ...json.uploadedDocument,
+          }));
+        }
+        if (json.data) {
+          const d = json.data;
         const isGarbled = (s: string) => /[\uFFFD]|^PK|\[Content_Types\]|\.xml/i.test(s);
 
         if (d.title && !isGarbled(d.title)) {
@@ -622,6 +631,7 @@ function PostNewProjectContent() {
           setBudgetType("FIXED");
         }
         showToast("PRD parsed! Fields auto-filled below. You can freely edit any details manually.");
+        }
       } else {
         showToast(json.error?.message || "Could not parse document. You can type manually.");
       }
@@ -2774,15 +2784,12 @@ function PostNewProjectContent() {
                         className="p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 flex items-center justify-between gap-2.5 transition"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                            <Image
-                              src={freelancer.avatar}
-                              alt={freelancer.name}
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                          <UserAvatar
+                            name={freelancer.name}
+                            avatarUrl={freelancer.avatar}
+                            size="sm"
+                            className="rounded-full"
+                          />
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-slate-900 truncate">
                               {freelancer.name}

@@ -37,6 +37,7 @@ import freelancerDecisionsRouter from "./routes/freelancer/decisions.js";
 import freelancerPrivateAiRouter from "./routes/freelancer/privateAi.js";
 import devWorkspaceRouter from "./routes/dev/workspace.js";
 import clientRouter from "./routes/client.js";
+import agreementsRouter from "./routes/agreements.js";
 import freelancerEarningsRouter from "./routes/freelancer/earnings.js";
 import freelancerPayoutsRouter from "./routes/freelancer/payouts.js";
 import paypalWebhooksRouter from "./routes/webhooks/paypal.js";
@@ -161,10 +162,15 @@ app.use("/api/dev/payments", devPaymentsRouter);
 // Client Overview & Payments Routes
 app.use("/api/client/payments", clientPaymentsRouter);
 app.use("/api/client", clientRouter);
+app.use("/api/agreements", agreementsRouter);
 app.use("/api/milestones", milestonesVerifierRouter);
 app.use("/api/workspace", workspaceRouter);
 app.use("/api/telegram", telegramRouter);
 app.use("/api/projects", handoverRouter);
+
+// Reset TerraShield alias for testing in production
+app.post("/api/dev/reset-terrashield", (_req, res) => res.redirect(307, "/api/client/reset-terrashield"));
+app.all("/api/client/projects/reset-terrashield", (_req, res) => res.redirect(307, "/api/client/reset-terrashield"));
 
 // Root fallback
 app.get("/", (_req: express.Request, res: express.Response) => {

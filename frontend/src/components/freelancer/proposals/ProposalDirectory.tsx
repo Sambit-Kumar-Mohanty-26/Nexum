@@ -48,9 +48,15 @@ export default function ProposalDirectory({
   const filteredProposals = useMemo(() => {
     return proposals
       .filter((p) => {
-        // Status filter
-        if (selectedStatus !== "ALL" && p.status !== selectedStatus) {
-          return false;
+        // Status filter (treat SUBMITTED as UNDER_REVIEW for client evaluation)
+        if (selectedStatus !== "ALL") {
+          if (selectedStatus === "UNDER_REVIEW") {
+            if (p.status !== "UNDER_REVIEW" && p.status !== "SUBMITTED") {
+              return false;
+            }
+          } else if (p.status !== selectedStatus) {
+            return false;
+          }
         }
 
         // Project Type filter

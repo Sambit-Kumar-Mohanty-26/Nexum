@@ -9,6 +9,7 @@ export type ProposalStatus =
   | "UNDER_REVIEW"
   | "SHORTLISTED"
   | "INTERVIEW"
+  | "INTERVIEW_DISCUSSION"
   | "COUNTEROFFER_RECEIVED"
   | "ACCEPTED"
   | "REJECTED"
@@ -67,6 +68,7 @@ export interface FreelancerProposalItem {
   status: ProposalStatus;
   statusLabel: string;
   statusBadgeColor: string;
+  rejectionFeedback?: string | null;
   submittedDate: string;
   submittedTime: string;
   client: {
@@ -79,6 +81,7 @@ export interface FreelancerProposalItem {
     location: string;
     postedDate: string;
     totalHires: number;
+    memberSince?: number;
     avatarLetter: string;
     avatarBg: string;
   };
@@ -114,6 +117,14 @@ export interface FreelancerProposalItem {
   };
   counteroffer?: ProposalCounteroffer;
   messagesCount: number;
+  hasClientInitiated?: boolean;
+  conversationMessages?: Array<{
+    id: string;
+    senderId?: string;
+    senderRole: string;
+    content: string;
+    timestamp: string;
+  }>;
   activityTrail: ProposalActivityEvent[];
   techTags: string[];
 }

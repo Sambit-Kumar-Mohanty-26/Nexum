@@ -211,6 +211,8 @@ publicFilesRouter.get(
       } else if (file.purpose === "PROFILE_COVER") {
         const isVisible = file.coverProfiles.some((p) => p.searchVisibility === "VISIBLE");
         isPubliclyAccessible = isVisible;
+      } else if (file.purpose === "PROPOSAL_ATTACHMENT" || file.purpose === "PROJECT_FILE") {
+        isPubliclyAccessible = true;
       }
 
       if (!isOwner && !isPubliclyAccessible) {

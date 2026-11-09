@@ -97,6 +97,7 @@ router.post("/", async (req: Request, res: Response) => {
       englishLevel,
       visibility,
       milestones = [],
+      uploadedDocument,
     } = req.body || {};
 
     if (!title) {
@@ -127,6 +128,7 @@ router.post("/", async (req: Request, res: Response) => {
       englishLevel,
       visibility,
       milestones,
+      uploadedDocument,
     });
 
     res.status(201).json({

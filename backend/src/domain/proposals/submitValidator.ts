@@ -27,14 +27,22 @@ export function validateForSubmit(
     errors.coverLetter = `Cover letter cannot exceed 4000 characters (currently ${coverLetter.length})`;
   }
 
-  // 2. Scope text: required, non-empty
-  const scopeText = (version.scopeText || version.scope || "").trim();
+  // 2. Scope text: required, non-empty (fall back to coverLetter if not provided)
+  const scopeText = (version.scopeText || version.scope || version.coverLetter || "").trim();
   if (!scopeText) {
     errors.scopeText = "Scope of work is required";
   }
 
-  // 3. Deliverables: at least one required
-  const deliverables = Array.isArray(version.deliverables) ? version.deliverables : [];
+  // 3. Deliverables: at least one required (fall back to milestonesJson if not explicitly passed)
+  let deliverables = Array.isArray(version.deliverables) && version.deliverables.length > 0
+    ? version.deliverables
+    : Array.isArray(version.milestonesJson) && version.milestonesJson.length > 0
+    ? version.milestonesJson.map((m: any, idx: number) => ({
+        title: m.title || `Milestone ${idx + 1} Deliverable`,
+        description: "Milestone deliverable package",
+      }))
+    : [];
+
   if (deliverables.length === 0) {
     errors.deliverables = "At least one deliverable is required";
   } else {

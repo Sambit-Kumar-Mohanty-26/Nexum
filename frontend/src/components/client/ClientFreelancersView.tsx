@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import UserAvatar from "@/components/UserAvatar";
 import {
   Search,
   SlidersHorizontal,
@@ -173,6 +175,7 @@ function ExplainableFitScoreBadge({ profile }: { profile: FreelancerProfile }) {
 export default function ClientFreelancersView({
   onOpenProjectWorkspace,
 }: ClientFreelancersViewProps) {
+  const router = useRouter();
   const { user } = useAuth();
 
   // Main view tab: All Talent (Recommended + Results) | Saved Freelancers | Invitations
@@ -201,7 +204,6 @@ export default function ClientFreelancersView({
   const [totalFreelancers, setTotalFreelancers] = useState(INITIAL_FREELANCERS.length);
 
   // Modals state
-  const [selectedProfileForDetail, setSelectedProfileForDetail] = useState<FreelancerProfile | null>(null);
   const [inviteModalFreelancer, setInviteModalFreelancer] = useState<FreelancerProfile | null>(null);
   const [inviteProjectId, setInviteProjectId] = useState<string>("");
   const [inviteMessage, setInviteMessage] = useState("");
@@ -833,19 +835,27 @@ export default function ClientFreelancersView({
                       {/* Top Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                            <Image
-                              src={candidate.avatar}
-                              alt={candidate.name}
-                              fill
-                              sizes="48px"
-                              className="object-cover"
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/client/freelancers/${candidate.id}`)}
+                            className="shrink-0 group cursor-pointer text-left"
+                            title="View candidate profile"
+                          >
+                            <UserAvatar
+                              name={candidate.name}
+                              avatarUrl={candidate.avatar}
+                              size="lg"
+                              className="rounded-xl group-hover:ring-2 group-hover:ring-indigo-500/30 transition shadow-2xs"
                             />
-                          </div>
+                          </button>
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/client/freelancers/${candidate.id}`)}
+                              className="font-extrabold text-slate-900 text-sm leading-snug truncate hover:text-indigo-600 transition text-left cursor-pointer block max-w-full"
+                            >
                               {candidate.name}
-                            </h3>
+                            </button>
                             <p className="text-xs text-slate-500 truncate">{candidate.title}</p>
                           </div>
                         </div>
@@ -888,7 +898,7 @@ export default function ClientFreelancersView({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setSelectedProfileForDetail(candidate)}
+                          onClick={() => router.push(`/client/freelancers/${candidate.id}`)}
                           className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                         >
                           View Profile
@@ -969,20 +979,28 @@ export default function ClientFreelancersView({
                           {/* Header: Photo, Name, Badges, Match Score & Save Bookmark */}
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                                <Image
-                                  src={freelancer.avatar}
-                                  alt={freelancer.name}
-                                  fill
-                                  sizes="48px"
-                                  className="object-cover"
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/client/freelancers/${freelancer.id}`)}
+                                className="shrink-0 group cursor-pointer text-left"
+                                title="View candidate profile"
+                              >
+                                <UserAvatar
+                                  name={freelancer.name}
+                                  avatarUrl={freelancer.avatar}
+                                  size="lg"
+                                  className="rounded-xl group-hover:ring-2 group-hover:ring-indigo-500/30 transition shadow-2xs"
                                 />
-                              </div>
+                              </button>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5">
-                                  <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
+                                  <button
+                                    type="button"
+                                    onClick={() => router.push(`/client/freelancers/${freelancer.id}`)}
+                                    className="font-extrabold text-slate-900 text-sm leading-snug truncate hover:text-indigo-600 transition text-left cursor-pointer block max-w-full"
+                                  >
                                     {freelancer.name}
-                                  </h3>
+                                  </button>
                                   {freelancer.type === "AGENCY" ? (
                                     <span className="p-0.5 rounded text-slate-500 shrink-0" title="Agency / Studio">
                                       <Building2 className="w-3.5 h-3.5" />
@@ -1107,7 +1125,7 @@ export default function ClientFreelancersView({
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setSelectedProfileForDetail(freelancer)}
+                              onClick={() => router.push(`/client/freelancers/${freelancer.id}`)}
                               className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                             >
                               View Profile
@@ -1256,19 +1274,27 @@ export default function ClientFreelancersView({
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                          <Image
-                            src={freelancer.avatar}
-                            alt={freelancer.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/client/freelancers/${freelancer.id}`)}
+                          className="shrink-0 group cursor-pointer text-left"
+                          title="View candidate profile"
+                        >
+                          <UserAvatar
+                            name={freelancer.name}
+                            avatarUrl={freelancer.avatar}
+                            size="lg"
+                            className="rounded-xl group-hover:ring-2 group-hover:ring-amber-500/30 transition shadow-2xs"
                           />
-                        </div>
+                        </button>
                         <div>
-                          <h3 className="font-extrabold text-slate-900 text-sm leading-snug">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/client/freelancers/${freelancer.id}`)}
+                            className="font-extrabold text-slate-900 text-sm leading-snug hover:text-indigo-600 transition text-left cursor-pointer block"
+                          >
                             {freelancer.name}
-                          </h3>
+                          </button>
                           <p className="text-xs text-slate-500 line-clamp-1">{freelancer.title}</p>
                         </div>
                       </div>
@@ -1303,7 +1329,7 @@ export default function ClientFreelancersView({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setSelectedProfileForDetail(freelancer)}
+                        onClick={() => router.push(`/client/freelancers/${freelancer.id}`)}
                         className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                       >
                         View Profile
@@ -1372,18 +1398,28 @@ export default function ClientFreelancersView({
                   className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition"
                 >
                   <div className="flex items-start sm:items-center gap-3.5">
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                      <Image
-                        src={inv.freelancerAvatar}
-                        alt={inv.freelancerName}
-                        fill
-                        sizes="44px"
-                        className="object-cover"
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/client/freelancers/${inv.freelancerId}`)}
+                      className="shrink-0 group cursor-pointer text-left"
+                      title="View candidate profile"
+                    >
+                      <UserAvatar
+                        name={inv.freelancerName}
+                        avatarUrl={inv.freelancerAvatar}
+                        size="md"
+                        className="rounded-xl group-hover:ring-2 group-hover:ring-indigo-500/30 transition shadow-2xs"
                       />
-                    </div>
+                    </button>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-extrabold text-slate-900 text-sm">{inv.freelancerName}</h4>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/client/freelancers/${inv.freelancerId}`)}
+                          className="font-extrabold text-slate-900 text-sm hover:text-indigo-600 transition text-left cursor-pointer"
+                        >
+                          {inv.freelancerName}
+                        </button>
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${inv.status === "ACCEPTED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -1437,304 +1473,7 @@ export default function ClientFreelancersView({
       )}
 
       {/* ====================================================================
-          5. FREELANCER PROFILE DETAIL MODAL (FULL VIEW)
-         ==================================================================== */}
-      {selectedProfileForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 text-slate-900 shadow-2xl space-y-6">
-
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                  <Image
-                    src={selectedProfileForDetail.avatar}
-                    alt={selectedProfileForDetail.name}
-                    fill
-                    sizes="64px"
-                    className="object-cover"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-extrabold text-slate-900">
-                      {selectedProfileForDetail.name}
-                    </h2>
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#eef2ff] text-[#4f46e5]">
-                      {selectedProfileForDetail.type === "AGENCY" ? "Agency / Studio" : "Verified Individual"}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                    {selectedProfileForDetail.title}
-                  </p>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-slate-400" />
-                      {selectedProfileForDetail.location}
-                    </span>
-                    <span>&bull;</span>
-                    <span>{selectedProfileForDetail.timezone}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedProfileForDetail(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">Rate</span>
-                <span className="text-sm font-extrabold text-slate-900 mt-0.5 block">
-                  {selectedProfileForDetail.hourlyRateDisplay || "By Quote"}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">Experience</span>
-                <span className="text-sm font-extrabold text-slate-900 mt-0.5 block">
-                  {selectedProfileForDetail.experienceYears} Years
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">Availability</span>
-                <span className="text-sm font-extrabold text-emerald-700 mt-0.5 block">
-                  {selectedProfileForDetail.availability === "AVAILABLE" ? "Immediate" : "Active Contract"}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">Nexum Match Score</span>
-                <span className="text-sm font-bold text-slate-900 mt-0.5 block">
-                  {selectedProfileForDetail.fitScore}% Match
-                </span>
-              </div>
-            </div>
-
-            {/* Explainable Fit Compatibility Card */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                      Match Breakdown
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      Multi-vector compatibility calculated against active project brief requirements
-                    </p>
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-400">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>{selectedProfileForDetail.fitScore}% Match</span>
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1 text-xs">
-                {/* Vector 1: Stack Match (40%) */}
-                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-medium text-slate-700">1. Tech Stack Overlap (40%)</span>
-                    <span className="font-semibold text-emerald-700">
-                      {selectedProfileForDetail.fitBreakdown?.stackMatch || selectedProfileForDetail.fitScore}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-200/70 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{ width: `${selectedProfileForDetail.fitBreakdown?.stackMatch || selectedProfileForDetail.fitScore}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-tight">
-                    Direct keyword overlap across required framework, runtime, and database skills.
-                  </p>
-                </div>
-
-                {/* Vector 2: Ledger Deliverables (25%) */}
-                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-medium text-slate-700">2. Ledger-Verified Deliverables (25%)</span>
-                    <span className="font-semibold text-indigo-700">
-                      {selectedProfileForDetail.fitBreakdown?.trackRecordMatch || selectedProfileForDetail.fitScore}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-200/70 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-indigo-500 rounded-full"
-                      style={{ width: `${selectedProfileForDetail.fitBreakdown?.trackRecordMatch || selectedProfileForDetail.fitScore}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-tight">
-                    Verifiable cryptographic milestone completions under bilateral consensus escrow.
-                  </p>
-                </div>
-
-                {/* Vector 3: Budget & Rate Alignment (20%) */}
-                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-medium text-slate-700">3. Budget Alignment (20%)</span>
-                    <span className="font-semibold text-sky-700">
-                      {selectedProfileForDetail.fitBreakdown?.budgetMatch || 95}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-200/70 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-sky-500 rounded-full"
-                      style={{ width: `${selectedProfileForDetail.fitBreakdown?.budgetMatch || 95}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-tight">
-                    Hourly rate falls squarely within pre-allocated sprint and milestone budgets.
-                  </p>
-                </div>
-
-                {/* Vector 4: Turnaround Capacity (15%) */}
-                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-medium text-slate-700">4. Capacity & SLA Turnaround (15%)</span>
-                    <span className="font-semibold text-amber-700">
-                      {selectedProfileForDetail.fitBreakdown?.availabilityMatch || 100}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-200/70 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded-full"
-                      style={{ width: `${selectedProfileForDetail.fitBreakdown?.availabilityMatch || 100}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-tight">
-                    Availability status confirms active bandwidth to meet target deliverable deadlines.
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-[11px] text-indigo-900 leading-relaxed">
-                <span className="font-bold">Match Summary:</span>{" "}
-                {selectedProfileForDetail.fitBreakdown?.summaryText || selectedProfileForDetail.recommendationReason}
-              </div>
-            </div>
-
-            {/* Professional Summary */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Professional Overview & Experience
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                {selectedProfileForDetail.fullBio}
-              </p>
-            </div>
-
-            {/* Verified Work & Portfolio Highlights */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Verifiable Portfolio Highlights & Milestones
-              </h3>
-              <div className="space-y-2.5">
-                {selectedProfileForDetail.portfolioHighlights.map((work, idx) => (
-                  <div
-                    key={`work_${idx}`}
-                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900">{work.title}</span>
-                      <span className="font-mono text-[10px] text-slate-400">{work.year}</span>
-                    </div>
-                    <p className="text-slate-600">{work.outcome}</p>
-                    {work.verifiedOnLedger && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 mt-1">
-                        <ShieldCheck className="w-3 h-3" />
-                        Verified via Nexum Consensus Ledger
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Verified Credentials */}
-            {selectedProfileForDetail.verifiedCredentials.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Verified Credentials & Badges
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedProfileForDetail.verifiedCredentials.map((badge) => (
-                    <span
-                      key={badge}
-                      className="px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5"
-                    >
-                      <Award className="w-3.5 h-3.5 text-emerald-600" />
-                      {badge}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Skills Matrix */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Technical Stack & Skills
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedProfileForDetail.skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => handleToggleSave(selectedProfileForDetail.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 ${selectedProfileForDetail.isSaved
-                    ? "bg-amber-50 border-amber-200 text-amber-700"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}
-              >
-                <Bookmark className="w-3.5 h-3.5" />
-                <span>{selectedProfileForDetail.isSaved ? "Saved" : "Save Profile"}</span>
-              </button>
-
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setSelectedProfileForDetail(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const candidate = selectedProfileForDetail;
-                    setSelectedProfileForDetail(null);
-                    handleOpenInviteModal(candidate);
-                  }}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Invite to Project</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ====================================================================
-          6. INTERACTIVE INVITE TO PROJECT MODAL
+          5. INTERACTIVE INVITE TO PROJECT MODAL
          ==================================================================== */}
       {inviteModalFreelancer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">

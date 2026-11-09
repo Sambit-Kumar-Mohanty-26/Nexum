@@ -1,7 +1,10 @@
+import crypto from "crypto";
 import { appendAuditEvent } from "../lib/audit.js";
 import { prisma } from "../prisma.js";
 import { computeCanonicalHash, computeTimelineSeal } from "../lib/canonicalHash.js";
 import { notificationQueue } from "./notificationQueue.js";
+import { generateContractMarkdown, saveContractAsProjectFile } from "../domain/agreements/contractGenerator.js";
+import { Role, ApprovalDecision, AgreementVersionStatus } from "@prisma/client";
 
 export interface SendMessageParams {
   projectId: string;
@@ -103,23 +106,25 @@ export class WorkspaceService {
         project: {
           include: {
             client: { select: { id: true, name: true, email: true } },
-            proposals: {
+            agreement: {
+              include: {
+                milestones: { orderBy: { orderIndex: "asc" } },
+                freelancer: { select: { id: true, name: true, email: true } },
+                versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+              },
+            },
+            projectProposals: {
               where: { status: "ACCEPTED" },
               include: {
-                milestones: {
-                  orderBy: { orderIndex: "asc" },
-                  include: {
-                    paymentAttempts: {
-                      orderBy: { createdAt: "desc" },
-                      take: 1,
-                    },
-                  },
-                },
                 freelancer: {
                   select: { id: true, name: true, email: true },
                 },
               },
               take: 1,
+            },
+            projectFiles: {
+              include: { file: true },
+              orderBy: { createdAt: "desc" },
             },
           },
         },
@@ -132,9 +137,12 @@ export class WorkspaceService {
         where: { id: projectId },
         include: {
           client: true,
-          proposals: {
-            where: { status: "ACCEPTED" },
+          agreement: {
             include: { milestones: true, freelancer: true },
+          },
+          projectProposals: {
+            where: { status: "ACCEPTED" },
+            include: { freelancer: true },
             take: 1,
           },
         },
@@ -144,13 +152,13 @@ export class WorkspaceService {
         throw new Error(`Project ${projectId} not found`);
       }
 
-      const activeProposal = project.proposals[0];
+      const activeProposal = project.projectProposals[0];
       const initialAgreementPayload = {
         projectId: project.id,
         clientId: project.clientId,
-        freelancerId: activeProposal?.freelancerId || null,
+        freelancerId: project.agreement?.freelancerId || activeProposal?.freelancerId || null,
         budgetCents: project.budgetCents,
-        milestones: activeProposal?.milestones.map((m) => ({
+        milestones: project.agreement?.milestones?.map((m) => ({
           id: m.id,
           title: m.title,
           amountCents: m.amountCents,
@@ -182,26 +190,32 @@ export class WorkspaceService {
           project: {
             include: {
               client: { select: { id: true, name: true, email: true } },
-              proposals: {
+              agreement: {
+                include: {
+                  milestones: { orderBy: { orderIndex: "asc" } },
+                  freelancer: { select: { id: true, name: true, email: true } },
+                  versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+                },
+              },
+              projectProposals: {
                 where: { status: "ACCEPTED" },
                 include: {
-                  milestones: {
-                    orderBy: { orderIndex: "asc" },
-                    include: {
-                      paymentAttempts: {
-                        orderBy: { createdAt: "desc" },
-                        take: 1,
-                      },
-                    },
-                  },
                   freelancer: { select: { id: true, name: true, email: true } },
                 },
                 take: 1,
+              },
+              projectFiles: {
+                include: { file: true },
+                orderBy: { createdAt: "desc" },
               },
             },
           },
         },
       });
+
+      if (!conversation) {
+        throw new Error(`Failed to initialize workspace conversation for project ${projectId}`);
+      }
 
       // Seed initial welcome & cryptographic consensus audit message
       const kickOffSeal = computeTimelineSeal(
@@ -230,6 +244,26 @@ export class WorkspaceService {
 
       conversation.messages = [systemMsg];
     }
+
+    // Attach project files to populate Files tab for both Client & Freelancer
+    const projectFiles = await prisma.projectFile.findMany({
+      where: { projectId },
+      include: { file: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const mappedFiles = projectFiles.map((pf) => ({
+      id: pf.id,
+      fileId: pf.fileId,
+      name: pf.name,
+      size: `${Math.max(1, Math.round(pf.file.sizeBytes / 1024))} KB`,
+      date: pf.createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }),
+      type: pf.name.endsWith(".md") ? "MD" : pf.name.endsWith(".pdf") ? "PDF" : "DOC",
+      url: `/api/files/${pf.fileId}`,
+      versionNumber: pf.versionNumber,
+    }));
+
+    (conversation as any).files = mappedFiles;
 
     return conversation;
   }
@@ -474,21 +508,24 @@ export class WorkspaceService {
 
     // Pathway 4B: Adding brand new milestone
     if (payload.amendmentType === "ADD_NEW_MILESTONE") {
-      const activeProposal = conversation.project.proposals[0];
+      const activeProposal = conversation.project.projectProposals[0];
       if (activeProposal) {
         const highestOrder = await prisma.milestone.findFirst({
-          where: { proposalVersionId: activeProposal.id },
+          where: { projectId: conversation.project.id },
           orderBy: { orderIndex: "desc" },
         });
         const nextOrderIndex = (highestOrder?.orderIndex || 0) + 1;
 
         await prisma.milestone.create({
           data: {
-            proposalVersionId: activeProposal.id,
+            projectId: conversation.project.id,
+            agreementId: conversation.project.agreement?.id,
+            orderIndex: nextOrderIndex,
             title: (payload.newMilestoneTitle as string) || `Milestone ${nextOrderIndex}: New Addendum Scope`,
             deliverables: [(payload.justification as string) || "Added via bilateral scope amendment"],
             amountCents: Number(payload.priceDeltaCents || 0),
-            orderIndex: nextOrderIndex,
+            amountMinor: Number(payload.priceDeltaCents || 0),
+            currency: conversation.project.currency || "USD",
             criteria: (payload.newAcceptanceCriteria as string[]) || ["Verified implementation per agreed addendum specification"],
           },
         });
@@ -523,6 +560,116 @@ export class WorkspaceService {
         origin: "MANUAL",
       },
     });
+
+    // Synthesize amended contract version (e.g. v2.0) and save under Project Files for both parties
+    try {
+      const agreement = await prisma.agreement.findUnique({
+        where: { projectId },
+        include: {
+          versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+          project: {
+            include: {
+              client: true,
+            },
+          },
+          freelancer: true,
+        },
+      });
+
+      if (agreement) {
+        const latestVer = agreement.versions[0];
+        const nextVerNum = (latestVer?.versionNumber || 1) + 1;
+
+        const updatedMilestones = await prisma.milestone.findMany({
+          where: { projectId, removedAt: null },
+          orderBy: { orderIndex: "asc" },
+        });
+
+        const amendmentNote = `Scope Amendment (${payload.amendmentType}): ${(payload.justification as string) || "Bilateral scope revision"}. Price delta: ${payload.priceDeltaCents ? `+$${(Number(payload.priceDeltaCents) / 100).toFixed(2)}` : "$0.00"}. Timeline delta: ${payload.timelineDaysDelta || 0} days.`;
+
+        const newContractMarkdown = generateContractMarkdown({
+          agreementId: agreement.id,
+          versionNumber: nextVerNum,
+          projectTitle: agreement.project.title,
+          projectDescription: agreement.project.description || "",
+          clientName: agreement.project.client?.name || "Client",
+          clientEmail: agreement.project.client?.email || undefined,
+          freelancerName: agreement.freelancer?.name || "Freelancer",
+          freelancerEmail: agreement.freelancer?.email || undefined,
+          totalAmountMinor: updatedMilestones.reduce((acc, m) => acc + (m.amountMinor || m.amountCents || 0), 0),
+          currency: agreement.project.currency || "USD",
+          durationWeeks: 4,
+          milestones: updatedMilestones.map((m) => ({
+            sequence: m.orderIndex || m.sequence || 1,
+            title: m.title,
+            description: m.description || "",
+            amountMinor: m.amountMinor || m.amountCents || 0,
+            criteria: Array.isArray(m.criteria) ? (m.criteria as any[]) : [],
+            deliverables: Array.isArray(m.deliverables) ? (m.deliverables as any[]) : [],
+          })),
+          isRatified: true,
+          clientApprovedAt: new Date(),
+          freelancerApprovedAt: new Date(),
+          amendmentNotes: amendmentNote,
+        });
+
+        const savedFile = await saveContractAsProjectFile(prisma, {
+          projectId,
+          agreementId: agreement.id,
+          versionNumber: nextVerNum,
+          contractMarkdown: newContractMarkdown,
+          uploadedBy: responderId,
+        });
+
+        const newContentHash = crypto.createHash("sha256").update(newContractMarkdown).digest("hex");
+
+        const newVer = await prisma.agreementVersion.create({
+          data: {
+            agreementId: agreement.id,
+            versionNumber: nextVerNum,
+            parentVersionId: latestVer?.id || null,
+            source: "CHANGE_REQUEST",
+            status: AgreementVersionStatus.ACTIVE,
+            contentHash: newContentHash,
+            activatedAt: new Date(),
+            terms: {
+              scope: agreement.project.description || "",
+              contractMarkdown: newContractMarkdown,
+              contractFileId: savedFile.file.id,
+              contractProjectFileId: savedFile.projectFile.id,
+              milestones: updatedMilestones,
+              amendmentNote,
+            },
+          },
+        });
+
+        await prisma.agreementApproval.createMany({
+          data: [
+            {
+              agreementVersionId: newVer.id,
+              partyRole: Role.CLIENT,
+              userId: agreement.clientId,
+              decision: ApprovalDecision.APPROVED,
+              contentHash: newContentHash,
+            },
+            {
+              agreementVersionId: newVer.id,
+              partyRole: Role.FREELANCER,
+              userId: agreement.freelancerId,
+              decision: ApprovalDecision.APPROVED,
+              contentHash: newContentHash,
+            },
+          ],
+        });
+
+        await prisma.agreement.update({
+          where: { id: agreement.id },
+          data: { activeVersionId: newVer.id },
+        });
+      }
+    } catch (contractErr) {
+      console.warn("Failed to generate amended contract version:", contractErr);
+    }
 
     return {
       success: true,

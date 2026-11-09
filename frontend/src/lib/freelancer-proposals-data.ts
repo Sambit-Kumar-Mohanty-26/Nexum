@@ -785,7 +785,7 @@ export function calculateProposalSummaryKPIs(
   let draft = 0;
 
   for (const p of proposals) {
-    if (p.status === "UNDER_REVIEW") underReview++;
+    if (p.status === "UNDER_REVIEW" || p.status === "SUBMITTED") underReview++;
     else if (p.status === "SHORTLISTED") shortlisted++;
     else if (p.status === "INTERVIEW") interview++;
     else if (p.status === "ACCEPTED") accepted++;

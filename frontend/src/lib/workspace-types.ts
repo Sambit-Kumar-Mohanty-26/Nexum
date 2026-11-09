@@ -62,7 +62,11 @@ export type TimelineItemType =
   | "milestone_postponement_card"
   | "deliverable_card"
   | "notetaker_summary_card"
-  | "system_event_card";
+  | "system_event_card"
+  | "CONTRACT_DRAFT"
+  | "AGREEMENT_RATIFIED"
+  | "ESCROW_LOCKED"
+  | string;
 
 export interface WorkspaceTaskItem {
   id: string;
@@ -116,6 +120,7 @@ export interface TimelineItem {
   badgeText?: string;
   badgeType?: "amber" | "gray" | "green" | "purple";
   sha256Seal?: string;
+  metadata?: Record<string, any>;
   metrics?: MediationMetric;
   counterofferDetails?: {
     title: string;
