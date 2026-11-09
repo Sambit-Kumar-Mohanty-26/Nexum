@@ -1685,32 +1685,142 @@ export default function WorkspaceChatsMode({
                           <span>View in Files Vault</span>
                         </button>
 
+                        {timeline.some((t) => t.type === "AGREEMENT_RATIFIED") ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  showToast("Initiating PayPal Escrow deposit for Milestone #1...");
+                                  const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
+                                  const res = await fetch("/api/payments/escrow/create-order", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.success && data.orderId) {
+                                    showToast("PayPal Order created! Securing escrow deposit...");
+                                    const capRes = await fetch("/api/payments/escrow/capture", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                    });
+                                    const capData = await capRes.json();
+                                    if (capData.success) {
+                                      showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
+                                      setRefreshTrigger((n) => n + 1);
+                                      return;
+                                    }
+                                  }
+                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                  });
+                                  const simData = await simRes.json();
+                                  if (simData.success) {
+                                    showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
+                                    setRefreshTrigger((n) => n + 1);
+                                  } else {
+                                    showToast(data.error?.message || data.error || "Could not lock escrow");
+                                  }
+                                } catch {
+                                  showToast("Escrow deposit failed");
+                                }
+                              }}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Lock className="w-3.5 h-3.5" />
+                              <span>Deposit Milestone #1 into Escrow</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  showToast("Initiating PayPal Full Project Escrow deposit...");
+                                  const res = await fetch("/api/payments/escrow/create-order", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.success && data.orderId) {
+                                    showToast("PayPal Order created! Securing full project escrow...");
+                                    const capRes = await fetch("/api/payments/escrow/capture", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ orderId: data.orderId, projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                    });
+                                    const capData = await capRes.json();
+                                    if (capData.success) {
+                                      showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                      setRefreshTrigger((n) => n + 1);
+                                      return;
+                                    }
+                                  }
+                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                  });
+                                  const simData = await simRes.json();
+                                  if (simData.success) {
+                                    showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                    setRefreshTrigger((n) => n + 1);
+                                  } else {
+                                    showToast(data.error?.message || data.error || "Could not lock full escrow");
+                                  }
+                                } catch {
+                                  showToast("Full project escrow deposit failed");
+                                }
+                              }}
+                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Lock Entire Project {totalFormatted ? `(${totalFormatted})` : ""} in Escrow</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold text-xs flex items-center gap-1.5 shadow-2xs">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Signed by you · Awaiting Freelancer Signature</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // CARD TYPE G2: Agreement Approval Pending Notification Card
+                if (item.type === "AGREEMENT_APPROVAL_PENDING") {
+                  const meta = (item as any).metadata || {};
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4.5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 shadow-xs space-y-2.5 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          <span>Agreement Signature Status</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          {meta.badgeText || "Signed by You"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+                        {item.bubbleText || item.summaryText}
+                      </p>
+                      <div className="pt-1">
                         <button
                           type="button"
-                          onClick={async () => {
-                            try {
-                              showToast("Ratifying Contract Agreement v1.0...");
-                              const targetAgId = meta.agreementId || selectedProjectId;
-                              const res = await fetch(`/api/agreements/${targetAgId}/approve`, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ versionNumber: meta.versionNumber || 1, role: "CLIENT" }),
-                              });
-                              const data = await res.json();
-                              if (data.success) {
-                                showToast(data.message || "Contract ratified! Please lock Milestone #1 escrow.");
-                                setRefreshTrigger((n) => n + 1);
-                              } else {
-                                showToast(data.error || "Failed to approve agreement");
-                              }
-                            } catch {
-                              showToast("Approval request failed.");
-                            }
-                          }}
-                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                          onClick={() => setIsContractModalOpen(true)}
+                          className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-white hover:bg-amber-50 text-amber-900 text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Ratify Agreement & Request Escrow</span>
+                          <FileText className="w-3.5 h-3.5 text-amber-700" />
+                          <span>View Signed Contract</span>
                         </button>
                       </div>
                     </div>
@@ -1740,56 +1850,107 @@ export default function WorkspaceChatsMode({
                       </p>
 
                       <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              showToast("Creating PayPal REST v2 milestone escrow order...");
-                              const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
-                              const res = await fetch("/api/payments/escrow/create-order", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ milestoneId: targetMilestoneId }),
-                              });
-                              const data = await res.json();
-                              if (data.success && data.orderId) {
-                                showToast("PayPal Order created! Capturing & locking escrow...");
-                                const capRes = await fetch("/api/payments/escrow/capture", {
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                showToast("Creating PayPal REST v2 milestone escrow order...");
+                                const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
+                                const res = await fetch("/api/payments/escrow/create-order", {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId }),
+                                  body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
                                 });
-                                const capData = await capRes.json();
-                                if (capData.success) {
-                                  showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
-                                  setRefreshTrigger((n) => n + 1);
+                                const data = await res.json();
+                                if (data.success && data.orderId) {
+                                  showToast("PayPal Order created! Capturing & locking escrow...");
+                                  const capRes = await fetch("/api/payments/escrow/capture", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                  });
+                                  const capData = await capRes.json();
+                                  if (capData.success) {
+                                    showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
+                                    setRefreshTrigger((n) => n + 1);
+                                  } else {
+                                    showToast(capData.error || "Failed to capture escrow order");
+                                  }
                                 } else {
-                                  showToast(capData.error || "Failed to capture escrow order");
+                                  // Fallback simulation for offline testing
+                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                  });
+                                  const simData = await simRes.json();
+                                  if (simData.success) {
+                                    showToast("Escrow funds successfully locked! Development authorized.");
+                                    setRefreshTrigger((n) => n + 1);
+                                  } else {
+                                    showToast(data.error || "Could not lock escrow");
+                                  }
                                 }
-                              } else {
-                                // Fallback simulation for offline testing
-                                const simRes = await fetch("/api/payments/escrow/simulate-lock", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ milestoneId: targetMilestoneId }),
-                                });
-                                const simData = await simRes.json();
-                                if (simData.success) {
-                                  showToast("Escrow funds successfully locked! Development authorized.");
-                                  setRefreshTrigger((n) => n + 1);
-                                } else {
-                                  showToast(data.error || "Could not lock escrow");
-                                }
+                              } catch {
+                                showToast("Payment request failed.");
                               }
-                            } catch {
-                              showToast("Payment request failed.");
-                            }
-                          }}
-                          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Lock className="w-3.5 h-3.5" />
-                          <span>Lock Milestone #1 Escrow via PayPal REST v2</span>
-                        </button>
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>Deposit Milestone #1 into Escrow</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                showToast("Creating PayPal REST v2 Full Project Escrow order...");
+                                const res = await fetch("/api/payments/escrow/create-order", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                });
+                                const data = await res.json();
+                                if (data.success && data.orderId) {
+                                  showToast("PayPal Order created! Securing full project escrow...");
+                                  const capRes = await fetch("/api/payments/escrow/capture", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ orderId: data.orderId, projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                  });
+                                  const capData = await capRes.json();
+                                  if (capData.success) {
+                                    showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                    setRefreshTrigger((n) => n + 1);
+                                  } else {
+                                    showToast(capData.error || "Failed to capture full escrow order");
+                                  }
+                                } else {
+                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                  });
+                                  const simData = await simRes.json();
+                                  if (simData.success) {
+                                    showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                    setRefreshTrigger((n) => n + 1);
+                                  } else {
+                                    showToast(data.error || "Could not lock full escrow");
+                                  }
+                                }
+                              } catch {
+                                showToast("Full project escrow payment request failed.");
+                              }
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>Lock Entire Project in Escrow</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1962,7 +2123,25 @@ export default function WorkspaceChatsMode({
                             <>
                               <button
                                 type="button"
-                                onClick={() => showToast(`Milestone ${m.number} approved! Escrow funds released to ${selectedProject.freelancerName} via PayPal REST v2.`)}
+                                onClick={async () => {
+                                  try {
+                                    showToast(`Approving Milestone ${m.number} and releasing escrow...`);
+                                    const res = await fetch(`/api/payments/milestones/${m.id}/approve-and-release`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ feedback: "Accepted and approved by client" }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      showToast(`Milestone ${m.number} approved! Escrow funds released to ${selectedProject?.freelancerName || "freelancer"}.`);
+                                      setRefreshTrigger((n) => n + 1);
+                                    } else {
+                                      showToast(data.error?.message || data.error || "Approval failed");
+                                    }
+                                  } catch {
+                                    showToast("Approval request failed.");
+                                  }
+                                }}
                                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />

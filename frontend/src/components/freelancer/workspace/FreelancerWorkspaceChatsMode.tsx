@@ -1212,32 +1212,73 @@ export default function FreelancerWorkspaceChatsMode({
                           <span>View in Files Vault</span>
                         </button>
 
+                        {timeline.some((t) => t.type === "AGREEMENT_RATIFIED") ? (
+                          <div className="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-semibold text-xs flex items-center gap-1.5 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Signed by you · Awaiting Client Escrow Deposit</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                showToast("Signing and accepting Contract Agreement v1.0...");
+                                const targetAgId = meta.agreementId || selectedProjectId;
+                                const res = await fetch(`/api/agreements/${targetAgId}/approve`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ versionNumber: meta.versionNumber || 1, role: "FREELANCER" }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  showToast(data.message || "Contract signed and accepted! Client has been requested to deposit Milestone #1 escrow.");
+                                  setRefreshTrigger((n) => n + 1);
+                                } else {
+                                  showToast(data.error || "Failed to approve agreement");
+                                }
+                              } catch {
+                                showToast("Approval request failed.");
+                              }
+                            }}
+                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Sign & Accept Contract</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // CARD TYPE G2: Agreement Approval Pending Notification Card
+                if (item.type === "AGREEMENT_APPROVAL_PENDING") {
+                  const meta = (item as any).metadata || {};
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4.5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 shadow-xs space-y-2.5 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          <span>Agreement Signature Status</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          {meta.badgeText || "Action Required"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+                        {item.bubbleText || item.summaryText}
+                      </p>
+                      <div className="pt-1">
                         <button
                           type="button"
-                          onClick={async () => {
-                            try {
-                              showToast("Ratifying Contract Agreement v1.0...");
-                              const targetAgId = meta.agreementId || selectedProjectId;
-                              const res = await fetch(`/api/agreements/${targetAgId}/approve`, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ versionNumber: meta.versionNumber || 1, role: "FREELANCER" }),
-                              });
-                              const data = await res.json();
-                              if (data.success) {
-                                showToast(data.message || "Contract ratified! Awaiting client escrow deposit.");
-                                setRefreshTrigger((n) => n + 1);
-                              } else {
-                                showToast(data.error || "Failed to approve agreement");
-                              }
-                            } catch {
-                              showToast("Approval request failed.");
-                            }
-                          }}
-                          className="px-4 py-2 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                          onClick={() => setIsContractModalOpen(true)}
+                          className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-white hover:bg-amber-50 text-amber-900 text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Ratify & Authorize Agreement</span>
+                          <FileText className="w-3.5 h-3.5 text-amber-700" />
+                          <span>View Signed Contract</span>
                         </button>
                       </div>
                     </div>

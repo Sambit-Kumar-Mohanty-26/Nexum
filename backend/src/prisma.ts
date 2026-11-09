@@ -10,6 +10,8 @@ if (!process.env.DATABASE_URL) {
     dotenv.config({ path: backendEnv });
   } else if (fs.existsSync(localEnv)) {
     dotenv.config({ path: localEnv });
+  } else {
+    dotenv.config();
   }
 }
 
@@ -29,3 +31,4 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export default prisma;
+
