@@ -37,6 +37,7 @@ import {
 } from "@/lib/api-client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopHeader from "@/components/DashboardTopHeader";
+import ProjectUploadedDocumentCard from "@/components/ProjectUploadedDocumentCard";
 
 interface MilestoneState {
   title: string;
@@ -635,33 +636,39 @@ function FreelancerApplyContent() {
                       <label className="text-xs font-bold text-slate-700 block mb-2">
                         Client Technical Intake Document
                       </label>
-                      <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">
-                              {project.uploadedDocument.name}
-                            </p>
-                            <p className="text-[10px] text-slate-500 font-mono">
-                              {project.uploadedDocument.size} · Client PRD Attached
-                            </p>
-                          </div>
-                        </div>
-
-                        {project.uploadedDocument.url && (
-                          <a
-                            href={project.uploadedDocument.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-indigo-600 shadow-2xs transition"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>View</span>
-                          </a>
-                        )}
-                      </div>
+                      <ProjectUploadedDocumentCard
+                        document={project.uploadedDocument}
+                        projectTitle={project.title || "Project Specification"}
+                        category={project.category || "Development"}
+                        budget={proposalQuote || project.budgetDisplay || "$6,000.00"}
+                        timeline={project.timelineDuration || `${proposalDurationWeeks} weeks`}
+                        overview={project.description || "Project specification and requirements."}
+                        objectives={
+                          Array.isArray(project.objectives) && project.objectives.length > 0
+                            ? project.objectives
+                            : Array.isArray(project.milestones)
+                            ? project.milestones.map((m: any) => m.title)
+                            : []
+                        }
+                        technicalArchitecture={Array.isArray(project.skills) ? project.skills.join(", ") : ""}
+                        functionalRequirements={
+                          Array.isArray(project.functionalRequirements) && project.functionalRequirements.length > 0
+                            ? project.functionalRequirements
+                            : Array.isArray(project.milestones)
+                            ? project.milestones.map((m: any) => `${m.title}: ${m.deliverablesSummary || "Deliverable specification"}`)
+                            : []
+                        }
+                        acceptanceCriteria={
+                          Array.isArray(project.acceptanceCriteria) && project.acceptanceCriteria.length > 0
+                            ? project.acceptanceCriteria
+                            : [
+                                "All features and workflows pass documented test verification",
+                                "Full source code and deployment runbook delivered",
+                                "Milestone deliverable review accepted by client",
+                              ]
+                        }
+                        clientName={project.client?.name || project.clientName || "Client"}
+                      />
                     </div>
                   )}
 

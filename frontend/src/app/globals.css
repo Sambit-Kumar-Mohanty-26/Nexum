@@ -224,3 +224,48 @@ body {
   font-family: var(--font-sans);
   overflow-x: clip; /* Allows sticky curtain reveal to work smoothly */
 }
+
+/* =========================================================================
+   DOCX & Formal Document Viewer Styles
+   ========================================================================= */
+.docx-render-host {
+  margin: 0 auto;
+}
+
+.docx-render-host .docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.docx-render-host .docx-wrapper > section.docx {
+  background: #ffffff !important;
+  color: #111827 !important;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.35), 0 1px 6px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid #cbd5e1 !important;
+  margin-bottom: 24px !important;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #nexum-document-sheet,
+  #nexum-document-sheet *,
+  .docx-render-host,
+  .docx-render-host * {
+    visibility: visible;
+  }
+  #nexum-document-sheet,
+  .docx-render-host {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 20mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+  }
+}
