@@ -24,6 +24,8 @@ export default function ProjectDetailsTab({ proposal }: ProjectDetailsTabProps) 
   const objectives: string[] =
     (clientBrief as any)?.objectives && (clientBrief as any).objectives.length > 0
       ? (clientBrief as any).objectives
+      : (clientBrief as any)?.goals
+      ? String((clientBrief as any).goals).split(/[,\n•]+/).map((s: string) => s.trim()).filter(Boolean)
       : [];
 
   // Extract or derive technical architecture
@@ -37,12 +39,18 @@ export default function ProjectDetailsTab({ proposal }: ProjectDetailsTabProps) 
   const functionalRequirements: string[] =
     clientBrief.technicalRequirements && clientBrief.technicalRequirements.length > 0
       ? clientBrief.technicalRequirements
+      : (clientBrief as any)?.scopeOfWork && Array.isArray((clientBrief as any).scopeOfWork)
+      ? (clientBrief as any).scopeOfWork
+      : (clientBrief as any)?.detailedRequirements
+      ? String((clientBrief as any).detailedRequirements).split("\n").map((s: string) => s.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean)
       : [];
 
   // Extract acceptance criteria
   const acceptanceCriteria: string[] =
     clientBrief.acceptanceCriteria && clientBrief.acceptanceCriteria.length > 0
       ? clientBrief.acceptanceCriteria
+      : (clientBrief as any)?.milestones && Array.isArray((clientBrief as any).milestones)
+      ? (clientBrief as any).milestones.map((m: any) => m.title || m.name || String(m))
       : [];
 
   return (
@@ -55,7 +63,7 @@ export default function ProjectDetailsTab({ proposal }: ProjectDetailsTabProps) 
           </h3>
           <ProjectUploadedDocumentCard
             document={uploadedDoc}
-            projectTitle={`${clientBrief.category || "Project"} Specification`}
+            projectTitle={proposal.projectTitle || `${clientBrief.category || "Project"} Specification`}
             category={clientBrief.category}
             budget={clientBrief.budgetRange}
             timeline={clientBrief.duration}

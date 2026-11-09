@@ -202,7 +202,18 @@ export default function FreelancerFindProjectsView({
 
         setBackendProjects(Array.from(map.values()));
         if (res.success && res.projects) {
-          setSavedProjectIds(res.projects.filter((p) => p.isSaved).map((p) => p.id));
+          const serverSaved = res.projects.filter((p) => p.isSaved).map((p) => p.id);
+          let combinedSaved = serverSaved;
+          try {
+            const rawSavedIds = localStorage.getItem("nexum_saved_project_ids");
+            if (rawSavedIds) {
+              const parsed = JSON.parse(rawSavedIds);
+              if (Array.isArray(parsed)) {
+                combinedSaved = Array.from(new Set([...serverSaved, ...parsed]));
+              }
+            }
+          } catch {}
+          setSavedProjectIds(combinedSaved);
           const serverApplied = res.projects.filter((p: any) => p.isApplied).map((p: any) => p.id);
           if (serverApplied.length > 0) {
             setInternalAppliedIds((prev) => Array.from(new Set([...prev, ...serverApplied])));
@@ -256,11 +267,43 @@ export default function FreelancerFindProjectsView({
   const toggleSave = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (savedProjectIds.includes(id)) {
-      setSavedProjectIds((prev) => prev.filter((i) => i !== id));
+      const nextIds = savedProjectIds.filter((i) => i !== id);
+      setSavedProjectIds(nextIds);
+      try {
+        localStorage.setItem("nexum_saved_project_ids", JSON.stringify(nextIds));
+        const raw = localStorage.getItem("nexum_saved_projects");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const filtered = parsed.filter((p: any) => p.id !== id);
+          localStorage.setItem("nexum_saved_projects", JSON.stringify(filtered));
+        }
+      } catch {}
       showToast("Project removed from saved bookmarks.");
       await unsaveFreelancerProject(id).catch(() => {});
     } else {
-      setSavedProjectIds((prev) => [...prev, id]);
+      const nextIds = [...savedProjectIds, id];
+      setSavedProjectIds(nextIds);
+      try {
+        localStorage.setItem("nexum_saved_project_ids", JSON.stringify(nextIds));
+        const targetProj = backendProjects.find((p) => p.id === id);
+        if (targetProj) {
+          const raw = localStorage.getItem("nexum_saved_projects");
+          const existingList = raw ? JSON.parse(raw) : [];
+          const updatedList = [
+            {
+              id: targetProj.id,
+              title: targetProj.title,
+              clientCompany: targetProj.clientCompany || targetProj.clientName || "Client Team",
+              budget: targetProj.budget,
+              skills: targetProj.skills,
+              status: "OPEN" as const,
+              savedDate: "Just now",
+            },
+            ...existingList.filter((p: any) => p.id !== id),
+          ];
+          localStorage.setItem("nexum_saved_projects", JSON.stringify(updatedList));
+        }
+      } catch {}
       showToast("Project saved to your saved opportunities!");
       await saveFreelancerProject(id).catch(() => {});
     }

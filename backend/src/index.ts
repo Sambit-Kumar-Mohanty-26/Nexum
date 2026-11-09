@@ -1,9 +1,11 @@
 import express from "express";
+import path from "path";
 import cors from "cors";
 import crypto from "crypto";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { env } from "./lib/env.js";
+import { defaultStorage } from "./lib/files.js";
 
 import healthRouter from "./routes/health.js";
 import authRouter from "./routes/auth.js";
@@ -140,6 +142,24 @@ app.use("/api/freelancer", freelancerProjectsRouter);
 app.use("/api/freelancer", freelancerFilesRouter);
 app.use("/api/files", publicFilesRouter);
 app.use("/api/public/freelancers", publicFreelancersRouter);
+
+// Object Storage & Static Uploads Streaming
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+app.use("/uploads", express.static(path.resolve(process.cwd(), "frontend", "public", "uploads")));
+app.get("/api/storage/*", async (req, res, next) => {
+  try {
+    const rawKey = (req.params as any)[0] || (req.params as any)["*"] || req.path.replace(/^\/api\/storage\//, "");
+    const cleanKey = decodeURIComponent(rawKey).replace(/^[/\\]+/, "");
+    const stream = await defaultStorage.getStream(cleanKey);
+    const isDownload = req.query.download === "true" || req.query.download === "1";
+    const filename = path.basename(cleanKey);
+    res.setHeader("Content-Disposition", `${isDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    (stream as any).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Dev-Only Client Stand-in Routes (guards internally for ENABLE_DEV_TOOLS)
 app.use("/api/dev/proposals", devProposalsRouter);

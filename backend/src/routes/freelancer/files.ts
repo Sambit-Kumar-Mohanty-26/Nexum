@@ -174,62 +174,70 @@ freelancerFilesRouter.post(
 );
 
 // ---------------------------------------------------------------------------
-// 2. GET /api/files/:id - Authorized file streaming / download
+// 2. GET /api/files/:id & /api/freelancer/files/:id - Authorized file streaming / download
 // ---------------------------------------------------------------------------
-publicFilesRouter.get(
-  "/:id",
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { id } = req.params;
-      const file = await prisma.file.findUnique({
-        where: { id },
-        include: {
-          photoProfiles: { select: { searchVisibility: true } },
-          coverProfiles: { select: { searchVisibility: true } },
-          portfolioProjects: { select: { id: true } },
-        },
-      });
+export async function streamFileHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    const file = await prisma.file.findUnique({
+      where: { id },
+      include: {
+        photoProfiles: { select: { searchVisibility: true } },
+        coverProfiles: { select: { searchVisibility: true } },
+        portfolioProjects: { select: { id: true } },
+      },
+    });
 
-      if (!file) {
-        throw new NotFoundError("File", id);
-      }
-
-      // Check access permission:
-      // A. Owner access
-      const authenticatedUserId = req.user?.id;
-      const isOwner = Boolean(authenticatedUserId && authenticatedUserId === file.ownerId);
-
-      // B. Public access:
-      // - PORTFOLIO_IMAGE is always publicly accessible
-      // - PROFILE_PHOTO and PROFILE_COVER are publicly accessible if the profile has searchVisibility = VISIBLE
-      let isPubliclyAccessible = false;
-      if (file.purpose === "PORTFOLIO_IMAGE") {
-        isPubliclyAccessible = true;
-      } else if (file.purpose === "PROFILE_PHOTO") {
-        const isVisible = file.photoProfiles.some((p) => p.searchVisibility === "VISIBLE");
-        isPubliclyAccessible = isVisible;
-      } else if (file.purpose === "PROFILE_COVER") {
-        const isVisible = file.coverProfiles.some((p) => p.searchVisibility === "VISIBLE");
-        isPubliclyAccessible = isVisible;
-      } else if (file.purpose === "PROPOSAL_ATTACHMENT" || file.purpose === "PROJECT_FILE") {
-        isPubliclyAccessible = true;
-      }
-
-      if (!isOwner && !isPubliclyAccessible) {
-        // Return 404 to prevent resource enumeration
-        throw new NotFoundError("File", id);
-      }
-
-      const fileStream = await defaultStorage.getStream(file.storageKey);
-      res.setHeader("Content-Type", file.mime);
-      res.setHeader("Content-Length", file.sizeBytes);
-      res.setHeader("Cache-Control", "public, max-age=86400"); // 1 day
-      (fileStream as any).pipe(res);
-    } catch (err) {
-      next(err);
+    if (!file) {
+      throw new NotFoundError("File", id);
     }
+
+    // Check access permission:
+    // A. Owner access
+    const authenticatedUserId = req.user?.id;
+    const isOwner = Boolean(authenticatedUserId && authenticatedUserId === file.ownerId);
+
+    // B. Public access:
+    // - PORTFOLIO_IMAGE is always publicly accessible
+    // - PROFILE_PHOTO and PROFILE_COVER are publicly accessible if the profile has searchVisibility = VISIBLE
+    let isPubliclyAccessible = false;
+    if (file.purpose === "PORTFOLIO_IMAGE") {
+      isPubliclyAccessible = true;
+    } else if (file.purpose === "PROFILE_PHOTO") {
+      const isVisible = file.photoProfiles.some((p) => p.searchVisibility === "VISIBLE");
+      isPubliclyAccessible = isVisible;
+    } else if (file.purpose === "PROFILE_COVER") {
+      const isVisible = file.coverProfiles.some((p) => p.searchVisibility === "VISIBLE");
+      isPubliclyAccessible = isVisible;
+    } else if (file.purpose === "PROPOSAL_ATTACHMENT" || file.purpose === "PROJECT_FILE") {
+      isPubliclyAccessible = true;
+    }
+
+    if (!isOwner && !isPubliclyAccessible) {
+      // Return 404 to prevent resource enumeration
+      throw new NotFoundError("File", id);
+    }
+
+    const fileStream = await defaultStorage.getStream(file.storageKey);
+    const isDownload = req.query.download === "true" || req.query.download === "1";
+    const disposition = isDownload ? "attachment" : "inline";
+    const safeFilename = file.originalName.replace(/["\r\n]/g, "");
+
+    res.setHeader("Content-Type", file.mime || "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `${disposition}; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(file.originalName)}`
+    );
+    res.setHeader("Content-Length", file.sizeBytes);
+    res.setHeader("Cache-Control", "public, max-age=86400"); // 1 day
+    (fileStream as any).pipe(res);
+  } catch (err) {
+    next(err);
   }
-);
+}
+
+publicFilesRouter.get("/:id", streamFileHandler);
+freelancerFilesRouter.get("/files/:id", streamFileHandler);
 
 // ---------------------------------------------------------------------------
 // 3. GET /api/freelancer/resume - Get active resume metadata

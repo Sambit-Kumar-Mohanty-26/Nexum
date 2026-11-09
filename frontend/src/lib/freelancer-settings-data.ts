@@ -43,35 +43,7 @@ export const INITIAL_ACTIVE_SESSIONS: ActiveSession[] = [
   },
 ];
 
-export const INITIAL_SAVED_PROJECTS: SavedProject[] = [
-  {
-    id: "sp_1",
-    title: "Enterprise Smart Escrow Integration for Solana Pay",
-    clientCompany: "FinTech Labs Inc.",
-    budget: "$4,500.00 USD",
-    skills: ["Next.js", "Solana", "State Machines", "TypeScript"],
-    status: "OPEN",
-    savedDate: "2 days ago",
-  },
-  {
-    id: "sp_2",
-    title: "Decentralized Freelance Marketplace Frontend",
-    clientCompany: "Web3 Collective",
-    budget: "$3,200.00 USD",
-    skills: ["React", "TailwindCSS", "TypeScript", "Prisma"],
-    status: "OPEN",
-    savedDate: "5 days ago",
-  },
-  {
-    id: "sp_3",
-    title: "High-Throughput Order Webhook Pipeline",
-    clientCompany: "Horizon Commerce LLC",
-    budget: "$2,800.00 USD",
-    skills: ["Node.js", "Express", "PostgreSQL", "Docker"],
-    status: "IN_REVIEW",
-    savedDate: "Oct 15, 2026",
-  },
-];
+export const INITIAL_SAVED_PROJECTS: SavedProject[] = [];
 
 export const INITIAL_NOTIFICATION_PREFS: NotificationPreferences = {
   projectInvitations: true,

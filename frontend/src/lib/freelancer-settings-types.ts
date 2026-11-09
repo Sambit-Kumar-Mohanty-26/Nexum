@@ -28,7 +28,7 @@ export interface SavedProject {
   clientCompany: string;
   budget: string;
   skills: string[];
-  status: "OPEN" | "IN_REVIEW" | "CONTRACTED";
+  status: "OPEN" | "IN_REVIEW" | "CONTRACTED" | "CLOSED";
   savedDate: string;
 }
 

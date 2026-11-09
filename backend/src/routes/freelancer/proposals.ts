@@ -484,7 +484,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction): Promise
             fileType: a.file.mime,
             fileSize: `${Math.round(a.file.sizeBytes / 1024)} KB`,
             uploadDate: a.file.createdAt ? new Date(a.file.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recently",
-            downloadUrl: `/api/freelancer/files/${a.file.id}`,
+            downloadUrl: `/api/files/${a.file.id}`,
           })),
           milestones: (Array.isArray(currentVer?.milestonesJson) ? (currentVer.milestonesJson as any[]) : []).map((m: any, idx: number) => ({
             id: `m-${idx + 1}`,
@@ -1793,24 +1793,8 @@ router.post(
       const storageKey = `proposals/${id}/${Date.now()}_${crypto.randomBytes(6).toString("hex")}${fileExt}`;
       const sha256 = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
 
-      // Persist to S3 Object Storage if configured, or default storage adapter
-      if (s3Client) {
-        try {
-          await s3Client.send(
-            new PutObjectCommand({
-              Bucket: S3_BUCKET,
-              Key: storageKey,
-              Body: req.file.buffer,
-              ContentType: magic.mime,
-            })
-          );
-        } catch (err) {
-          console.warn("[Proposals] S3 upload failed, falling back to disk:", err);
-          await defaultStorage.save(storageKey, req.file.buffer);
-        }
-      } else {
-        await defaultStorage.save(storageKey, req.file.buffer);
-      }
+      // Persist to unified storage (local disk/memory + S3 object storage)
+      await defaultStorage.save(storageKey, req.file.buffer, magic.mime);
 
       const [fileRecord, attachment] = await prisma.$transaction(async (tx) => {
         const f = await tx.file.create({

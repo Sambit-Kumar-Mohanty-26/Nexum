@@ -144,6 +144,15 @@ export async function GET(
     });
   }
 
+  // Fallback for saved projects if backend is offline
+  if (slug[0] === "projects" && slug[1] === "saved") {
+    return NextResponse.json({
+      success: true,
+      savedProjects: [],
+      total: 0,
+    });
+  }
+
   return NextResponse.json(
     {
       success: false,

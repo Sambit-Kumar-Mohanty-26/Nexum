@@ -5,6 +5,13 @@ import { Readable } from "stream";
 import sharp from "sharp";
 import { FilePurpose } from "@prisma/client";
 import { AppError } from "./errors.js";
+import { s3Client, S3_BUCKET } from "./storage.js";
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 
 export class UnsupportedMediaTypeError extends AppError {
   constructor(message = "Unsupported file format") {
@@ -19,7 +26,7 @@ export class PayloadTooLargeError extends AppError {
 }
 
 export interface FileStorageAdapter {
-  save(storageKey: string, data: Buffer): Promise<void>;
+  save(storageKey: string, data: Buffer, contentType?: string): Promise<void>;
   getStream(storageKey: string): Promise<NodeJS.ReadableStream>;
   delete(storageKey: string): Promise<void>;
   exists(storageKey: string): Promise<boolean>;
@@ -54,7 +61,7 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
     return directPath;
   }
 
-  async save(storageKey: string, data: Buffer): Promise<void> {
+  async save(storageKey: string, data: Buffer, contentType?: string): Promise<void> {
     try {
       const fullPath = this.resolvePath(storageKey);
       const parentDir = path.dirname(fullPath);
@@ -66,6 +73,21 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
       console.warn(`Local disk write failed for ${storageKey}, using in-memory store:`, err);
       this.memoryCache.set(storageKey, data);
     }
+
+    if (s3Client) {
+      try {
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: storageKey.replace(/^[/\\]+/, ""),
+            Body: data,
+            ContentType: contentType || "application/octet-stream",
+          })
+        );
+      } catch (s3Err) {
+        console.warn(`[Storage] S3 upload failed for ${storageKey}:`, s3Err);
+      }
+    }
   }
 
   async getStream(storageKey: string): Promise<NodeJS.ReadableStream> {
@@ -74,10 +96,26 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
       return Readable.from(this.memoryCache.get(storageKey)!);
     }
     const fullPath = this.resolvePath(storageKey);
-    if (!fs.existsSync(fullPath)) {
-      throw new Error(`File not found at storage path: ${storageKey}`);
+    if (fs.existsSync(fullPath)) {
+      return fs.createReadStream(fullPath);
     }
-    return fs.createReadStream(fullPath);
+    if (s3Client) {
+      try {
+        const cleanKey = storageKey.replace(/^[/\\]+/, "");
+        const s3Res = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: cleanKey,
+          })
+        );
+        if (s3Res.Body) {
+          return s3Res.Body as NodeJS.ReadableStream;
+        }
+      } catch (s3Err) {
+        console.warn(`[Storage] S3 getStream failed for ${storageKey}:`, s3Err);
+      }
+    }
+    throw new Error(`File not found at storage path: ${storageKey}`);
   }
 
   async getBuffer(storageKey: string): Promise<Buffer> {
@@ -85,10 +123,33 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
       return this.memoryCache.get(storageKey)!;
     }
     const fullPath = this.resolvePath(storageKey);
-    if (!fs.existsSync(fullPath)) {
-      throw new Error(`File not found at storage path: ${storageKey}`);
+    if (fs.existsSync(fullPath)) {
+      return await fs.promises.readFile(fullPath);
     }
-    return await fs.promises.readFile(fullPath);
+    if (s3Client) {
+      try {
+        const cleanKey = storageKey.replace(/^[/\\]+/, "");
+        const s3Res = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: cleanKey,
+          })
+        );
+        if (s3Res.Body) {
+          const stream = s3Res.Body as NodeJS.ReadableStream;
+          const chunks: Buffer[] = [];
+          for await (const chunk of stream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buf = Buffer.concat(chunks);
+          this.memoryCache.set(storageKey, buf);
+          return buf;
+        }
+      } catch (s3Err) {
+        console.warn(`[Storage] S3 getBuffer failed for ${storageKey}:`, s3Err);
+      }
+    }
+    throw new Error(`File not found at storage path: ${storageKey}`);
   }
 
   async delete(storageKey: string): Promise<void> {
@@ -101,12 +162,38 @@ export class LocalDiskStorageAdapter implements FileStorageAdapter {
     } catch {
       // Ignored
     }
+    if (s3Client) {
+      try {
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: storageKey.replace(/^[/\\]+/, ""),
+          })
+        );
+      } catch (s3Err) {
+        console.warn(`[Storage] S3 delete failed for ${storageKey}:`, s3Err);
+      }
+    }
   }
 
   async exists(storageKey: string): Promise<boolean> {
     if (this.memoryCache.has(storageKey)) return true;
     const fullPath = this.resolvePath(storageKey);
-    return fs.existsSync(fullPath);
+    if (fs.existsSync(fullPath)) return true;
+    if (s3Client) {
+      try {
+        await s3Client.send(
+          new HeadObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: storageKey.replace(/^[/\\]+/, ""),
+          })
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
 }
 
