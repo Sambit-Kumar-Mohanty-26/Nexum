@@ -408,7 +408,7 @@ function FreelancerApplyContent() {
       />
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-28">
+      <div className="flex-1 flex flex-col min-w-0 pb-12">
         <DashboardTopHeader
           roleLabel="Freelancer Workspace"
           title="Submit Proposal & Counteroffer"
@@ -977,18 +977,18 @@ function FreelancerApplyContent() {
               </div>
             </div>
 
-            {/* Sticky Bottom Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg py-3 px-4 sm:px-8">
-              <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex items-center gap-3 text-xs">
+            {/* Form Actions Footer */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs mt-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3 text-xs w-full sm:w-auto justify-between sm:justify-start">
                   <Link
                     href={`/freelancer/projects/${projectId}`}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition"
                   >
                     Discard & Cancel
                   </Link>
 
-                  <div className="hidden sm:flex items-center gap-3 text-slate-500 font-medium pl-2 border-l border-slate-200">
+                  <div className="hidden sm:flex items-center gap-3 text-slate-500 font-medium pl-3 border-l border-slate-200">
                     <span>
                       Total Quote:{" "}
                       <strong className="text-slate-900 font-mono">${cleanQuote.toLocaleString()}</strong>
