@@ -800,13 +800,19 @@ export default function ClientPaymentsView({
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                      <Image
-                        src={tx.freelancerAvatar}
-                        alt={tx.freelancerName}
-                        fill
-                        sizes="40px"
-                        className="object-cover"
-                      />
+                      {tx.freelancerAvatar ? (
+                        <Image
+                          src={tx.freelancerAvatar}
+                          alt={tx.freelancerName}
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase">
+                          {tx.freelancerName?.charAt(0) || "F"}
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
@@ -920,13 +926,19 @@ export default function ClientPaymentsView({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="relative w-9 h-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                      <Image
-                        src={upcomingItem.freelancerAvatar}
-                        alt={upcomingItem.freelancerName}
-                        fill
-                        sizes="36px"
-                        className="object-cover"
-                      />
+                      {upcomingItem.freelancerAvatar ? (
+                        <Image
+                          src={upcomingItem.freelancerAvatar}
+                          alt={upcomingItem.freelancerName}
+                          fill
+                          sizes="36px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase">
+                          {upcomingItem.freelancerName?.charAt(0) || "F"}
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs font-extrabold text-slate-900 truncate">

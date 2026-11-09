@@ -121,13 +121,19 @@ export default function RecommendedFreelancers({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100">
-                    <Image
-                      src={c.avatar}
-                      alt={c.name}
-                      width={44}
-                      height={44}
-                      className="w-full h-full object-cover"
-                    />
+                    {c.avatar ? (
+                      <Image
+                        src={c.avatar}
+                        alt={c.name}
+                        width={44}
+                        height={44}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-sm uppercase">
+                        {c.name?.charAt(0) || "F"}
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-extrabold text-slate-900 text-sm truncate">{c.name}</h3>

@@ -1594,7 +1594,7 @@ export class ClientOverviewService {
             skills: (profile?.skills as string[]) || ["TypeScript", "Full Stack"],
             rate: hourlyStr,
             rating: "5.0 (verified)",
-            avatar: avatarUrl || "",
+            avatar: avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
             availability: profile?.availability || "Available now",
           };
         });

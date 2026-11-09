@@ -859,13 +859,19 @@ export default function ClientMilestonesView({
                   {m.freelancer ? (
                     <>
                       <div className="relative w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                        <Image
-                          src={m.freelancer.avatar}
-                          alt={m.freelancer.name}
-                          width={28}
-                          height={28}
-                          className="w-full h-full object-cover"
-                        />
+                        {m.freelancer.avatar ? (
+                          <Image
+                            src={m.freelancer.avatar}
+                            alt={m.freelancer.name}
+                            width={28}
+                            height={28}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-[10px] uppercase">
+                            {m.freelancer.name?.charAt(0) || "F"}
+                          </div>
+                        )}
                       </div>
                       <div className="truncate">
                         <span className="font-bold text-slate-800">{m.freelancer.name}</span>
@@ -1086,13 +1092,19 @@ export default function ClientMilestonesView({
                     <div className="p-4 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 shrink-0">
-                          <Image
-                            src={selectedMilestone.freelancer.avatar}
-                            alt={selectedMilestone.freelancer.name}
-                            width={40}
-                            height={40}
-                            className="w-full h-full object-cover"
-                          />
+                          {selectedMilestone.freelancer.avatar ? (
+                            <Image
+                              src={selectedMilestone.freelancer.avatar}
+                              alt={selectedMilestone.freelancer.name}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase">
+                              {selectedMilestone.freelancer.name?.charAt(0) || "F"}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <div className="font-bold text-slate-900">{selectedMilestone.freelancer.name}</div>

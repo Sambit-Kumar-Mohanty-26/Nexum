@@ -408,13 +408,19 @@ export default function ClientOverview({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                        <Image
-                          src={item.avatar}
-                          alt={item.freelancer}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
+                        {item.avatar ? (
+                          <Image
+                            src={item.avatar}
+                            alt={item.freelancer}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase">
+                            {item.freelancer?.charAt(0) || "F"}
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-sm font-bold text-slate-900 leading-snug truncate">
@@ -533,13 +539,19 @@ export default function ClientOverview({
                         </span>
                       ) : (
                         <span className="flex items-center gap-1">
-                          <Image
-                            src={proj.avatar}
-                            alt={proj.freelancer}
-                            width={16}
-                            height={16}
-                            className="w-4 h-4 rounded-full object-cover"
-                          />
+                          {proj.avatar ? (
+                            <Image
+                              src={proj.avatar}
+                              alt={proj.freelancer}
+                              width={16}
+                              height={16}
+                              className="w-4 h-4 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="w-4 h-4 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-[9px] uppercase">
+                              {proj.freelancer?.charAt(0) || "F"}
+                            </span>
+                          )}
                           <span>{proj.freelancer}</span>
                         </span>
                       )}
@@ -672,13 +684,19 @@ export default function ClientOverview({
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                          <Image
-                            src={fr.avatar}
-                            alt={fr.name}
-                            width={36}
-                            height={36}
-                            className="w-full h-full object-cover"
-                          />
+                          {fr.avatar ? (
+                            <Image
+                              src={fr.avatar}
+                              alt={fr.name}
+                              width={36}
+                              height={36}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase">
+                              {fr.name?.charAt(0) || "F"}
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-slate-900 truncate">{fr.name}</h4>
