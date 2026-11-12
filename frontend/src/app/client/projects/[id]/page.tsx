@@ -6,6 +6,8 @@ import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
+  Star,
   CheckCircle2,
   Clock,
   Layers,
@@ -44,6 +46,7 @@ import { fetchProjectById, acceptClientProposal, rejectClientProposal, approveCl
 import MilestoneAutomatedChecksCard from "@/components/MilestoneAutomatedChecksCard";
 import ProjectUploadedDocumentCard from "@/components/ProjectUploadedDocumentCard";
 import UserAvatar from "@/components/UserAvatar";
+import WorkspaceChatsMode from "@/components/client/workspace/WorkspaceChatsMode";
 
 type ProjectTab =
   | "overview"
@@ -224,12 +227,25 @@ function ProjectWorkspaceContent() {
             nextAction,
             freelancer: freelancer
               ? {
+                  id: freelancer.id,
                   name: freelancer.name,
-                  role: freelancer.freelancerProfile?.title || "Contractor",
-                  avatar: freelancer.preferences?.avatar && !freelancer.preferences.avatar.includes("photo-1507003211169") ? freelancer.preferences.avatar : null,
-                  rating: "5.0",
-                  completedJobs: 14,
-                  hourlyRate: live.budgetType === "HOURLY" ? `$${Math.round(live.budgetCents / 100)}/hr` : "$75/hr",
+                  role: freelancer.freelancerProfile?.title || freelancer.freelancerProfile?.professionalTitle || "Contractor",
+                  avatar: (freelancer.avatar && !freelancer.avatar.includes("photo-1507003211169"))
+                    ? freelancer.avatar
+                    : (freelancer.avatarUrl && !freelancer.avatarUrl.includes("photo-1507003211169"))
+                    ? freelancer.avatarUrl
+                    : (freelancer.preferences?.avatar && !freelancer.preferences.avatar.includes("photo-1507003211169"))
+                    ? freelancer.preferences.avatar
+                    : null,
+                  rating: freelancer.freelancerProfile?.rating ? String(freelancer.freelancerProfile.rating) : (freelancer.rating ? String(freelancer.rating) : null),
+                  completedJobs: freelancer.freelancerProfile?.completedJobsCount || freelancer.completedJobs || null,
+                  hourlyRate: live.budgetType === "HOURLY" && live.budgetCents
+                    ? `$${Math.round(live.budgetCents / 100)}/hr`
+                    : freelancer.freelancerProfile?.rateHourlyMinor
+                    ? `$${Math.round(freelancer.freelancerProfile.rateHourlyMinor / 100)}/hr`
+                    : live.budgetType === "FIXED"
+                    ? "Fixed Scope"
+                    : "Milestone-based",
                   status: "ACTIVE",
                 }
               : undefined,
@@ -275,7 +291,7 @@ function ProjectWorkspaceContent() {
                 : (p.freelancer?.preferences?.avatar && !p.freelancer.preferences.avatar.includes("photo-1507003211169"))
                 ? p.freelancer.preferences.avatar
                 : null,
-              rating: "5.0",
+              rating: p.freelancer?.freelancerProfile?.rating ? String(p.freelancer.freelancerProfile.rating) : (p.rating ? String(p.rating) : null),
               proposedBudget: `$${((p.amountCents || live.budgetCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`,
               estimatedTimeline: p.estimatedTimeline || (p.estimatedDurationWeeks ? `${p.estimatedDurationWeeks} weeks` : (live.timelineDuration || "Sprint schedule")),
               coverLetter: p.coverLetter || "Experienced developer ready to execute deliverables with automated test assert logs.",
@@ -846,7 +862,7 @@ function ProjectWorkspaceContent() {
                     className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
                   >
                     <span>Take Action Now</span>
-                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
@@ -862,15 +878,12 @@ function ProjectWorkspaceContent() {
                       </h3>
 
                       <div className="flex items-center gap-3.5">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200">
-                          <Image
-                            src={projectData.freelancer.avatar}
-                            alt={projectData.freelancer.name}
-                            width={48}
-                            height={48}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                        <UserAvatar
+                          name={projectData.freelancer.name}
+                          avatarUrl={projectData.freelancer.avatar}
+                          size="lg"
+                          className="rounded-xl shrink-0"
+                        />
                         <div className="min-w-0 flex-1">
                           <h4 className="text-sm font-bold text-slate-900 truncate">
                             {projectData.freelancer.name}
@@ -878,11 +891,22 @@ function ProjectWorkspaceContent() {
                           <p className="text-xs text-slate-500 truncate">
                             {projectData.freelancer.role}
                           </p>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-600 mt-1">
-                            <span className="font-semibold text-amber-600">â˜… {projectData.freelancer.rating}</span>
-                            <span>â€¢</span>
-                            <span>{projectData.freelancer.completedJobs} projects</span>
-                          </div>
+                          {(projectData.freelancer.rating || projectData.freelancer.completedJobs) ? (
+                            <div className="flex items-center gap-2 text-[11px] text-slate-600 mt-1">
+                              {projectData.freelancer.rating ? (
+                                <span className="font-semibold text-amber-600 flex items-center gap-1">
+                                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                  <span>{projectData.freelancer.rating}</span>
+                                </span>
+                              ) : null}
+                              {projectData.freelancer.rating && projectData.freelancer.completedJobs ? (
+                                <span className="text-slate-300">•</span>
+                              ) : null}
+                              {projectData.freelancer.completedJobs ? (
+                                <span>{projectData.freelancer.completedJobs} projects</span>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -949,9 +973,10 @@ function ProjectWorkspaceContent() {
                       <button
                         type="button"
                         onClick={() => setActiveTab("milestones")}
-                        className="text-xs font-semibold text-[#4f46e5] hover:underline"
+                        className="text-xs font-semibold text-[#4f46e5] hover:underline inline-flex items-center gap-1 cursor-pointer"
                       >
-                        Manage Milestones â†’
+                        <span>Manage Milestones</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
@@ -1231,9 +1256,12 @@ function ProjectWorkspaceContent() {
                               </span>
                             </div>
                             <p className="text-xs text-slate-500">{prop.freelancerRole}</p>
-                            <div className="text-[11px] text-amber-600 font-semibold mt-0.5">
-                              ★ {prop.rating}
-                            </div>
+                            {prop.rating ? (
+                              <div className="text-[11px] text-amber-600 font-semibold mt-0.5 flex items-center gap-1">
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                                <span>{prop.rating}</span>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
@@ -1518,80 +1546,14 @@ function ProjectWorkspaceContent() {
           )}
 
           {/* ==============================================================
-              TAB 5: WORKSPACE (BILATERAL Q&A & DECISIONS)
+              TAB 5: WORKSPACE (LIVE BILATERAL CHAT & COLLABORATION)
              ============================================================== */}
           {activeTab === "workspace" && (
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-6">
-              <div>
-                <h2 className="text-lg font-black text-slate-900 font-heading">
-                  Bilateral Collaboration & Decision Log
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Structured questions and approvals between client and contractor.
-                </p>
-              </div>
-
-              {/* Form to ask new question */}
-              <form onSubmit={handlePostQuestion} className="space-y-2">
-                <div className="relative">
-                  <textarea
-                    rows={2}
-                    value={newQuestionText}
-                    onChange={(e) => setNewQuestionText(e.target.value)}
-                    placeholder="Ask contractor a question or log an architectural decision..."
-                    className="w-full p-3.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5] resize-none"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold flex items-center gap-1 shadow-2xs"
-                  >
-                    <Send className="w-3 h-3" />
-                    <span>Post</span>
-                  </button>
-                </div>
-              </form>
-
-              {/* Questions list */}
-              <div className="space-y-4">
-                {projectData.workspaceQuestions.length === 0 ? (
-                  <div className="p-8 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 space-y-1">
-                    <MessageSquare className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-slate-700">No discussion threads yet</p>
-                    <p className="text-[11px] text-slate-500">
-                      Use the field above to ask your contractor architectural questions or record scope decisions.
-                    </p>
-                  </div>
-                ) : (
-                  projectData.workspaceQuestions.map((q) => (
-                    <div
-                      key={q.id}
-                      className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 space-y-3"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{q.author}</span>
-                          <span className="text-slate-400">• {q.date}</span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {q.status}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-slate-700 font-medium">{q.question}</p>
-
-                      {q.answer && (
-                        <div className="p-3 rounded-lg bg-white border border-slate-200 text-xs space-y-1">
-                          <div className="flex items-center justify-between text-[11px] text-slate-500">
-                            <span className="font-bold text-[#4f46e5]">{q.answeredBy}</span>
-                            <span>{q.answeredAt}</span>
-                          </div>
-                          <p className="text-slate-700">{q.answer}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden h-[780px] flex flex-col">
+              <WorkspaceChatsMode
+                initialProjectId={projectId}
+                isStandalone={true}
+              />
             </div>
           )}
 

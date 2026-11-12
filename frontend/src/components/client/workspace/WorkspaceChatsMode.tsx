@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   ShoppingCart,
@@ -80,21 +81,25 @@ import Channel3ProductExplorerModal from "@/components/common/Channel3ProductExp
 import { parseMeetingSlot, formatDualTimezoneSlot, formatInTimezone } from "@/lib/timezone-utils";
 
 interface WorkspaceChatsModeProps {
-  onSwitchToAIMode: (projectScope?: string) => void;
-  onOpenMediationHelp: () => void;
+  onSwitchToAIMode?: (projectScope?: string) => void;
+  onOpenMediationHelp?: () => void;
   isStandalone?: boolean;
+  initialProjectId?: string;
 }
 
 export default function WorkspaceChatsMode({
   onSwitchToAIMode,
   onOpenMediationHelp,
   isStandalone = false,
+  initialProjectId,
 }: WorkspaceChatsModeProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const urlProjectId = initialProjectId || searchParams.get("projectId") || "";
 
   // Projects & Active Selection (Truthful dynamic loading from backend)
   const [projects, setProjects] = useState<WorkspaceProject[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(urlProjectId);
   const [filterType, setFilterType] = useState<"all" | "unread">("all");
   const [searchFilter, setSearchFilter] = useState("");
   const [isProjectsLoading, setIsProjectsLoading] = useState(true);
@@ -220,9 +225,13 @@ export default function WorkspaceChatsMode({
         if (isMounted) {
           if (res.success && Array.isArray(res.data) && res.data.length > 0) {
             setProjects(res.data);
-            setSelectedProjectId((prev) =>
-              prev && res.data.some((p: any) => p.id === prev) ? prev : res.data[0].id
-            );
+            setSelectedProjectId((prev) => {
+              const target = urlProjectId || prev;
+              if (target && res.data.some((p: any) => p.id === target)) {
+                return target;
+              }
+              return res.data[0].id;
+            });
           } else {
             // Clean truthful empty state (0 projects)
             setProjects([]);
@@ -569,7 +578,7 @@ export default function WorkspaceChatsMode({
     if (!text || isSending || !selectedProject) return;
 
     if (composerMode === "private_ai") {
-      onSwitchToAIMode(selectedProject.shortName);
+      onSwitchToAIMode?.(selectedProject.shortName);
       return;
     }
 
@@ -1026,7 +1035,7 @@ export default function WorkspaceChatsMode({
                 <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100/90 border border-slate-200/80 shadow-2xs">
                   <button
                     type="button"
-                    onClick={() => onSwitchToAIMode()}
+                    onClick={() => onSwitchToAIMode?.()}
                     className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-600 hover:text-indigo-600 hover:bg-white/60 transition cursor-pointer"
                     title="Switch to Nexum AI"
                   >
@@ -1248,7 +1257,7 @@ export default function WorkspaceChatsMode({
               </a>
               <button
                 type="button"
-                onClick={() => onSwitchToAIMode()}
+                onClick={() => onSwitchToAIMode?.()}
                 className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-2xs flex items-center gap-2 cursor-pointer"
               >
                 <Bot className="w-4 h-4 text-purple-600" />
@@ -3873,7 +3882,7 @@ export default function WorkspaceChatsMode({
                       type="button"
                       onClick={() => {
                         const scope = selectedProject?.shortName || selectedProject?.name || "All my projects";
-                        onSwitchToAIMode(scope);
+                        onSwitchToAIMode?.(scope);
                       }}
                       title="Ask Nexum AI privately (Freelancers never see this)"
                       className="px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 text-slate-500 hover:text-slate-800"

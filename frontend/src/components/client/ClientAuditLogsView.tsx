@@ -26,14 +26,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { fetchClientAuditLogs } from "@/lib/api-client";
-import { AgGridReact } from "ag-grid-react";
-import { ModuleRegistry, AllCommunityModule, ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
 import { Download } from "lucide-react";
-
-// Register all community features for AG Grid (Tables, Sorting, Filtering, CSV Export)
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface AuditLogEntry {
   id: string;
@@ -72,128 +65,25 @@ export default function ClientAuditLogsView({
   const [activeLogModal, setActiveLogModal] = useState<AuditLogEntry | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "cards">("grid");
-  const [gridApi, setGridApi] = useState<GridApi<AuditLogEntry> | null>(null);
-
   const onExportCsv = useCallback(() => {
-    if (gridApi) {
-      gridApi.exportDataAsCsv({
-        fileName: `Nexum_Audit_Ledger_${new Date().toISOString().slice(0, 10)}.csv`,
-      });
-    }
-  }, [gridApi]);
-
-  const auditColumnDefs = useMemo<ColDef<AuditLogEntry>[]>(() => [
-    {
-      headerName: "Timestamp",
-      field: "timestamp",
-      minWidth: 160,
-      flex: 1.2,
-      cellRenderer: (params: any) => {
-        const log = params.data as AuditLogEntry | undefined;
-        if (!log) return null;
-        const d = new Date(log.timestamp);
-        return (
-          <div className="flex flex-col justify-center h-full font-mono text-[11px] leading-tight text-slate-700">
-            <span className="font-bold text-slate-900">{d.toLocaleDateString()}</span>
-            <span className="text-slate-400">{d.toLocaleTimeString()}</span>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Action",
-      field: "action",
-      minWidth: 200,
-      flex: 1.5,
-      cellRenderer: (params: any) => {
-        const log = params.data as AuditLogEntry | undefined;
-        if (!log) return null;
-        const badge = getActionBadge(log.action);
-        const BadgeIcon = badge.icon;
-        return (
-          <div className="flex items-center gap-2 h-full">
-            <div className={`w-6 h-6 rounded-lg border grid place-items-center shrink-0 ${badge.bg}`}>
-              <BadgeIcon className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-bold text-slate-900 text-xs truncate">
-              {log.action}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Object Type",
-      field: "objectType",
-      minWidth: 120,
-      flex: 1,
-      cellRenderer: (params: any) => {
-        const log = params.data as AuditLogEntry | undefined;
-        if (!log) return null;
-        return (
-          <div className="flex items-center h-full">
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-              {log.objectType}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Target ID",
-      field: "objectId",
-      minWidth: 150,
-      flex: 1.2,
-      cellRenderer: (params: any) => {
-        const log = params.data as AuditLogEntry | undefined;
-        if (!log) return null;
-        return (
-          <div className="flex items-center h-full font-mono text-xs text-slate-500 truncate">
-            {log.objectId || "—"}
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Consensus Hash",
-      field: "versionHash",
-      minWidth: 160,
-      flex: 1.2,
-      cellRenderer: (params: any) => {
-        const log = params.data as AuditLogEntry | undefined;
-        if (!log) return null;
-        return (
-          <div className="flex items-center gap-1.5 h-full font-mono text-[11px] text-slate-600">
-            <Lock className="w-3 h-3 text-slate-400 shrink-0" />
-            <span className="truncate">{log.versionHash ? log.versionHash.slice(0, 16) + "..." : "SHA256-RATIFIED"}</span>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Inspection",
-      field: "id",
-      minWidth: 100,
-      sortable: false,
-      filter: false,
-      cellRenderer: (params: any) => {
-        const log = params.data as AuditLogEntry | undefined;
-        if (!log) return null;
-        return (
-          <div className="flex items-center h-full">
-            <button
-              type="button"
-              onClick={() => setActiveLogModal(log)}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-50 text-indigo-700 border border-slate-200 shadow-xs transition cursor-pointer flex items-center gap-1"
-            >
-              <Code2 className="w-3 h-3" />
-              <span>Details</span>
-            </button>
-          </div>
-        );
-      },
-    },
-  ], []);
+    const headers = ["Timestamp", "Action", "Object Type", "Target ID", "Actor ID", "Consensus Hash"];
+    const rows = logs.map((l) => [
+      `"${new Date(l.timestamp).toISOString()}"`,
+      `"${(l.action || "").replace(/"/g, '""')}"`,
+      `"${(l.objectType || "").replace(/"/g, '""')}"`,
+      `"${(l.objectId || "").replace(/"/g, '""')}"`,
+      `"${(l.actorId || "").replace(/"/g, '""')}"`,
+      `"${(l.versionHash || "").replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Nexum_Audit_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [logs]);
 
   // Fetch logs
   const loadLogs = useCallback(async () => {
@@ -591,24 +481,69 @@ export default function ClientAuditLogsView({
             </button>
           </div>
         ) : viewMode === "grid" ? (
-          <div className="ag-theme-quartz w-full" style={{ height: 480 }}>
-            <AgGridReact<AuditLogEntry>
-              theme="legacy"
-              rowData={logs}
-              columnDefs={auditColumnDefs}
-              pagination={true}
-              paginationPageSize={limit}
-              paginationPageSizeSelector={[10, 25, 50]}
-              onGridReady={(params: GridReadyEvent<AuditLogEntry>) => setGridApi(params.api)}
-              rowHeight={52}
-              headerHeight={42}
-              quickFilterText={searchQuery}
-              defaultColDef={{
-                sortable: true,
-                filter: true,
-                resizable: true,
-              }}
-            />
+          <div className="overflow-x-auto rounded-2xl border border-slate-200/90 shadow-2xs bg-white">
+            <table className="w-full text-left text-xs font-sans">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Timestamp</th>
+                  <th className="py-3 px-4">Action</th>
+                  <th className="py-3 px-4">Object Type</th>
+                  <th className="py-3 px-4">Target ID</th>
+                  <th className="py-3 px-4">Consensus Hash</th>
+                  <th className="py-3 px-4 text-right">Inspection</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {logs.map((log) => {
+                  const badge = getActionBadge(log.action);
+                  const BadgeIcon = badge.icon;
+                  const d = new Date(log.timestamp);
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3 px-4 font-mono text-[11px] text-slate-700 whitespace-nowrap">
+                        <span className="font-bold text-slate-900 block">{d.toLocaleDateString()}</span>
+                        <span className="text-slate-400">{d.toLocaleTimeString()}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-lg border grid place-items-center shrink-0 ${badge.bg}`}>
+                            <BadgeIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="font-bold text-slate-900 text-xs truncate max-w-[200px]">
+                            {log.action}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                          {log.objectType}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-xs text-slate-500">
+                        {log.objectId || "—"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600">
+                          <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[140px]">
+                            {log.versionHash ? `${log.versionHash.slice(0, 14)}...` : "SHA256-RATIFIED"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setActiveLogModal(log)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#4f46e5] transition"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">

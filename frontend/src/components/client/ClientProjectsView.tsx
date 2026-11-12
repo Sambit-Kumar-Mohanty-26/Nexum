@@ -31,6 +31,7 @@ import {
   Zap,
 } from "lucide-react";
 import { fetchClientProjects, deleteProject } from "@/lib/api-client";
+import UserAvatar from "@/components/UserAvatar";
 
 export type ProjectLifecycleStatus =
   | "ALL"
@@ -739,19 +740,12 @@ export default function ClientProjectsView({
                     <>
                       <span className="text-slate-400 text-[11px]">Contractor:</span>
                       <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                        {project.freelancer.avatar ? (
-                          <Image
-                            src={project.freelancer.avatar}
-                            alt={project.freelancer.name}
-                            width={20}
-                            height={20}
-                            className="w-5 h-5 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-[9px] uppercase">
-                            {project.freelancer.name?.charAt(0) || "F"}
-                          </span>
-                        )}
+                        <UserAvatar
+                          name={project.freelancer.name}
+                          avatarUrl={project.freelancer.avatar}
+                          size="xs"
+                          className="w-5 h-5 rounded-full shrink-0"
+                        />
                         <span>{project.freelancer.name}</span>
                       </div>
                     </>

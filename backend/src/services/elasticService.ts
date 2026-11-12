@@ -1,5 +1,6 @@
-import { Client as ElasticClient } from "@elastic/elasticsearch";
 import { prisma } from "../prisma.js";
+
+type ElasticClient = any;
 
 export interface ElasticSearchHit {
   id: string;
@@ -32,7 +33,8 @@ export class ElasticService {
 
     if (node && node !== "mock" && !node.includes("placeholder")) {
       try {
-        this.client = new ElasticClient({
+        const { Client: ElasticClientConstructor } = require("@elastic/elasticsearch");
+        this.client = new ElasticClientConstructor({
           node,
           auth: apiKey ? { apiKey } : undefined,
         });

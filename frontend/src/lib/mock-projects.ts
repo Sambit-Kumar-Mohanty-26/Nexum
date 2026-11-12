@@ -118,11 +118,12 @@ export interface ProjectDetailData {
     tabTarget?: string;
   };
   freelancer?: {
+    id?: string;
     name: string;
     role: string;
-    avatar: string;
-    rating: string;
-    completedJobs: number;
+    avatar?: string | null;
+    rating?: string | null;
+    completedJobs?: number | null;
     hourlyRate: string;
     status: string;
   };

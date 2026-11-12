@@ -20,13 +20,6 @@ import {
   FreelancerInvoice,
   FreelancerProjectEarningsSummary,
 } from "@/lib/freelancer-earnings-types";
-import { AgGridReact } from "ag-grid-react";
-import { ModuleRegistry, AllCommunityModule, ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
-
-// Register all community features for AG Grid (Tables, Sorting, Filtering, CSV Export)
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface TransactionsTableProps {
   transactions: FreelancerTransaction[];
@@ -216,143 +209,26 @@ export default function TransactionsTable({
   };
 
   const [viewMode, setViewMode] = useState<"grid" | "classic">("grid");
-  const [gridApi, setGridApi] = useState<GridApi<FreelancerTransaction> | null>(null);
-
   const onExportCsv = useCallback(() => {
-    if (gridApi) {
-      gridApi.exportDataAsCsv({
-        fileName: `Nexum_Freelancer_Ledger_${new Date().toISOString().slice(0, 10)}.csv`,
-      });
-    }
-  }, [gridApi]);
-
-  const freelancerColumnDefs = useMemo<ColDef<FreelancerTransaction>[]>(() => [
-    {
-      headerName: "Date",
-      field: "date",
-      minWidth: 120,
-      flex: 1,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        return (
-          <div className="flex items-center h-full font-medium text-slate-700 text-xs">
-            {tx.date}
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Description",
-      field: "description",
-      minWidth: 220,
-      flex: 1.8,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        return (
-          <div className="flex items-center gap-2 h-full py-1">
-            <div className="min-w-0 leading-tight">
-              <div className="font-bold text-slate-900 text-xs truncate">
-                {tx.description}
-              </div>
-              <div className="text-[10px] text-slate-400 truncate">
-                {tx.subtitle}
-              </div>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Project",
-      field: "project",
-      minWidth: 180,
-      flex: 1.4,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        if (tx.project === "—") return <span className="text-slate-300 font-bold">—</span>;
-        return (
-          <div className="flex flex-col justify-center h-full py-1 leading-tight">
-            <div className="font-semibold text-slate-900 text-xs truncate">
-              {tx.project}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">
-              {tx.client}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Type",
-      field: "type",
-      minWidth: 100,
-      flex: 0.9,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        return (
-          <div className="flex items-center h-full text-slate-600 font-medium text-xs">
-            {tx.type}
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Amount",
-      field: "amount",
-      minWidth: 120,
-      flex: 1,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        return (
-          <div className="flex items-center h-full font-mono font-extrabold text-xs text-slate-900">
-            {tx.formattedAmount}
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Status",
-      field: "status",
-      minWidth: 130,
-      flex: 1,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        return (
-          <div className="flex items-center h-full">
-            {renderStatusBadge(tx.status)}
-          </div>
-        );
-      },
-    },
-    {
-      headerName: "Actions",
-      field: "id",
-      minWidth: 100,
-      sortable: false,
-      filter: false,
-      cellRenderer: (params: any) => {
-        const tx = params.data as FreelancerTransaction | undefined;
-        if (!tx) return null;
-        return (
-          <div className="flex items-center h-full">
-            <button
-              type="button"
-              onClick={() => onViewTransaction(tx)}
-              className="px-2.5 py-1 text-xs font-semibold text-[#4f46e5] hover:text-[#4338ca] hover:bg-indigo-50 rounded-lg transition cursor-pointer"
-            >
-              {tx.status === "Under Review" || tx.status === "Pending" ? "Details" : "View"}
-            </button>
-          </div>
-        );
-      },
-    },
-  ], [onViewTransaction]);
+    const headers = ["Date", "Description", "Project", "Client", "Type", "Amount", "Status"];
+    const rows = filteredTransactions.map((tx) => [
+      `"${tx.date || ""}"`,
+      `"${(tx.description || "").replace(/"/g, '""')}"`,
+      `"${(tx.project || "").replace(/"/g, '""')}"`,
+      `"${(tx.client || "").replace(/"/g, '""')}"`,
+      `"${tx.type || ""}"`,
+      `"${tx.formattedAmount || ""}"`,
+      `"${tx.status || ""}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Nexum_Freelancer_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [filteredTransactions]);
 
   return (
     <div className="p-4 sm:p-6 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
@@ -672,29 +548,9 @@ export default function TransactionsTable({
             </tbody>
           </table>
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="ag-theme-quartz w-full rounded-xl overflow-hidden border border-slate-200/90 shadow-2xs" style={{ height: 420 }}>
-          <AgGridReact<FreelancerTransaction>
-            theme="legacy"
-            rowData={filteredTransactions}
-            columnDefs={freelancerColumnDefs}
-            pagination={true}
-            paginationPageSize={10}
-            paginationPageSizeSelector={[10, 20, 50]}
-            onGridReady={(params: GridReadyEvent<FreelancerTransaction>) => setGridApi(params.api)}
-            rowHeight={50}
-            headerHeight={40}
-            quickFilterText={searchQuery}
-            defaultColDef={{
-              sortable: true,
-              filter: true,
-              resizable: true,
-            }}
-          />
-        </div>
       ) : (
         /* TRANSACTIONS / MILESTONES / PAYOUT HISTORY TABS (Matching Screenshot) */
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto ${viewMode === "grid" ? "rounded-xl border border-slate-200/90 shadow-2xs p-2 bg-white" : ""}`}>
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-slate-400 font-medium text-[11px] pb-2">
