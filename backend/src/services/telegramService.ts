@@ -546,10 +546,14 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
           if (matched) {
             this.userActiveProjects.set(user.id, matched.id);
             await this.answerCallbackQuery(cq.id, `⭐ Switched to ${matched.title}`);
+            const historyBrief = await this.getProjectRecentHistory(matched.id, 3);
             if (chatId) {
               await this.sendMessage(
                 chatId,
-                `⭐ *Active Project Switched!*\n\nTarget contract is now *${matched.title}* (\`${matched.id}\`).\nIncoming messages, task creation, and file views will now point here.`,
+                `⭐ *Active Project Switched!*\n\n` +
+                  `Target contract is now *${matched.title}* (\`${matched.id}\`).\n\n` +
+                  `📬 *Recent Timeline Activity:*\n${historyBrief}\n\n` +
+                  `💡 _Incoming messages, task creation, and file views will now point here. Any regular message you send will post straight to this project._`,
                 undefined,
                 true,
                 user.role
@@ -1014,9 +1018,13 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         }
 
         this.userActiveProjects.set(user.id, matched.id);
+        const historyBrief = await this.getProjectRecentHistory(matched.id, 3);
         await this.sendMessage(
           chatId,
-          `⭐ *Active Project Switched!*\n\nTarget contract is now *${matched.title}* (\`${matched.id}\`). Incoming messages, tasks, and files will now point here.`,
+          `⭐ *Active Project Switched!*\n\n` +
+            `Target contract is now *${matched.title}* (\`${matched.id}\`).\n\n` +
+            `📬 *Recent Timeline Activity:*\n${historyBrief}\n\n` +
+            `💡 _Incoming messages, task creation, and file views will now point here. Any regular message you send will post straight to this project._`,
           undefined,
           true,
           user.role
@@ -1030,6 +1038,19 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       if (!targetPrj) {
         await this.sendMessage(chatId, `ℹ️ No active projects currently linked to this Telegram account.`, undefined, true);
         return { handled: true, action: "STATUS_EMPTY" };
+      }
+
+      // 3d-2. /history or /chat (Recent timeline messages briefing)
+      if (text === "/history" || text === "/chat" || text === "💬 Recent Messages") {
+        const historyBrief = await this.getProjectRecentHistory(targetPrj.id, 5);
+        await this.sendMessage(
+          chatId,
+          `📬 *Recent Timeline Activity (${targetPrj.title}):*\n\n${historyBrief}\n\n💡 _Type any message below to reply directly to your team!_`,
+          undefined,
+          true,
+          user.role
+        );
+        return { handled: true, action: "HISTORY_SENT" };
       }
 
       // 3e. /status or "📊 Status"
@@ -1952,6 +1973,49 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       true,
       userRole
     );
+  }
+
+  /**
+   * Retrieve recent timeline chat history for project catch-up briefings
+   */
+  async getProjectRecentHistory(projectId: string, limit = 3): Promise<string> {
+    try {
+      const conv = await prisma.workspaceConversation.findUnique({
+        where: { projectId },
+      });
+      if (!conv) {
+        return "• _No messages recorded yet in this workspace._";
+      }
+
+      const msgs = await prisma.workspaceMessage.findMany({
+        where: { conversationId: conv.id },
+        include: { sender: { select: { name: true, role: true } } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+
+      if (msgs.length === 0) {
+        return "• _No messages recorded yet in this workspace._";
+      }
+
+      return msgs
+        .reverse()
+        .map((m) => {
+          const senderName = m.sender?.name || (m.senderRole === "CLIENT" ? "Client" : "Freelancer");
+          const roleBadge = m.senderRole === "CLIENT" ? "Client" : "Freelancer";
+          const timeStr = new Date(m.createdAt).toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const preview = m.originalContent.length > 110 ? `${m.originalContent.slice(0, 110)}...` : m.originalContent;
+          return `• *${senderName} (${roleBadge})* [${timeStr}]:\n  "${preview}"`;
+        })
+        .join("\n\n");
+    } catch {
+      return "• _Unable to load prior timeline history._";
+    }
   }
 
 }

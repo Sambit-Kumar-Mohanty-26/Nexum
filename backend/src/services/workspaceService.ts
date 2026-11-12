@@ -411,6 +411,48 @@ export class WorkspaceService {
       },
     });
 
+    // Bilateral relay: forward web messages to recipient's Telegram if paired
+    if (params.origin !== "TELEGRAM") {
+      try {
+        const project = await prisma.project.findUnique({
+          where: { id: params.projectId },
+          include: {
+            client: true,
+            agreement: { include: { freelancer: true } },
+          },
+        });
+
+        if (project) {
+          const recipientUser =
+            params.senderRole === "CLIENT"
+              ? project.agreement?.freelancer
+              : project.client;
+
+          if (recipientUser?.telegramChatId && recipientUser.telegramNotifications) {
+            const { telegramService } = await import("./telegramService.js");
+            const senderDisplayName = message.sender?.name || (params.senderRole === "CLIENT" ? "Client" : "Freelancer");
+
+            await telegramService.sendMessage(
+              recipientUser.telegramChatId,
+              `💬 *New Message on ${project.title}:*\n\n*${senderDisplayName}:* "${params.content}"\n\n_Origin: Web Workspace • Seal: \`${seal.slice(0, 16)}...\`_`,
+              [
+                [
+                  {
+                    text: `💬 Reply / Switch to ${project.title.slice(0, 20)}...`,
+                    callback_data: `switch_prj:${project.id}`,
+                  },
+                ],
+              ],
+              true,
+              recipientUser.role
+            );
+          }
+        }
+      } catch (tgErr: any) {
+        console.warn("[WorkspaceService] Telegram inbound relay notice:", tgErr.message);
+      }
+    }
+
     return {
       message,
       botInsights: {
