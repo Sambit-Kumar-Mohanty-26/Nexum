@@ -110,13 +110,11 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
   const quickPrompts = ["agreement", "escrow", "milestone", "payout", "deliverable", "dual-seal"];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
         {/* Search Header */}
-        <div className="p-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 shrink-0">
-            <Search className="w-4 h-4" />
-          </div>
+        <div className="px-4 py-3.5 border-b border-slate-100 flex items-center gap-3 bg-white">
+          <Search className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
           <div className="flex-1 min-w-0">
             <input
               type="text"
@@ -131,34 +129,34 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="p-1 rounded-lg hover:bg-slate-200/60 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+              className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-white font-mono text-[10px] text-slate-400 shadow-2xs">
-            ESC
+          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 font-mono text-[10px] text-slate-400">
+            esc
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-200/60 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+            className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Telemetry & Filter Bar */}
-        <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="px-4 py-2.5 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
           {/* Tabs */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 p-0.5 bg-slate-200/50 rounded-lg border border-slate-200/70">
             <button
               type="button"
               onClick={() => setActiveTab("ALL")}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                 activeTab === "ALL"
-                  ? "bg-slate-900 text-white shadow-2xs"
-                  : "text-slate-600 hover:bg-slate-200/70"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900 font-medium"
               }`}
             >
               All ({hits.length})
@@ -166,10 +164,10 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
             <button
               type="button"
               onClick={() => setActiveTab("MESSAGE")}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                 activeTab === "MESSAGE"
-                  ? "bg-slate-900 text-white shadow-2xs"
-                  : "text-slate-600 hover:bg-slate-200/70"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900 font-medium"
               }`}
             >
               Messages ({messageCount})
@@ -177,10 +175,10 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
             <button
               type="button"
               onClick={() => setActiveTab("DECISION")}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                 activeTab === "DECISION"
-                  ? "bg-slate-900 text-white shadow-2xs"
-                  : "text-slate-600 hover:bg-slate-200/70"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900 font-medium"
               }`}
             >
               Decisions ({decisionCount})
@@ -189,10 +187,10 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
               <button
                 type="button"
                 onClick={() => setActiveTab("AUDIT_EVENT")}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                   activeTab === "AUDIT_EVENT"
-                    ? "bg-slate-900 text-white shadow-2xs"
-                    : "text-slate-600 hover:bg-slate-200/70"
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                    : "text-slate-600 hover:text-slate-900 font-medium"
                 }`}
               >
                 Audit ({auditCount})
@@ -203,17 +201,17 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
           {/* Engine indicator */}
           <div className="flex items-center gap-2">
             <div
-              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold border ${
                 provider === "ELASTICSEARCH"
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                  : "bg-emerald-50 text-emerald-800 border-emerald-200"
               }`}
             >
               <Database className="w-3 h-3" />
               <span>{provider === "ELASTICSEARCH" ? "Elasticsearch Engine" : "PostgreSQL Fallback"}</span>
             </div>
             {telemetry?.apmConfigured && (
-              <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+              <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
                 APM Active
               </span>
             )}
@@ -224,14 +222,14 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
           {isLoading && (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400">
-              <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2" />
+              <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2" />
               <p className="text-xs font-medium">Searching workspace index...</p>
             </div>
           )}
 
           {!isLoading && query && filteredHits.length === 0 && (
             <div className="py-12 text-center">
-              <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <AlertCircle className="w-7 h-7 text-slate-300 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-700">No matching records found</p>
               <p className="text-xs text-slate-400 mt-1">
                 No messages, decisions, or events match &ldquo;{query}&rdquo;.
@@ -241,8 +239,8 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
 
           {!isLoading && !query && (
             <div className="py-8 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-600 mx-auto mb-3">
-                <Sparkles className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 mx-auto mb-3">
+                <Search className="w-5 h-5 text-slate-500" />
               </div>
               <h3 className="text-sm font-bold text-slate-800">Instant Full-Text Workspace Search</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
@@ -255,7 +253,7 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
                     key={p}
                     type="button"
                     onClick={() => setQuery(p)}
-                    className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200/70 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
+                    className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition cursor-pointer border border-slate-200/60"
                   >
                     {p}
                   </button>
@@ -276,30 +274,30 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
                     if (onSelectHit) onSelectHit(hit);
                     onClose();
                   }}
-                  className="p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition cursor-pointer group flex flex-col gap-1.5"
+                  className="p-3 rounded-xl border border-slate-200/80 hover:border-indigo-300 hover:bg-slate-50/60 transition cursor-pointer group flex flex-col gap-1.5 bg-white"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       {isMessage && (
-                        <span className="flex items-center gap-1 font-bold text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                        <span className="flex items-center gap-1 font-semibold text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                           <MessageSquare className="w-3 h-3" />
                           Chat Message
                         </span>
                       )}
                       {isDecision && (
-                        <span className="flex items-center gap-1 font-bold text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                        <span className="flex items-center gap-1 font-semibold text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
                           <FileCheck className="w-3 h-3" />
                           ADR Decision
                         </span>
                       )}
                       {!isMessage && !isDecision && (
-                        <span className="flex items-center gap-1 font-bold text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                        <span className="flex items-center gap-1 font-semibold text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
                           <ShieldAlert className="w-3 h-3" />
                           Audit Event
                         </span>
                       )}
                       {hit.title && (
-                        <span className="font-bold text-slate-800 truncate max-w-xs">{hit.title}</span>
+                        <span className="font-semibold text-slate-800 truncate max-w-xs">{hit.title}</span>
                       )}
                     </div>
 
@@ -309,11 +307,11 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-sans pl-1 border-l-2 border-slate-200 group-hover:border-indigo-400">
+                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-sans pl-2 border-l-2 border-slate-200 group-hover:border-indigo-500 transition-colors">
                     {hit.snippet || hit.content}
                   </p>
 
-                  <div className="flex items-center justify-end text-[11px] text-indigo-600 font-semibold opacity-0 group-hover:opacity-100 transition">
+                  <div className="flex items-center justify-end text-[11px] text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition">
                     <span>Jump to record</span>
                     <ArrowRight className="w-3 h-3 ml-1" />
                   </div>
@@ -324,8 +322,8 @@ export const ElasticWorkspaceSearchModal: React.FC<ElasticWorkspaceSearchModalPr
 
         {/* Footer */}
         <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span className="flex items-center gap-1.5 font-semibold text-slate-600">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="flex items-center gap-1.5 font-medium text-slate-600">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
             Elastic Search & Observability Suite
           </span>
           <span className="font-mono text-[10px]">Indexes: 3 Active</span>

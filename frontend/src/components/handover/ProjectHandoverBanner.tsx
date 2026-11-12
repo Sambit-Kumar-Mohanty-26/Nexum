@@ -11,6 +11,7 @@ import {
   Layers,
 } from "lucide-react";
 import { ProjectHandoverData } from "@/lib/api-client";
+import { NexumIcon } from "@/components/Logo";
 
 interface ProjectHandoverBannerProps {
   role: "CLIENT" | "FREELANCER";
@@ -55,7 +56,7 @@ export default function ProjectHandoverBanner({
             ) : isInitiated ? (
               <FileCheck2 className="w-6 h-6" />
             ) : (
-              <Sparkles className="w-6 h-6" />
+              <NexumIcon className="w-6 h-6" />
             )}
           </div>
 
@@ -143,7 +144,7 @@ export default function ProjectHandoverBanner({
               onClick={onInitiateClick}
               className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <NexumIcon className="w-3.5 h-3.5" />
               <span>Initiate Handover Checklist</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>

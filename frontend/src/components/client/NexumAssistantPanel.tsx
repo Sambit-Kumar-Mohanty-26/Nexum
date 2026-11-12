@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, X, Send, Bot, User, ShieldAlert, ExternalLink } from "lucide-react";
+import { NexumIcon } from "@/components/Logo";
 
 interface Message {
   id: string;
@@ -115,7 +116,7 @@ export default function NexumAssistantPanel() {
             <X className="w-5 h-5 text-slate-600 group-hover:rotate-90 transition-transform duration-200" />
           ) : (
             <>
-              <Sparkles className="w-5 h-5 text-indigo-600 group-hover:rotate-12 transition-transform duration-300" />
+              <NexumIcon className="w-6 h-6 group-hover:scale-105 transition-transform duration-300" />
               <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs animate-pulse" />
             </>
           )}
@@ -133,8 +134,8 @@ export default function NexumAssistantPanel() {
           {/* Header */}
           <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white grid place-items-center shadow-xs">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 grid place-items-center shadow-xs">
+                <NexumIcon className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">

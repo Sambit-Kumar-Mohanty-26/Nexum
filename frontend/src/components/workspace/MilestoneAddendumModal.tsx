@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { suggestAddendumPrice, proposeScopeAmendment } from "@/lib/api-client";
 import Channel3ProductExplorerModal, { Channel3ProductItem } from "@/components/common/Channel3ProductExplorerModal";
+import { NexumIcon } from "@/components/Logo";
 
 interface MilestoneAddendumModalProps {
   isOpen: boolean;
@@ -229,17 +230,17 @@ export default function MilestoneAddendumModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl border border-purple-100 flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-slate-200/90 flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white border-b border-purple-800/40">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-300">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
+              <NexumIcon className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight">Formalize Milestone Addendum</h2>
-              <p className="text-xs text-purple-200/80">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Formalize Milestone Addendum</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Convert agreed meeting scope into a cumulative milestone (Agreement v1.1 revision)
               </p>
             </div>
@@ -247,14 +248,14 @@ export default function MilestoneAddendumModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-purple-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-4.5">
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -264,31 +265,31 @@ export default function MilestoneAddendumModal({
 
           {/* Milestone Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5">
-              Milestone Title <span className="text-purple-600">*</span>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              Milestone Title <span className="text-indigo-600">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Add AI Predictive Feature for Disaster Detection"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition"
+              placeholder="e.g. Integrate UA Arc 96 or Add AI Disaster Detection"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-slate-900 placeholder:text-slate-400 transition"
             />
           </div>
 
           {/* Specifications & Deliverables */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Deliverables & Technical Specifications
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Deliverables &amp; Technical Specifications
               </label>
               <button
                 type="button"
                 onClick={() => setIsChannel3ModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition cursor-pointer"
                 title="Browse real-world product catalog via Channel 3"
               >
-                <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
+                <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />
                 <span>Channel 3 Catalog</span>
               </button>
             </div>
@@ -297,23 +298,23 @@ export default function MilestoneAddendumModal({
               value={deliverables}
               onChange={(e) => setDeliverables(e.target.value)}
               placeholder="Detail the technical requirements, architecture specs, and expected outputs agreed in the sync meeting..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition leading-relaxed"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-slate-900 placeholder:text-slate-400 transition leading-relaxed"
             />
           </div>
 
           {/* BRD Document Upload with Auto Budget Extraction */}
-          <div className="p-4 rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 space-y-2.5">
+          <div className="p-3.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-purple-950 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-purple-600" />
+              <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-indigo-600" />
                 <span>Upload BRD / Technical Specification Document</span>
               </span>
-              <span className="text-[11px] text-purple-600 font-medium">PDF, DOCX, TXT, MD</span>
+              <span className="text-[11px] text-slate-500 font-mono">PDF, DOCX, TXT, MD</span>
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-purple-200 hover:border-purple-400 text-xs font-semibold text-purple-900 hover:bg-purple-50/50 transition cursor-pointer shadow-2xs">
-                <UploadCloud className="w-4 h-4 text-purple-600" />
+              <label className="flex-1 flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs">
+                <UploadCloud className="w-4 h-4 text-slate-500" />
                 <span>{uploadedFile ? uploadedFile.name : "Choose Specification File..."}</span>
                 <input
                   type="file"
@@ -349,17 +350,17 @@ export default function MilestoneAddendumModal({
           </div>
 
           {/* Nexum AI Price & Complexity Estimation Card */}
-          <div className="p-4.5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/40 shadow-xs space-y-3">
+          <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/40 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-xs font-bold text-purple-950">
-                <Sparkles className="w-4 h-4 text-purple-600" />
-                <span>Nexum AI Scope & Price Forensics</span>
+              <span className="flex items-center gap-2 text-xs font-semibold text-slate-900">
+                <NexumIcon className="w-4 h-4" />
+                <span>Nexum AI Scope &amp; Price Forensics</span>
               </span>
               <button
                 type="button"
                 onClick={handleAskNexumAi}
                 disabled={isEstimating}
-                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isEstimating ? (
                   <>
@@ -368,7 +369,7 @@ export default function MilestoneAddendumModal({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <NexumIcon className="w-3.5 h-3.5" />
                     <span>Ask Nexum AI for Price</span>
                   </>
                 )}
@@ -378,42 +379,42 @@ export default function MilestoneAddendumModal({
             {aiEstimate ? (
               <div className="space-y-2.5 pt-1">
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="p-2.5 rounded-xl bg-white border border-purple-100 shadow-2xs">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Suggested Escrow</div>
-                    <div className="text-sm font-bold text-purple-900 mt-0.5">
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Suggested Escrow</div>
+                    <div className="text-sm font-bold text-slate-900 mt-0.5">
                       ${(aiEstimate.suggestedAmountMinor / 100).toLocaleString()} {currency}
                     </div>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white border border-purple-100 shadow-2xs">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Est. Timeline</div>
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Est. Timeline</div>
                     <div className="text-sm font-bold text-slate-800 mt-0.5">
                       {aiEstimate.suggestedTimelineDays} Days
                     </div>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white border border-purple-100 shadow-2xs">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Complexity</div>
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Complexity</div>
                     <div className="text-sm font-bold text-indigo-700 mt-0.5">
                       {aiEstimate.complexity}
                     </div>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 italic bg-white/80 p-2.5 rounded-xl border border-purple-100/70">
+                <p className="text-xs text-slate-600 italic bg-white p-2.5 rounded-lg border border-slate-200/80">
                   &ldquo;{aiEstimate.reasoning}&rdquo;
                 </p>
 
                 <button
                   type="button"
                   onClick={handleApplyAiSuggestion}
-                  className="w-full py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Check className="w-3.5 h-3.5 text-purple-700" />
-                  <span>Apply AI Suggested Budget (${(aiEstimate.suggestedAmountMinor / 100).toLocaleString()}) & Timeline ({aiEstimate.suggestedTimelineDays}d)</span>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Apply AI Suggested Budget (${(aiEstimate.suggestedAmountMinor / 100).toLocaleString()}) &amp; Timeline ({aiEstimate.suggestedTimelineDays}d)</span>
                 </button>
               </div>
             ) : (
               <p className="text-xs text-slate-500 leading-relaxed">
-                Click &ldquo;Ask Nexum AI for Price&rdquo; to have our Groq engine evaluate the technical deliverables, architectural risk, and delivery timeline.
+                Click &ldquo;Ask Nexum AI for Price&rdquo; to evaluate technical deliverables, architectural risk, and delivery timeline.
               </p>
             )}
           </div>
@@ -421,9 +422,9 @@ export default function MilestoneAddendumModal({
           {/* Budget & Timeline Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Escrow Budget ({currency}) <span className="text-purple-600">*</span></span>
+                <span>Escrow Budget ({currency}) <span className="text-indigo-600">*</span></span>
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
@@ -433,16 +434,16 @@ export default function MilestoneAddendumModal({
                   step="50"
                   value={budgetDollars}
                   onChange={(e) => setBudgetDollars(Math.max(1, parseFloat(e.target.value) || 0))}
-                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-bold text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition"
+                  className="w-full pl-8 pr-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
                 />
               </div>
               <p className="text-[10px] text-slate-400 mt-1">Stored as integer minor units ({budgetDollars * 100} cents)</p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Delivery Timeline (Days) <span className="text-purple-600">*</span></span>
+                <span>Delivery Timeline (Days) <span className="text-indigo-600">*</span></span>
               </label>
               <input
                 type="number"
@@ -450,20 +451,20 @@ export default function MilestoneAddendumModal({
                 max="365"
                 value={timelineDays}
                 onChange={(e) => setTimelineDays(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-bold text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
               />
             </div>
           </div>
 
           {/* Acceptance Criteria */}
           <div>
-            <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5">
-              Acceptance & Verification Criteria
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              Acceptance &amp; Verification Criteria
             </label>
             <div className="space-y-2 mb-2">
               {criteria.map((crit, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800">
-                  <span className="flex items-center gap-1.5">
+                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800">
+                  <span className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span>{crit}</span>
                   </span>
@@ -490,12 +491,12 @@ export default function MilestoneAddendumModal({
                     handleAddCriterion();
                   }
                 }}
-                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               />
               <button
                 type="button"
                 onClick={handleAddCriterion}
-                className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer border border-slate-200"
               >
                 Add
               </button>
@@ -504,7 +505,7 @@ export default function MilestoneAddendumModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="sticky bottom-0 z-10 flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200/80 rounded-b-3xl">
+        <div className="sticky bottom-0 z-10 flex items-center justify-between px-6 py-3.5 bg-slate-50 border-t border-slate-100 rounded-b-2xl">
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-indigo-600" />
             <span>Dual-consensus required before contract revision v1.1 seals.</span>
@@ -515,7 +516,7 @@ export default function MilestoneAddendumModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-white text-slate-700 text-xs font-bold transition cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
             >
               Cancel
             </button>
@@ -523,7 +524,7 @@ export default function MilestoneAddendumModal({
               type="button"
               onClick={handleSubmitProposal}
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

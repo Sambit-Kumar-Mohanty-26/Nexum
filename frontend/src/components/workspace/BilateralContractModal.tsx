@@ -20,6 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { fetchAgreementDetails } from "@/lib/api-client";
+import { NexumIcon } from "@/components/Logo";
 
 interface BilateralContractModalProps {
   isOpen: boolean;
@@ -470,7 +471,7 @@ export default function BilateralContractModal({
               <div className="border-b-2 border-slate-900 pb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-800 text-[10px] font-bold uppercase tracking-wider mb-2">
-                    <Sparkles className="w-3 h-3 text-indigo-600" />
+                    <NexumIcon className="w-3.5 h-3.5" />
                     <span>Nexum Autonomous Legal Protocol</span>
                   </div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

@@ -40,6 +40,7 @@ import {
   Package,
   Scale,
   Plus,
+  Copy,
 } from "lucide-react";
 import {
   TimelineItem,
@@ -47,6 +48,7 @@ import {
   WorkspaceMeetingItem,
   WorkspaceDecisionItem,
 } from "@/lib/workspace-types";
+import { NexumIcon } from "@/components/Logo";
 import { FreelancerWorkspaceProject } from "@/lib/freelancer-workspace-data";
 import { useAuth } from "@/context/AuthContext";
 import ReviewVersionModal from "@/components/client/workspace/ReviewVersionModal";
@@ -843,7 +845,7 @@ export default function FreelancerWorkspaceChatsMode({
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-xl border border-slate-700 animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-[#4f46e5]" />
+          <NexumIcon className="w-3.5 h-3.5" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -867,7 +869,7 @@ export default function FreelancerWorkspaceChatsMode({
                     className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-600 hover:text-indigo-600 hover:bg-white/60 transition cursor-pointer"
                     title="Switch to Nexum AI"
                   >
-                    <Sparkles className="w-3 h-3 text-indigo-500" />
+                    <NexumIcon className="w-3.5 h-3.5" />
                     <span>AI</span>
                   </button>
                   <div className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-indigo-700 shadow-2xs">
@@ -1060,7 +1062,7 @@ export default function FreelancerWorkspaceChatsMode({
             onClick={() => onSwitchToAIMode("All my client contracts")}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-50/90 via-white to-purple-50/90 hover:from-indigo-100/70 hover:to-purple-100/70 border border-indigo-200/70 text-indigo-700 text-xs font-bold transition shadow-2xs cursor-pointer group"
           >
-            <Sparkles className="w-4 h-4 text-indigo-600 group-hover:rotate-12 transition-transform" />
+            <NexumIcon className="w-4 h-4" />
             <span>Ask Nexum AI about all contracts</span>
           </button>
         </div>
@@ -1093,7 +1095,7 @@ export default function FreelancerWorkspaceChatsMode({
                 onClick={() => onSwitchToAIMode()}
                 className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <NexumIcon className="w-3.5 h-3.5" />
                 <span>Ask Nexum AI Copilot</span>
               </button>
             </div>
@@ -1236,8 +1238,8 @@ export default function FreelancerWorkspaceChatsMode({
               </div>
 
               {/* Subtabs: Chat | Overview | Deliverables | Milestones | Tasks | Files | Payments | Decisions | Activity | Meetings */}
-              <div className="flex items-center justify-between mt-2 border-t border-slate-100/80 pt-1 text-xs font-semibold gap-3">
-                <div className="flex items-center gap-4 sm:gap-5 overflow-x-auto scrollbar-none pb-0.5">
+              <div className="flex items-center justify-between gap-4 sm:gap-6 mt-2 border-t border-slate-100/80 pt-1 text-xs font-semibold">
+                <div className="flex items-center gap-4 sm:gap-5 overflow-x-auto scrollbar-none pb-0.5 min-w-0 pr-2">
                   {[
                     { id: "chat", label: "Chat" },
                     { id: "overview", label: "Overview" },
@@ -1299,10 +1301,10 @@ export default function FreelancerWorkspaceChatsMode({
                 <button
                   type="button"
                   onClick={onOpenMediationHelp}
-                  className="inline-flex items-center gap-1.5 pb-1.5 text-indigo-600 hover:text-indigo-700 font-semibold text-[11px] transition cursor-pointer hover:underline shrink-0"
+                  className="inline-flex items-center gap-1.5 pb-1.5 text-indigo-600 hover:text-indigo-700 font-semibold text-[11px] transition cursor-pointer hover:underline shrink-0 ml-auto pl-3.5 border-l border-slate-200/80"
                   title="Learn how Nexum AI mediates every message"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <NexumIcon className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">Mediated by Nexum AI</span>
                 </button>
               </div>
@@ -1369,7 +1371,7 @@ export default function FreelancerWorkspaceChatsMode({
                     >
                       <div className="flex items-center justify-between">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-                          <Sparkles className="w-3 h-3 text-purple-500" />
+                          <NexumIcon className="w-3 h-3" />
                           <span>{item.badgeText}</span>
                         </div>
                         <span className="text-[11px] text-slate-400">{item.timestamp}</span>
@@ -1915,7 +1917,7 @@ export default function FreelancerWorkspaceChatsMode({
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 font-bold text-indigo-950">
-                          <Sparkles className="w-4 h-4 text-indigo-600" />
+                          <NexumIcon className="w-4 h-4" />
                           <span>Nexum Protocol · AI Contract Synthesis</span>
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
@@ -2179,8 +2181,8 @@ export default function FreelancerWorkspaceChatsMode({
                       {meta.aiSummary && (
                         <div className="ml-8 p-3.5 rounded-xl border border-indigo-200/80 bg-indigo-50/50 space-y-2">
                           <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>Nexum AI Document Analysis & Key Targets</span>
+                            <NexumIcon className="w-3.5 h-3.5" />
+                            <span>Nexum AI Document Analysis &amp; Key Targets</span>
                           </div>
                           <p className="text-xs text-slate-700 leading-relaxed font-sans">
                             {meta.aiSummary}
@@ -2390,7 +2392,7 @@ export default function FreelancerWorkspaceChatsMode({
 
                       {meta.status === "COMPLETED" ? (
                         <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-purple-700 bg-purple-50/80 px-3.5 py-2 rounded-xl border border-purple-200">
-                          <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+                          <NexumIcon className="w-4 h-4" />
                           <span>Meeting brief & AI synthesis attached below</span>
                         </div>
                       ) : (
@@ -2432,8 +2434,8 @@ export default function FreelancerWorkspaceChatsMode({
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 font-bold text-purple-950">
-                          <Sparkles className="w-4 h-4 text-purple-600" />
-                          <span>Nexum AI Notetaker · Meeting Brief & Synthesis</span>
+                          <NexumIcon className="w-4 h-4" />
+                          <span>Nexum AI Notetaker · Meeting Brief &amp; Synthesis</span>
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
                           Call Completed
@@ -2479,7 +2481,7 @@ export default function FreelancerWorkspaceChatsMode({
                               <li key={idx} className="p-2.5 rounded-xl bg-white border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
                                 <div className="space-y-0.5">
                                   <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                    <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                    <NexumIcon className="w-3.5 h-3.5" />
                                     <span>{dec.title}</span>
                                   </div>
                                   <div className="text-slate-600 text-[11px] leading-relaxed">
@@ -2716,10 +2718,10 @@ export default function FreelancerWorkspaceChatsMode({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Milestone Deliverables & Submissions
+                    Milestone Deliverables &amp; Submissions
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Verifiable work packages anchored to consensus state.
+                    Verifiable work packages anchored to consensus state with cryptographic proofs.
                   </p>
                 </div>
                 <button
@@ -2728,23 +2730,12 @@ export default function FreelancerWorkspaceChatsMode({
                     setSubmittingMilestoneForWorkspace(currentActiveMilestone);
                     setIsSubmitDeliverableModalOpen(true);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  + Submit Deliverable
+                  <Package className="w-3.5 h-3.5" />
+                  <span>Submit Deliverable</span>
                 </button>
               </div>
-
-              {handoverData && (
-                <div className="mb-2">
-                  <ProjectHandoverBanner
-                    role="FREELANCER"
-                    projectName={selectedProject.name}
-                    handoverData={handoverData}
-                    onInitiateClick={() => {}}
-                    onViewChecklistClick={() => setActiveTab("handover")}
-                  />
-                </div>
-              )}
 
               {!selectedProject.milestones || selectedProject.milestones.length === 0 ? (
                 <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
@@ -2759,40 +2750,104 @@ export default function FreelancerWorkspaceChatsMode({
                   {selectedProject.milestones.map((m) => {
                     const isApproved = m.status === "APPROVED" || m.status === "CAPTURED";
                     return (
-                      <div key={m.id} className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4">
+                      <div key={m.id} className="p-5 rounded-2xl border border-slate-200/90 bg-white shadow-xs space-y-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-indigo-50 text-[#4f46e5] border border-indigo-100 mb-1">
-                              Milestone {m.number} · {m.amount}
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
+                                M{m.number}
+                              </span>
+                              <span className="font-mono font-bold text-slate-900 text-xs">
+                                {m.amount}
+                              </span>
                             </div>
-                            <h4 className="text-sm font-bold text-slate-900">
+                            <h4 className="text-sm font-bold text-slate-900 tracking-tight">
                               {m.title}
                             </h4>
                           </div>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 shrink-0 ${
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 shrink-0 ${
                             isApproved
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
                           }`}>
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{isApproved ? "Approved & Escrow Released" : "In Client Review"}</span>
+                            {isApproved ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Approved &amp; Released</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                <span>In 72h Client Review</span>
+                              </>
+                            )}
                           </span>
                         </div>
 
+                        {!isApproved && (
+                          <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70 flex items-center justify-between text-xs gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                                <Clock className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="truncate">
+                                <span className="font-bold text-amber-900">72-Hour Escrow Countdown: </span>
+                                <span className="text-amber-800">Inspection Window Active</span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-mono text-amber-700/80 shrink-0 hidden sm:inline">
+                              Auto-release on verification timeout
+                            </span>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submission Target</span>
-                            <span className="font-mono text-slate-700 font-bold">
+                          <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Submission Target
+                            </span>
+                            <span className="font-semibold text-slate-800 block">
                               Due {m.dueDate}
                             </span>
                           </div>
-                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">SHA-256 Deliverable Fingerprint</span>
-                            <span className="font-mono text-[11px] text-slate-700 font-bold">
-                              {agreementHash.slice(0, 16)}...{m.id.slice(-4)}
+                          <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                              SHA-256 Deliverable Fingerprint
                             </span>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-xs text-slate-700 font-bold">
+                                {agreementHash.slice(0, 16)}...{m.id.slice(-4)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(agreementHash);
+                                  showToast("SHA-256 deliverable fingerprint copied to clipboard.");
+                                }}
+                                className="text-slate-400 hover:text-slate-600 transition p-1"
+                                title="Copy fingerprint"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
+
+                        {!isApproved && (
+                          <div className="flex items-center gap-2.5 pt-1 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSubmittingMilestoneForWorkspace(m);
+                                setIsSubmitDeliverableModalOpen(true);
+                              }}
+                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Package className="w-3.5 h-3.5" />
+                              <span>Submit Revision Deliverable</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -2807,47 +2862,101 @@ export default function FreelancerWorkspaceChatsMode({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Final Deliverables &amp; Documentation Handover
+                    Project Handover &amp; Deliverables Checklist
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Submit production repository transfers, deployment runbooks, credentials, and architectural documents.
+                    Tamper-proof deliverable manifest, code repository transfer, architecture docs, and credential assignment.
                   </p>
                 </div>
               </div>
 
-              {/* Handover Banner */}
-              <ProjectHandoverBanner
-                role="FREELANCER"
-                projectName={selectedProject.name}
-                handoverData={handoverData}
-                onInitiateClick={() => {}}
-                onViewChecklistClick={() => {}}
-              />
-
-              {/* Handover Checklist View */}
+              {/* Handover Checklist View or Structured Preview */}
               {handoverData ? (
-                <HandoverChecklistView
-                  projectId={selectedProject.id}
-                  projectName={selectedProject.name}
-                  role="FREELANCER"
-                  handoverData={handoverData}
-                  onRefresh={async () => {
-                    const res = await fetchProjectHandover(selectedProject.id);
-                    if (res.success && res.data?.handover) {
-                      setHandoverData(res.data.handover);
-                    } else {
-                      setHandoverData(null);
-                    }
-                  }}
-                  showToast={showToast}
-                />
+                <>
+                  <ProjectHandoverBanner
+                    role="FREELANCER"
+                    projectName={selectedProject.name}
+                    handoverData={handoverData}
+                    onInitiateClick={() => {}}
+                    onViewChecklistClick={() => {}}
+                  />
+                  <HandoverChecklistView
+                    projectId={selectedProject.id}
+                    projectName={selectedProject.name}
+                    role="FREELANCER"
+                    handoverData={handoverData}
+                    onRefresh={async () => {
+                      const res = await fetchProjectHandover(selectedProject.id);
+                      if (res.success && res.data?.handover) {
+                        setHandoverData(res.data.handover);
+                      } else {
+                        setHandoverData(null);
+                      }
+                    }}
+                    showToast={showToast}
+                  />
+                </>
               ) : (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <Package className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Handover Checklist Not Yet Initiated</h4>
-                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    Once all project milestone deliverables are accepted, the client will initiate the final handover checklist for code repositories, documentation, and credentials.
-                  </p>
+                <div className="p-6 rounded-2xl border border-slate-200/90 bg-white shadow-xs space-y-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-purple-50 text-purple-700 border border-purple-200 mb-2">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>100% MILESTONES ACCEPTED</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        Handover Manifest Specification
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 max-w-lg leading-relaxed">
+                        Once client initiates handover, the following 4 deliverables will be formally verified and cryptographically archived:
+                      </p>
+                    </div>
+                    <div className="text-xs font-mono text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shrink-0">
+                      Awaiting Client Initiation
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
+                        <FileCode className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">Production Source Code &amp; Repositories</span>
+                        <span className="text-[11px] text-slate-500">GitHub/GitLab transfer or validated codebase archive with clean history.</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">Architecture &amp; Deployment Runbooks</span>
+                        <span className="text-[11px] text-slate-500">Sanitized .env.example, step-by-step deploy instructions, and architecture diagrams.</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">Environment Secrets &amp; Access Keys</span>
+                        <span className="text-[11px] text-slate-500">Encrypted transmission of cloud service accounts and third-party API credentials.</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">IP Assignment &amp; Copyright Release</span>
+                        <span className="text-[11px] text-slate-500">Cryptographically signed assignment transferring full intellectual property rights.</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -3593,7 +3702,7 @@ export default function FreelancerWorkspaceChatsMode({
                       title="Ask Nexum AI privately (Clients never see this)"
                       className="px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 text-slate-500 hover:text-slate-800"
                     >
-                      <Sparkles className="w-3 h-3 text-indigo-500" />
+                      <NexumIcon className="w-3.5 h-3.5" />
                       <span>Private AI</span>
                     </button>
                   </div>
