@@ -84,14 +84,16 @@ export const TELEGRAM_MAIN_KEYBOARD = [
   [{ text: "📊 Status" }, { text: "📋 Milestones" }],
   [{ text: "💰 Escrow" }, { text: "📋 Tasks" }],
   [{ text: "📁 Files" }, { text: "⚖️ Decisions" }],
-  [{ text: "📁 Projects" }, { text: "❓ Help" }],
+  [{ text: "📁 Projects" }, { text: "💬 History" }],
+  [{ text: "❓ Help" }],
 ];
 
 export const TELEGRAM_FREELANCER_KEYBOARD = [
   [{ text: "📊 Status" }, { text: "📋 Milestones" }],
   [{ text: "💰 Earnings" }, { text: "📋 Tasks" }],
   [{ text: "📁 Files" }, { text: "⚖️ Decisions" }],
-  [{ text: "🚀 Submit Deliverable" }, { text: "❓ Help" }],
+  [{ text: "🚀 Submit Deliverable" }, { text: "💬 History" }],
+  [{ text: "📁 Projects" }, { text: "❓ Help" }],
 ];
 
 export class TelegramService {
@@ -177,6 +179,31 @@ export class TelegramService {
           this.botUsername = data.result.username;
         }
       }
+
+      // Automatically register bot command menu with Telegram Bot API
+      const commands = [
+        { command: "status", description: "📊 Active contracts, progress & portfolio telemetry" },
+        { command: "projects", description: "📁 List all contracts & switch active relay" },
+        { command: "switch", description: "⭐ Switch active contract (/switch 1, /switch 2)" },
+        { command: "history", description: "💬 Recent workspace messages & catch-up" },
+        { command: "milestones", description: "📋 Deliverables, escrow & review window" },
+        { command: "escrow", description: "💰 PayPal Orders REST v2 escrow ledger" },
+        { command: "tasks", description: "📋 View Kanban board (To Do, In Progress, Done)" },
+        { command: "files", description: "📁 Download deliverables & repository files" },
+        { command: "decisions", description: "⚖️ Bilateral ADR architecture consensus log" },
+        { command: "addon", description: "💡 Gemini AI scope & fair price evaluation" },
+        { command: "ai", description: "✨ Private consultation with Nexum AI Copilot" },
+        { command: "postpone", description: "⏳ Request emergency meeting or milestone extension" },
+        { command: "submit", description: "🚀 Submit deliverable (Freelancers only)" },
+        { command: "help", description: "❓ Role-aware command center guide" },
+        { command: "logout", description: "🚪 Unlink this phone session" },
+      ];
+
+      await fetch(`https://api.telegram.org/bot${this.botToken}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commands }),
+      });
     } catch {
       // keep default NexumDev_Bot
     }
@@ -826,7 +853,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3b. Mobile Logout Command (/logout)
-      if (text === "/logout" || text === "🚪 Logout") {
+      if (text === "/logout" || text === "🚪 Logout" || /^logout$/i.test(text)) {
         if (!user) {
           this.pendingAuth.delete(chatId);
           this.awaitingEmail.delete(chatId);
@@ -906,7 +933,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       const projects = await this.getUserProjects(user);
 
       // 3c. /projects or "📁 Projects"
-      if (text === "/projects" || text === "📁 Projects" || text === "/list") {
+      if (text === "/projects" || text === "📁 Projects" || text === "/list" || /^📁?\s*projects$/i.test(text) || /^list$/i.test(text)) {
         if (projects.length === 0) {
           await this.sendMessage(chatId, `ℹ️ No active projects currently linked to this account.`, undefined, true);
           return { handled: true, action: "PROJECTS_EMPTY" };
@@ -1041,7 +1068,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3d-2. /history or /chat (Recent timeline messages briefing)
-      if (text === "/history" || text === "/chat" || text === "💬 Recent Messages") {
+      if (text === "/history" || text === "/chat" || text === "💬 Recent Messages" || text === "💬 History" || /^💬?\s*(history|chat)$/i.test(text)) {
         const historyBrief = await this.getProjectRecentHistory(targetPrj.id, 5);
         await this.sendMessage(
           chatId,
@@ -1054,7 +1081,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3e. /status or "📊 Status"
-      if (text === "/status" || text === "📊 Status") {
+      if (text === "/status" || text === "📊 Status" || /^📊?\s*status$/i.test(text)) {
         if (projects.length === 1) {
           const milestones = targetPrj.projectMilestones || [];
           const completedCount = milestones.filter((m) => m.workStatus === "ACCEPTED").length;
@@ -1131,7 +1158,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3f. /milestones or "📋 Milestones"
-      if (text === "/milestones" || text === "📋 Milestones") {
+      if (text === "/milestones" || text === "📋 Milestones" || /^📋?\s*milestones?$/i.test(text)) {
         await this.renderProjectMilestones(chatId, targetPrj, projects, user.role);
         return { handled: true, action: "MILESTONES_SENT" };
       }
@@ -1142,7 +1169,8 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         text === "💰 Escrow" ||
         text === "/balance" ||
         text === "/earnings" ||
-        text === "💰 Earnings"
+        text === "💰 Earnings" ||
+        /^💰?\s*(escrow|balance|earnings)$/i.test(text)
       ) {
         const isFreelancer = user.role === "FREELANCER";
         const allUserProjects = await this.getUserProjects(user);
@@ -1303,7 +1331,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3h. /tasks or "📋 Tasks" (Kanban Board Inspection)
-      if (text === "/tasks" || text === "📋 Tasks") {
+      if (text === "/tasks" || text === "📋 Tasks" || /^📋?\s*tasks?$/i.test(text)) {
         await this.renderKanbanTasks(chatId, targetPrj, projects, user.role);
         return { handled: true, action: "TASKS_SENT" };
       }
@@ -1379,13 +1407,13 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3j. /files or "📁 Files"
-      if (text === "/files" || text === "📁 Files") {
+      if (text === "/files" || text === "📁 Files" || /^📁?\s*files?$/i.test(text)) {
         await this.renderProjectFiles(chatId, targetPrj, projects, user.role);
         return { handled: true, action: "FILES_SENT" };
       }
 
       // 3k. /decisions or "⚖️ Decisions"
-      if (text === "/decisions" || text === "⚖️ Decisions") {
+      if (text === "/decisions" || text === "⚖️ Decisions" || /^⚖️?\s*decisions?$/i.test(text)) {
         const decisions = await prisma.workspaceDecision.findMany({
           where: { conversation: { projectId: targetPrj.id } },
           orderBy: { createdAt: "desc" },
@@ -1586,47 +1614,59 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       }
 
       // 3o. /help or ❓ Help (Role-Aware Comprehensive Guide)
-      if (text === "/help" || text === "❓ Help") {
+      if (
+        text === "/help" ||
+        text === "❓ Help" ||
+        text === "? Help" ||
+        /^\??\s*help$/i.test(text) ||
+        /^❓\s*help$/i.test(text)
+      ) {
         const isClient = user.role !== "FREELANCER";
         const roleBadge = isClient ? "Client Commander 🎩" : "Freelancer Specialist 🚀";
 
         const telemetryHelp = isClient
           ? `*📊 Contract & Financial Telemetry:*\n` +
-            `• \`/status\` - Live milestones progress & contract state\n` +
+            `• \`/status\` - Live progress across all active projects & portfolio overview\n` +
             `• \`/milestones\` - Deliverables, escrow values & inspection buffer\n` +
-            `• \`/escrow\` - PayPal Orders REST v2 balance & SHA-256 state\n` +
-            `• \`/projects\` - List all contracts & switch context\n` +
-            `• \`/switch <id>\` - Switch active contract target\n`
+            `• \`/escrow\` (or \`/balance\`) - PayPal Orders REST v2 ledger balance\n` +
+            `• \`/projects\` (or \`/list\`) - List all contracts with 1-tap relay switchers\n` +
+            `• \`/switch <1|2|id>\` - Switch active contract (e.g. \`/switch 2\` or \`/switch 1\`)\n` +
+            `• \`/history\` (or \`/chat\`) - Catch up on recent timeline messages\n`
           : `*📊 Freelancer Financial & Contract Telemetry:*\n` +
-            `• \`/earnings\` - Total released earnings, locked escrow & payouts\n` +
-            `• \`/status\` - Live milestone progress & review buffer\n` +
+            `• \`/earnings\` (or \`/balance\`) - Total released earnings, locked escrow & payouts\n` +
+            `• \`/status\` - Live milestone progress across all client contracts\n` +
             `• \`/milestones\` - Deliverable requirements & due dates\n` +
-            `• \`/submit <link> <notes>\` - Submit deliverable & trigger escrow release\n` +
-            `• \`/projects\` - List all client contracts & switch context\n` +
-            `• \`/switch <id>\` - Switch active project\n`;
+            `• \`/submit <link> <notes>\` - Submit deliverable & trigger 72h review buffer\n` +
+            `• \`/projects\` (or \`/list\`) - List all client contracts with 1-tap switchers\n` +
+            `• \`/switch <1|2|id>\` - Switch active contract (e.g. \`/switch 2\`)\n` +
+            `• \`/history\` (or \`/chat\`) - Catch up on recent timeline messages\n`;
 
         const helpText = [
           `🛡️ *Nexum AI Bot — Command Center Guide*`,
           `Logged in as: *${user.name}* (${roleBadge})\n`,
+          `*⌨️ Quick-Tap Mobile Keyboard:*`,
+          `Tap any button on your reply keyboard for instant 1-tap telemetry without typing commands!\n`,
           telemetryHelp,
           `*📋 Project Operations & Kanban:*\n` +
             `• \`/tasks\` - View real-time Kanban board (To Do, In Progress, Done)\n` +
-            `• \`/task add <title>\` - Create a task instantly on Kanban\n` +
-            `• \`/files\` - Download project repository deliverables\n` +
-            `• \`/decisions\` - View sealed ADR architectural consensus log\n`,
+            `• \`/task add <title>\` - Create a task instantly on active Kanban board\n` +
+            `• \`/task add [2] <title>\` - Create a task directly on project #2\n` +
+            `• \`/files\` - Download deliverables or tap to receive them natively in Telegram\n` +
+            `• \`/decisions\` - View sealed ADR architectural consensus log & SHA-256 seals\n`,
           `*⏳ Postponement & Reschedule Engine:*\n` +
-            `• \`/postpone meeting <reason>\` - Reschedule upcoming call with emergency reason\n` +
-            `• \`/postpone milestone <days> <reason>\` - Request formal due-date extension\n`,
+            `• \`/postpone meeting <reason>\` (or \`/postpone mt\`) - Reschedule upcoming call\n` +
+            `• \`/postpone milestone <days> <reason>\` (or \`/postpone ms\`) - Request formal due-date extension\n`,
           `*💡 Gemini AI Scope Intelligence:*\n` +
-            `• \`/addon <feature>\` - Gemini AI evaluates scope impact, fair price delta, timeline delta, and milestone placement\n` +
-            `• \`/ai <question>\` - Private consultation with Nexum AI Copilot\n`,
+            `• \`/addon <feature>\` (or \`/scope add\`) - Gemini AI evaluates scope impact, fair price delta, timeline delta & drafts amendment\n` +
+            `• \`/ai <question>\` (or \`/ask\`) - Private consultation with Nexum AI Copilot\n`,
           `*🎙️ Bilateral Relaying:*\n` +
             `• *Voice Notes* - Speak naturally; transcribed via Groq Whisper & relayed to ${targetPrj.title}\n` +
-            `• *Text* - Any regular message is sealed and posted to your workspace timeline\n`,
+            `• *Text Messages* - Any regular message is sealed and posted to your workspace timeline\n` +
+            `• *Inbound Alerts* - Messages from web workspace arrive instantly with 1-tap quick reply\n`,
           isClient
             ? `*🎩 Client-Exclusive Actions:*\n• 1-Click approve deliverable alerts to release escrow funds\n• Deposit add-on escrow seamlessly\n• Digitally sign scope amendments`
             : `*🚀 Freelancer-Exclusive Actions:*\n• \`/submit <url> <notes>\` - Submit deliverable with GitHub/Preview link\n• \`/earnings\` - View release history & locked funds\n• \`/postpone milestone <days> <reason>\` - Request emergency deadline extensions\n• \`/addon <feature>\` - Propose paid scope additions before doing extra work`,
-          `\n_Type \`/logout\` anytime to unlink this phone session._`,
+          `\n*🚪 Session Management:*\n• \`/logout\` - Unlink this phone session\n• \`/login\` - Sign into another account via 6-digit email OTP`,
         ].join("\n");
 
         await this.sendMessage(chatId, helpText, undefined, true);
