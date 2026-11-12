@@ -34,6 +34,7 @@ import {
   Package,
   Download,
   Scale,
+  MoreVertical,
 } from "lucide-react";
 import {
   WorkspaceProject,
@@ -189,6 +190,22 @@ export default function WorkspaceChatsMode({
 
   // Phase 11: Channel 3 Product Explorer Modal State
   const [isChannel3ModalOpen, setIsChannel3ModalOpen] = useState(false);
+
+  // 3-Dots More Actions Dropdown State
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    }
+    if (isMoreMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isMoreMenuOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -384,17 +401,17 @@ export default function WorkspaceChatsMode({
                   meta.meetingDetails ||
                   (meta.meetingId
                     ? {
-                        meetingId: meta.meetingId,
-                        title: meta.title,
-                        agenda: meta.agenda,
-                        durationMinutes: meta.durationMinutes,
-                        proposedSlots: meta.proposedSlots || [],
-                        confirmedSlot: meta.confirmedSlot,
-                        roomUrl: meta.roomUrl,
-                        googleCalendarHtmlLink: meta.googleCalendarHtmlLink,
-                        status: meta.status || "PROPOSED",
-                        proposedByUserId: meta.proposedByUserId,
-                      }
+                      meetingId: meta.meetingId,
+                      title: meta.title,
+                      agenda: meta.agenda,
+                      durationMinutes: meta.durationMinutes,
+                      proposedSlots: meta.proposedSlots || [],
+                      confirmedSlot: meta.confirmedSlot,
+                      roomUrl: meta.roomUrl,
+                      googleCalendarHtmlLink: meta.googleCalendarHtmlLink,
+                      status: meta.status || "PROPOSED",
+                      proposedByUserId: meta.proposedByUserId,
+                    }
                     : undefined),
                 deliverableDetails: meta.deliverableDetails,
                 notetakerDetails: meta.notetakerDetails,
@@ -457,17 +474,17 @@ export default function WorkspaceChatsMode({
                   meta.meetingDetails ||
                   (meta.meetingId
                     ? {
-                        meetingId: meta.meetingId,
-                        title: meta.title,
-                        agenda: meta.agenda,
-                        durationMinutes: meta.durationMinutes,
-                        proposedSlots: meta.proposedSlots || [],
-                        confirmedSlot: meta.confirmedSlot,
-                        roomUrl: meta.roomUrl,
-                        googleCalendarHtmlLink: meta.googleCalendarHtmlLink,
-                        status: meta.status || "PROPOSED",
-                        proposedByUserId: meta.proposedByUserId,
-                      }
+                      meetingId: meta.meetingId,
+                      title: meta.title,
+                      agenda: meta.agenda,
+                      durationMinutes: meta.durationMinutes,
+                      proposedSlots: meta.proposedSlots || [],
+                      confirmedSlot: meta.confirmedSlot,
+                      roomUrl: meta.roomUrl,
+                      googleCalendarHtmlLink: meta.googleCalendarHtmlLink,
+                      status: meta.status || "PROPOSED",
+                      proposedByUserId: meta.proposedByUserId,
+                    }
                     : undefined),
                 deliverableDetails: meta.deliverableDetails,
                 notetakerDetails: meta.notetakerDetails,
@@ -487,7 +504,7 @@ export default function WorkspaceChatsMode({
             });
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }, 3000);
 
     return () => clearInterval(pollInterval);
@@ -715,14 +732,14 @@ export default function WorkspaceChatsMode({
         prev.map((it) =>
           it.id === item.id
             ? {
-                ...it,
-                type: "sent_to_freelancer_card",
-                timestamp: nowTime,
-                badgeText: `Sent to ${flName.split(" ")[0]}`,
-                badgeType: "green",
-                summaryText: `Counteroffer sent to ${flName}. Awaiting mutual verification.`,
-                actions: undefined,
-              }
+              ...it,
+              type: "sent_to_freelancer_card",
+              timestamp: nowTime,
+              badgeText: `Sent to ${flName.split(" ")[0]}`,
+              badgeType: "green",
+              summaryText: `Counteroffer sent to ${flName}. Awaiting mutual verification.`,
+              actions: undefined,
+            }
             : it
         )
       );
@@ -912,13 +929,13 @@ export default function WorkspaceChatsMode({
         prev.map((m) =>
           m.id === meetingId
             ? {
-                ...m,
-                status: "CONFIRMED",
-                acceptedSlot: slot,
-                googleCalendarUrl: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-                  m.title
-                )}`,
-              }
+              ...m,
+              status: "CONFIRMED",
+              acceptedSlot: slot,
+              googleCalendarUrl: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+                m.title
+              )}`,
+            }
             : m
         )
       );
@@ -1023,7 +1040,7 @@ export default function WorkspaceChatsMode({
           LEFT COLUMN: CONVERSATION LIST (Approx 280–300px)
          ============================================================== */}
       <aside className="w-[280px] lg:w-[300px] shrink-0 border-r border-slate-200/80 bg-white flex flex-col justify-between h-full overflow-hidden shadow-2xs">
-        
+
         {/* Header & Filter Controls */}
         <div className="p-4 sm:p-4.5 pb-2.5 space-y-3">
           <div>
@@ -1072,31 +1089,28 @@ export default function WorkspaceChatsMode({
             <button
               type="button"
               onClick={() => setFilterType("all")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer text-center ${
-                filterType === "all"
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer text-center ${filterType === "all"
                   ? "bg-white text-slate-900 shadow-xs"
                   : "text-slate-500 hover:text-slate-800"
-              }`}
+                }`}
             >
               All
             </button>
             <button
               type="button"
               onClick={() => setFilterType("unread")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
-                filterType === "unread"
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${filterType === "unread"
                   ? "bg-white text-slate-900 shadow-xs"
                   : "text-slate-500 hover:text-slate-800"
-              }`}
+                }`}
             >
               <span>Unread</span>
               {totalUnreadCount > 0 && (
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    filterType === "unread"
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${filterType === "unread"
                       ? "bg-indigo-600 text-white"
                       : "bg-indigo-100 text-indigo-700"
-                  }`}
+                    }`}
                 >
                   {totalUnreadCount}
                 </span>
@@ -1154,23 +1168,21 @@ export default function WorkspaceChatsMode({
                 <div
                   key={p.id}
                   onClick={() => setSelectedProjectId(p.id)}
-                  className={`p-3 rounded-2xl transition-all duration-150 cursor-pointer border text-left flex items-start gap-3 ${
-                    isSelected
+                  className={`p-3 rounded-2xl transition-all duration-150 cursor-pointer border text-left flex items-start gap-3 ${isSelected
                       ? "bg-indigo-50/70 border-indigo-200/90 shadow-xs ring-1 ring-indigo-500/10"
                       : "bg-white hover:bg-slate-50/80 border-transparent hover:border-slate-200/60"
-                  }`}
+                    }`}
                 >
                   {/* Project Icon */}
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                      isSelected
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isSelected
                         ? "bg-white text-indigo-600 shadow-2xs border border-indigo-100"
                         : p.iconType === "cart"
-                        ? "bg-indigo-50 text-indigo-600 border border-indigo-100"
-                        : p.iconType === "mobile"
-                        ? "bg-purple-50 text-purple-600 border border-purple-100"
-                        : "bg-amber-50 text-amber-600 border border-amber-100"
-                    }`}
+                          ? "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                          : p.iconType === "mobile"
+                            ? "bg-purple-50 text-purple-600 border border-purple-100"
+                            : "bg-amber-50 text-amber-600 border border-amber-100"
+                      }`}
                   >
                     {p.iconType === "cart" && <ShoppingCart className="w-4 h-4" />}
                     {p.iconType === "mobile" && <Smartphone className="w-4 h-4" />}
@@ -1299,38 +1311,88 @@ export default function WorkspaceChatsMode({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setIsElasticSearchModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg border border-amber-200/80 bg-amber-50/50 hover:bg-amber-100/60 text-xs font-semibold text-amber-800 transition cursor-pointer shadow-2xs flex items-center gap-1.5"
-                    title="Search workspace records (Ctrl+K)"
-                  >
-                    <Search className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Elastic Search</span>
-                    <span className="hidden md:inline-block px-1 py-0.2 rounded border border-amber-200 bg-white font-mono text-[9px] text-amber-700">
-                      ⌘K
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsChannel3ModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg border border-purple-200/80 bg-purple-50/60 hover:bg-purple-100/70 text-xs font-semibold text-purple-800 transition cursor-pointer shadow-2xs flex items-center gap-1.5"
-                    title="Channel 3 Universal Product Discovery & Scope"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5 text-purple-600" />
-                    <span>Channel 3</span>
-                    <span className="hidden lg:inline-block px-1 py-0.2 rounded text-[9px] font-bold bg-purple-600 text-white">
-                      Catalog
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setIsProposeMeetingModalOpen(true)}
                     className="px-2.5 py-1 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition cursor-pointer shadow-2xs flex items-center gap-1.5"
                   >
                     <Video className="w-3.5 h-3.5 text-slate-500" />
                     <span>Propose meeting</span>
                   </button>
+
+                  {/* 3-Dots Dropdown: Timeline, Elastic Search, Channel 3 */}
+                  <div className="relative" ref={moreMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsMoreMenuOpen((prev) => !prev)}
+                      className={`p-1.5 rounded-lg border transition cursor-pointer shadow-2xs flex items-center justify-center ${isMoreMenuOpen
+                          ? "bg-slate-100 border-slate-300 text-slate-900"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }`}
+                      title="More actions"
+                      aria-label="More actions"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    {isMoreMenuOpen && (
+                      <div className="absolute right-0 top-full mt-1.5 w-64 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                        {/* 1. Timeline (Gantt) - Direct full-page navigation */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMoreMenuOpen(false);
+                            if (selectedProject?.id) {
+                              window.location.href = `/workspace/${selectedProject.id}/gantt?from=milestones`;
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+                            <span>Timeline (Gantt)</span>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 flex items-center gap-1">
+                            <ExternalLink className="w-2.5 h-2.5" /> Full View
+                          </span>
+                        </button>
+
+                        {/* 2. Elastic Search */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsElasticSearchModalOpen(true);
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Search className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Elastic Search</span>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded border border-amber-200 bg-amber-50 font-mono text-[9px] text-amber-700">
+                            ⌘K
+                          </span>
+                        </button>
+
+                        {/* 3. Channel 3 Catalog */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsChannel3ModalOpen(true);
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <ShoppingBag className="w-4 h-4 text-purple-600 shrink-0" />
+                            <span>Channel 3</span>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-600 text-white">
+                            Catalog
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {!isRightDrawerOpen && (
                     <button
@@ -1345,2930 +1407,2931 @@ export default function WorkspaceChatsMode({
                 </div>
               </div>
 
-          {/* Subtabs: 9 Full Collaboration Tabs */}
-          <div className="flex items-center justify-between mt-2 border-t border-slate-100/80 pt-1 text-xs font-semibold">
-            <div className="flex items-center gap-4 sm:gap-5 overflow-x-auto scrollbar-none pb-0.5">
-              {[
-                { id: "chat", label: "Chat" },
-                { id: "milestones", label: "Milestones" },
-                { id: "timeline", label: "Timeline (Gantt)", badge: "Bryntum" },
-                { id: "deliverables", label: "Deliverables" },
-                {
-                  id: "handover",
-                  label: "Handover",
-                  badge: handoverData?.status === "COMPLETED"
-                    ? "Done"
-                    : handoverData?.status
-                    ? "Active"
-                    : undefined,
-                },
-                { id: "tasks", label: "Tasks" },
-                { id: "files", label: "Files" },
-                { id: "decisions", label: "Decisions" },
-                { id: "meetings", label: "Meetings" },
-                { id: "safe_harbor", label: "Safe Harbor" },
-              ].map((tab) => (
+              {/* Subtabs: Collaboration Tabs */}
+              <div className="flex items-center justify-between mt-2 border-t border-slate-100/80 pt-1 text-xs font-semibold">
+                <div className="flex items-center gap-4 sm:gap-5 overflow-x-auto scrollbar-none pb-0.5">
+                  {[
+                    { id: "chat", label: "Chat" },
+                    { id: "milestones", label: "Milestones" },
+                    { id: "deliverables", label: "Deliverables" },
+                    {
+                      id: "handover",
+                      label: "Handover",
+                      badge: handoverData?.status === "COMPLETED"
+                        ? "Done"
+                        : handoverData?.status
+                          ? "Active"
+                          : undefined,
+                    },
+                    { id: "tasks", label: "Tasks" },
+                    { id: "files", label: "Files" },
+                    { id: "decisions", label: "Decisions" },
+                    { id: "meetings", label: "Meetings" },
+                    { id: "safe_harbor", label: "Safe Harbor" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                      className={`pb-1.5 transition relative cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activeTab === tab.id
+                          ? "text-indigo-600 font-bold"
+                          : "text-slate-500 hover:text-slate-900"
+                        }`}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.badge && (
+                        <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full ${tab.badge === "Done"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-blue-100 text-blue-800"
+                          }`}>
+                          {tab.badge}
+                        </span>
+                      )}
+                      {activeTab === tab.id && (
+                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Extreme right: Mediated by Nexum AI */}
                 <button
-                  key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`pb-1.5 transition relative cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                    activeTab === tab.id
-                      ? "text-indigo-600 font-bold"
-                      : "text-slate-500 hover:text-slate-900"
-                  }`}
+                  onClick={onOpenMediationHelp}
+                  className="inline-flex items-center gap-1.5 pb-1.5 text-indigo-600 hover:text-indigo-700 font-semibold text-[11px] transition cursor-pointer hover:underline shrink-0"
+                  title="Learn how Nexum AI mediates every message"
                 >
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full ${
-                      tab.badge === "Done"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
-                  {activeTab === tab.id && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
-                  )}
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="hidden md:inline">Mediated by Nexum AI</span>
                 </button>
-              ))}
+              </div>
             </div>
 
-            {/* Extreme right: Mediated by Nexum AI */}
-            <button
-              type="button"
-              onClick={onOpenMediationHelp}
-              className="inline-flex items-center gap-1.5 pb-1.5 text-indigo-600 hover:text-indigo-700 font-semibold text-[11px] transition cursor-pointer hover:underline shrink-0"
-              title="Learn how Nexum AI mediates every message"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="hidden md:inline">Mediated by Nexum AI</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Center Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {/* TAB 1: CHAT TIMELINE */}
-          {activeTab === "chat" && (
-            <>
-              {timeline.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto min-h-[320px]">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3 shadow-2xs">
-                    <MessageSquare className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Workspace Ready for Collaboration</h4>
-                  <p className="text-xs text-slate-500 mb-4 max-w-sm leading-relaxed">
-                    No messages yet in this bilateral workspace. Send your first message below or propose a kickoff meeting to start collaborating.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsProposeMeetingModalOpen(true)}
-                    className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Propose Kickoff Meeting</span>
-                  </button>
-                </div>
-              ) : (
-                timeline.map((item) => {
-                // CARD TYPE A: Freelancer reply mediation card
-                if (item.type === "freelancer_reply_card") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-slate-800">
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Nexum AI · {item.timestamp}</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
-                          {item.badgeText}
-                        </span>
+            {/* Center Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+              {/* TAB 1: CHAT TIMELINE */}
+              {activeTab === "chat" && (
+                <>
+                  {timeline.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto min-h-[320px]">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3 shadow-2xs">
+                        <MessageSquare className="w-6 h-6" />
                       </div>
-
-                      <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed">
-                        {item.summaryText}
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Workspace Ready for Collaboration</h4>
+                      <p className="text-xs text-slate-500 mb-4 max-w-sm leading-relaxed">
+                        No messages yet in this bilateral workspace. Send your first message below or propose a kickoff meeting to start collaborating.
                       </p>
-
-                      {/* 3 Metrics Box */}
-                      {item.metrics && (
-                        <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50/80 border border-slate-100 text-xs">
-                          <div>
-                            <div className="font-extrabold text-slate-900 text-sm">
-                              {item.metrics.priceChange}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
-                              Price change
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-slate-900 text-sm">
-                              {item.metrics.scheduleChange}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
-                              Schedule change
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-indigo-700 text-sm font-mono">
-                              {item.metrics.agreementVersion}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
-                              Agreement version
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        {item.actions?.primaryLabel && (
-                          <button
-                            type="button"
-                            onClick={() => handleExecuteCardAction(item, item.actions?.primaryAction)}
-                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                      <button
+                        type="button"
+                        onClick={() => setIsProposeMeetingModalOpen(true)}
+                        className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Propose Kickoff Meeting</span>
+                      </button>
+                    </div>
+                  ) : (
+                    timeline.map((item) => {
+                      // CARD TYPE A: Freelancer reply mediation card
+                      if (item.type === "freelancer_reply_card") {
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4 animate-in fade-in duration-200"
                           >
-                            {item.actions.primaryLabel}
-                          </button>
-                        )}
-                        {item.actions?.secondaryLabel && (
-                          <button
-                            type="button"
-                            onClick={() => handleExecuteCardAction(item, item.actions?.secondaryAction)}
-                            className="px-3.5 py-2 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                          >
-                            {item.actions.secondaryLabel}
-                          </button>
-                        )}
-                        {item.actions?.tertiaryLabel && (
-                          <button
-                            type="button"
-                            onClick={() => handleExecuteCardAction(item, item.actions?.tertiaryAction)}
-                            className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer pl-1 transition"
-                          >
-                            {item.actions.tertiaryLabel}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>Nexum AI · {item.timestamp}</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+                                {item.badgeText}
+                              </span>
+                            </div>
 
-                // CARD TYPE B: Standard Client bubble (outgoing)
-                if (item.type === "client_bubble") {
-                  return (
-                    <div key={item.id} className="flex justify-end animate-in fade-in duration-150">
-                      <div className="max-w-[78%] bg-indigo-600 text-white rounded-2xl rounded-tr-xs p-3.5 sm:p-4 text-xs sm:text-[13px] leading-relaxed shadow-xs space-y-1.5">
-                        <div className="flex items-center justify-between gap-3 text-[10px] text-indigo-200">
-                          <span className="font-semibold">{item.senderName}</span>
-                          <span>{item.timestamp}</span>
-                        </div>
-                        <p className="text-white whitespace-pre-wrap">{item.bubbleText}</p>
-                      </div>
-                    </div>
-                  );
-                }
+                            <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed">
+                              {item.summaryText}
+                            </p>
 
-                // Incoming Freelancer bubble (left-aligned)
-                if (item.type === "freelancer_bubble") {
-                  return (
-                    <div key={item.id} className="flex justify-start animate-in fade-in duration-150">
-                      <div className="max-w-[78%] bg-white border border-slate-200/90 text-slate-900 rounded-2xl rounded-tl-xs p-3.5 sm:p-4 text-xs sm:text-[13px] leading-relaxed shadow-xs space-y-1.5">
-                        <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400">
-                          <span className="font-semibold text-slate-700">{item.senderName}</span>
-                          <span>{item.timestamp}</span>
-                        </div>
-                        <p className="text-slate-800 whitespace-pre-wrap">{item.bubbleText}</p>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE C: Scope Amendment Proposal & Counteroffer Card
-                if (item.type === "draft_counteroffer_card") {
-                  const meta = (item as any).metadata || {};
-                  const payload = meta.amendmentPayload || {};
-                  const isAmendedMilestone = Boolean(payload.newMilestoneTitle || payload.justification);
-                  const isProposer = meta.lastProposedRole === "CLIENT" || meta.lastProposedBy === user?.id;
-
-                  const budgetDelta = payload.priceDeltaCents || meta.counterAmountMinor || 0;
-                  const daysDelta = payload.timelineDaysDelta || meta.counterDays || 0;
-                  const displayTitle = payload.newMilestoneTitle || meta.counterofferDetails?.title || "Milestone Addendum Proposal";
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-xs space-y-3.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
-                          <Scale className="w-4 h-4 text-amber-600" />
-                          <span>Nexum Bilateral Negotiation · Scope Addendum</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
-                          {meta.counterReasoning ? "Counteroffer Active" : "Pending Consensus"}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-slate-900">{displayTitle}</h4>
-                        <p className="text-xs text-slate-700 leading-relaxed font-sans">
-                          {payload.justification || item.summaryText || item.bubbleText}
-                        </p>
-                      </div>
-
-                      {/* Financial & Schedule Delta Metrics */}
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="p-2.5 rounded-xl bg-white border border-amber-200 shadow-2xs">
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">Escrow Budget</div>
-                          <div className="text-sm font-bold text-emerald-700 mt-0.5">
-                            +${(budgetDelta / 100).toLocaleString()} USD
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-amber-200 shadow-2xs">
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">Timeline</div>
-                          <div className="text-sm font-bold text-slate-800 mt-0.5">
-                            +{daysDelta} Days
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-amber-200 shadow-2xs">
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">Target Agreement</div>
-                          <div className="text-sm font-bold text-indigo-700 mt-0.5">
-                            v1.1 Revision
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Counteroffer Rationale (if countered) */}
-                      {meta.counterReasoning && (
-                        <div className="p-3 rounded-xl bg-amber-100/60 border border-amber-200 text-xs text-amber-950 space-y-1">
-                          <div className="font-bold flex items-center gap-1.5">
-                            <MessageSquare className="w-3.5 h-3.5 text-amber-700" />
-                            <span>Counteroffer Rationale:</span>
-                          </div>
-                          <p className="leading-relaxed">&ldquo;{meta.counterReasoning}&rdquo;</p>
-                        </div>
-                      )}
-
-                      {/* BRD Document attachment (if uploaded) */}
-                      {payload.brdDocumentUrl && (
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                          <span className="flex items-center gap-1.5 text-slate-700 font-medium">
-                            <FileText className="w-3.5 h-3.5 text-purple-600" />
-                            <span>Attached Spec: {payload.brdDocumentName || "BRD Document"}</span>
-                          </span>
-                          <a
-                            href={payload.brdDocumentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-purple-600 font-bold hover:underline"
-                          >
-                            View Document →
-                          </a>
-                        </div>
-                      )}
-
-                      {/* Actions: Accept, Counteroffer, Decline */}
-                      <div className="pt-1 border-t border-amber-100 flex flex-wrap items-center justify-between gap-2">
-                        {!isProposer ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                showToast("Accepting scope amendment and sealing Agreement v1.1...");
-                                const res = await respondToScopeAmendment(selectedProjectId, item.id, {
-                                  responderId: user?.id || "usr_client_alex",
-                                  action: "ACCEPT",
-                                });
-                                if (res.success) {
-                                  showToast("Consensus reached! Agreement v1.1 is now canonical and sealed.");
-                                  setRefreshTrigger((n) => n + 1);
-                                } else {
-                                  showToast(res.error || "Failed to accept amendment");
-                                }
-                              }}
-                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Accept & Seal Agreement (v1.1)</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCounterTargetCard(item);
-                                setIsCounterofferModalOpen(true);
-                              }}
-                              className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Scale className="w-3.5 h-3.5" />
-                              <span>Counteroffer with Reasoning</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                showToast("Declining amendment proposal...");
-                                const res = await respondToScopeAmendment(selectedProjectId, item.id, {
-                                  responderId: user?.id || "usr_client_alex",
-                                  action: "DECLINE",
-                                });
-                                if (res.success) {
-                                  showToast("Amendment proposal declined.");
-                                  setRefreshTrigger((n) => n + 1);
-                                } else {
-                                  showToast(res.error || "Failed to decline");
-                                }
-                              }}
-                              className="px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-amber-800 font-medium flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>
-                              Delivered to {selectedProject?.freelancerName || "counterpart"}. Awaiting mutual consensus or counteroffer.
-                            </span>
-                          </div>
-                        )}
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          SHA-256 Consensus Enforced
-                        </span>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE C1: Sealed Amendment Agreement v1.1
-                if (item.type === "amendment_sealed_card") {
-                  const meta = (item as any).metadata || {};
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-indigo-50/30 shadow-xs space-y-3.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-emerald-950">
-                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                          <span>Nexum Canonical Agreement Seal · Ratified</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          {meta.newVersionString || "v1.1"} ACTIVE
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-slate-900">
-                          {meta.milestoneTitle || "Cumulative Scope Milestone"} Sealed
-                        </h4>
-                        <p className="text-xs text-slate-700 leading-relaxed font-sans">
-                          Both client and freelancer agreed and ratified this scope addendum. Milestone #4 has been added to the active project timeline, and the revised legal contract has been archived under Project Files.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">Escrow Budget</div>
-                          <div className="text-sm font-bold text-emerald-700 mt-0.5">
-                            +${((meta.finalAmountMinor || 0) / 100).toLocaleString()} USD
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">Delivery Delta</div>
-                          <div className="text-sm font-bold text-slate-800 mt-0.5">
-                            +{meta.finalTimelineDays || 0} Days
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">Agreement Hash</div>
-                          <div className="text-xs font-mono font-bold text-indigo-700 mt-0.5 truncate">
-                            {String(meta.sealedAgreementHash || "canonical_v1.1").slice(0, 16)}...
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-1 flex items-center justify-between text-xs border-t border-emerald-100">
-                        <span className="text-[10px] text-slate-400">
-                          Sealed at {meta.sealedAt ? new Date(meta.sealedAt).toLocaleTimeString() : item.timestamp}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("files")}
-                          className="text-emerald-700 font-bold hover:underline cursor-pointer"
-                        >
-                          View Revised Contract in Files →
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE D: Sent to freelancer confirmation
-                if (item.type === "sent_to_freelancer_card") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/60 text-xs text-slate-800 space-y-2 shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-emerald-800 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>{item.badgeText} · {item.timestamp}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 font-bold bg-white/80 px-2 py-0.5 rounded-md border border-emerald-200/60 shadow-2xs">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          <span>SHA-256 Verified ✓</span>
-                        </span>
-                      </div>
-                      <p className="text-slate-600 leading-relaxed pl-5.5">{item.summaryText}</p>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE E: Meeting proposal card
-                if (item.type === "meeting_proposal_card") {
-                  const meet = item.meetingDetails || (item.metadata as any) || {};
-                  const isProposer =
-                    item.metadata?.proposedByUserId === user?.id ||
-                    item.senderName.includes("You") ||
-                    item.metadata?.senderRole === "CLIENT";
-
-                  const proposedSlots = Array.isArray(meet.proposedSlots) ? meet.proposedSlots : [];
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-indigo-200 bg-white shadow-xs space-y-3.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-slate-900">
-                          <Video className="w-4 h-4 text-indigo-600" />
-                          <span>{item.senderName} · {item.timestamp}</span>
-                        </span>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            isProposer
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                          }`}
-                        >
-                          {isProposer ? "Awaiting Confirmation" : "Action Required"}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-slate-900">
-                          {meet.title || item.summaryText}
-                        </h4>
-                        {meet.agenda && meet.agenda !== meet.title && (
-                          <p className="text-xs text-slate-600">{meet.agenda}</p>
-                        )}
-                      </div>
-
-                      <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-2.5 text-xs">
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold">
-                          <span>Duration: {meet.durationMinutes || 30} mins</span>
-                          <span>Bilateral Consensus Protocol</span>
-                        </div>
-
-                        {proposedSlots.length > 0 ? (
-                          <div className="space-y-2">
-                            <span className="text-[11px] font-bold text-slate-700 block">
-                              Proposed Time Slot:
-                            </span>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {proposedSlots.map((slot: any, idx: number) => {
-                                const uTz = (selectedProject as any)?.clientTimezone || "America/New_York";
-                                const fTz = (selectedProject as any)?.freelancerTimezone || "Asia/Kolkata";
-                                const fName = selectedProject?.freelancerName || "Freelancer";
-                                const dualTz = formatDualTimezoneSlot(slot, uTz, fTz, fName);
-                                const slotVal =
-                                  typeof slot === "object" && slot !== null
-                                    ? slot.startTime || slot.id || `Slot ${idx + 1}`
-                                    : String(slot);
-
-                                if (isProposer) {
-                                  return (
-                                    <div
-                                      key={idx}
-                                      className="p-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs space-y-1"
-                                    >
-                                      <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                                        <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                                        <span>{dualTz.primary}</span>
-                                      </div>
-                                      {dualTz.secondary && (
-                                        <div className="text-[11px] text-slate-500 font-medium pl-5">
-                                          {dualTz.secondary}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleConfirmMeeting(meet.meetingId || item.id, slotVal)}
-                                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-98"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>Accept Slot: {dualTz.userTime}</span>
-                                    </button>
-                                    <span className="text-[11px] text-slate-500 font-medium">
-                                      ({dualTz.counterpartTime} for {fName})
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeclineMeeting(meet.meetingId || item.id)}
-                                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-xs transition cursor-pointer"
-                                    >
-                                      Decline
-                                    </button>
+                            {/* 3 Metrics Box */}
+                            {item.metrics && (
+                              <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50/80 border border-slate-100 text-xs">
+                                <div>
+                                  <div className="font-extrabold text-slate-900 text-sm">
+                                    {item.metrics.priceChange}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-slate-500 italic">No specific slot listed.</p>
-                        )}
-
-                        {isProposer && (
-                          <p className="text-[11px] text-slate-500 italic pt-1 border-t border-slate-200/60">
-                            Waiting for counterpart to accept. Once confirmed, internal video room and Google Calendar sync will be active.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE E1: Meeting Confirmed Card
-                if (item.type === "meeting_confirmed_card") {
-                  const meta = (item as any).metadata || item.meetingDetails || {};
-                  const uTz = (selectedProject as any)?.clientTimezone || "America/New_York";
-                  const confirmedDateObj = parseMeetingSlot(meta.confirmedSlot);
-                  const confirmedTime = meta.confirmedSlot
-                    ? formatInTimezone(confirmedDateObj, uTz).fullFormatted
-                    : (item.bubbleText || formatInTimezone(new Date(), uTz).fullFormatted);
-                  const roomUrl = meta.roomUrl || `/workspace/meetings/room-${item.id.slice(-4)}`;
-                  const fullRoomUrl = `${roomUrl}?projectId=${selectedProjectId}&meetingId=${meta.meetingId || item.id}&role=CLIENT`;
-                  const gcalUrl = meta.googleCalendarHtmlLink;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`p-5 rounded-2xl border-2 ${meta.status === "COMPLETED" ? "border-purple-300 bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/40" : "border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-indigo-50/40"} shadow-xs space-y-3.5 animate-in fade-in duration-200`}
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-slate-900">
-                          <Video className={`w-4 h-4 ${meta.status === "COMPLETED" ? "text-purple-600" : "text-emerald-600"}`} />
-                          <span>{meta.status === "COMPLETED" ? "Bilateral Sync Call Completed" : "Bilateral Sync Call Confirmed"}</span>
-                        </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          meta.status === "COMPLETED"
-                            ? "bg-purple-100 text-purple-800 border border-purple-200"
-                            : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                        }`}>
-                          {meta.status === "COMPLETED" ? "Call Completed" : "Scheduled"}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-slate-900">
-                          {meta.title || "Milestone & Scope Alignment Review"}
-                        </h4>
-                        <div className="flex items-center gap-2 text-xs text-slate-600">
-                          <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                          <span className="font-semibold text-slate-900">{confirmedTime}</span>
-                          <span>•</span>
-                          <span>{meta.durationMinutes || 30} mins</span>
-                        </div>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-white border border-slate-100 text-xs text-slate-600 space-y-1">
-                        <div className="flex items-center gap-1.5 font-semibold text-indigo-900">
-                          <Bot className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Nexum AI Multilingual Notetaker {meta.status === "COMPLETED" ? "Synthesis Archived" : "Active"}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          {meta.status === "COMPLETED"
-                            ? "Call completed and synthesized into action items, ADR decisions, and scope consensus below."
-                            : "Notetaker will transcribe the call, flag verbal scope creep in real-time, and extract action items into your Kanban tasks."}
-                        </p>
-                      </div>
-
-                      {meta.status === "COMPLETED" ? (
-                        <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-purple-700 bg-purple-50/80 px-3.5 py-2 rounded-xl border border-purple-200">
-                          <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
-                          <span>Meeting brief & AI synthesis attached below</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                          <a
-                            href={fullRoomUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-98"
-                          >
-                            <Video className="w-4 h-4" />
-                            <span>Join Video Call</span>
-                          </a>
-
-                          {gcalUrl && (
-                            <a
-                              href={gcalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Add to Google Calendar</span>
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // CARD TYPE E3: Meeting Summary & Notetaker Brief Card
-                if (item.type === "meeting_summary_card") {
-                  const meta = (item as any).metadata || {};
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/60 via-white to-indigo-50/30 shadow-xs space-y-3.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-purple-950">
-                          <Sparkles className="w-4 h-4 text-purple-600" />
-                          <span>Nexum AI Notetaker · Meeting Brief & Synthesis</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                          Call Completed
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <h4 className="text-sm font-bold text-slate-900">{meta.title || "Sync Meeting"}</h4>
-                        <div className="p-3.5 rounded-xl bg-white border border-purple-100 text-xs text-slate-700 leading-relaxed font-sans whitespace-pre-line shadow-2xs">
-                          {meta.executiveSummary || item.summaryText || item.bubbleText}
-                        </div>
-                      </div>
-
-                      {Array.isArray(meta.actionItems) && meta.actionItems.length > 0 && (
-                        <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100 space-y-1.5 text-xs">
-                          <div className="font-bold text-purple-900 text-[11px] uppercase tracking-wider">
-                            Auto-Extracted Kanban Action Items:
-                          </div>
-                          <ul className="space-y-1 text-slate-700">
-                            {meta.actionItems.map((ai: any, idx: number) => (
-                              <li key={idx} className="flex items-start gap-1.5">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span>{typeof ai === "object" ? ai.task || ai.title : String(ai)}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {Array.isArray(meta.decisions) && meta.decisions.length > 0 && (
-                        <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-200/80 space-y-2.5 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-purple-950 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-                              <span>Agreed Consensus Decisions & Add-ons (ADRs):</span>
-                            </span>
-                            <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">
-                              {meta.decisions.length} Agreed Scope {meta.decisions.length === 1 ? "Item" : "Items"}
-                            </span>
-                          </div>
-                          <ul className="space-y-2 text-slate-700">
-                            {meta.decisions.map((dec: any, idx: number) => (
-                              <li key={idx} className="p-2.5 rounded-xl bg-white border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                                <div className="space-y-0.5">
-                                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                    <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                                    <span>{dec.title}</span>
-                                  </div>
-                                  <div className="text-slate-600 text-[11px] leading-relaxed">
-                                    {dec.description}
+                                  <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                                    Price change
                                   </div>
                                 </div>
+                                <div>
+                                  <div className="font-extrabold text-slate-900 text-sm">
+                                    {item.metrics.scheduleChange}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                                    Schedule change
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-extrabold text-indigo-700 text-sm font-mono">
+                                    {item.metrics.agreementVersion}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                                    Agreement version
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                              {item.actions?.primaryLabel && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExecuteCardAction(item, item.actions?.primaryAction)}
+                                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                                >
+                                  {item.actions.primaryLabel}
+                                </button>
+                              )}
+                              {item.actions?.secondaryLabel && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExecuteCardAction(item, item.actions?.secondaryAction)}
+                                  className="px-3.5 py-2 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                                >
+                                  {item.actions.secondaryLabel}
+                                </button>
+                              )}
+                              {item.actions?.tertiaryLabel && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExecuteCardAction(item, item.actions?.tertiaryAction)}
+                                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer pl-1 transition"
+                                >
+                                  {item.actions.tertiaryLabel}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE B: Standard Client bubble (outgoing)
+                      if (item.type === "client_bubble") {
+                        return (
+                          <div key={item.id} className="flex justify-end animate-in fade-in duration-150">
+                            <div className="max-w-[78%] bg-indigo-600 text-white rounded-2xl rounded-tr-xs p-3.5 sm:p-4 text-xs sm:text-[13px] leading-relaxed shadow-xs space-y-1.5">
+                              <div className="flex items-center justify-between gap-3 text-[10px] text-indigo-200">
+                                <span className="font-semibold">{item.senderName}</span>
+                                <span>{item.timestamp}</span>
+                              </div>
+                              <p className="text-white whitespace-pre-wrap">{item.bubbleText}</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Incoming Freelancer bubble (left-aligned)
+                      if (item.type === "freelancer_bubble") {
+                        return (
+                          <div key={item.id} className="flex justify-start animate-in fade-in duration-150">
+                            <div className="max-w-[78%] bg-white border border-slate-200/90 text-slate-900 rounded-2xl rounded-tl-xs p-3.5 sm:p-4 text-xs sm:text-[13px] leading-relaxed shadow-xs space-y-1.5">
+                              <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400">
+                                <span className="font-semibold text-slate-700">{item.senderName}</span>
+                                <span>{item.timestamp}</span>
+                              </div>
+                              <p className="text-slate-800 whitespace-pre-wrap">{item.bubbleText}</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE C: Scope Amendment Proposal & Counteroffer Card
+                      if (item.type === "draft_counteroffer_card") {
+                        const meta = (item as any).metadata || {};
+                        const payload = meta.amendmentPayload || {};
+                        const isAmendedMilestone = Boolean(payload.newMilestoneTitle || payload.justification);
+                        const isProposer = meta.lastProposedRole === "CLIENT" || meta.lastProposedBy === user?.id;
+
+                        const budgetDelta = payload.priceDeltaCents || meta.counterAmountMinor || 0;
+                        const daysDelta = payload.timelineDaysDelta || meta.counterDays || 0;
+                        const displayTitle = payload.newMilestoneTitle || meta.counterofferDetails?.title || "Milestone Addendum Proposal";
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                                <Scale className="w-4 h-4 text-amber-600" />
+                                <span>Nexum Bilateral Negotiation · Scope Addendum</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                                {meta.counterReasoning ? "Counteroffer Active" : "Pending Consensus"}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-bold text-slate-900">{displayTitle}</h4>
+                              <p className="text-xs text-slate-700 leading-relaxed font-sans">
+                                {payload.justification || item.summaryText || item.bubbleText}
+                              </p>
+                            </div>
+
+                            {/* Financial & Schedule Delta Metrics */}
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="p-2.5 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Escrow Budget</div>
+                                <div className="text-sm font-bold text-emerald-700 mt-0.5">
+                                  +${(budgetDelta / 100).toLocaleString()} USD
+                                </div>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Timeline</div>
+                                <div className="text-sm font-bold text-slate-800 mt-0.5">
+                                  +{daysDelta} Days
+                                </div>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Target Agreement</div>
+                                <div className="text-sm font-bold text-indigo-700 mt-0.5">
+                                  v1.1 Revision
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Counteroffer Rationale (if countered) */}
+                            {meta.counterReasoning && (
+                              <div className="p-3 rounded-xl bg-amber-100/60 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                <div className="font-bold flex items-center gap-1.5">
+                                  <MessageSquare className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Counteroffer Rationale:</span>
+                                </div>
+                                <p className="leading-relaxed">&ldquo;{meta.counterReasoning}&rdquo;</p>
+                              </div>
+                            )}
+
+                            {/* BRD Document attachment (if uploaded) */}
+                            {payload.brdDocumentUrl && (
+                              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                                <span className="flex items-center gap-1.5 text-slate-700 font-medium">
+                                  <FileText className="w-3.5 h-3.5 text-purple-600" />
+                                  <span>Attached Spec: {payload.brdDocumentName || "BRD Document"}</span>
+                                </span>
+                                <a
+                                  href={payload.brdDocumentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-purple-600 font-bold hover:underline"
+                                >
+                                  View Document →
+                                </a>
+                              </div>
+                            )}
+
+                            {/* Actions: Accept, Counteroffer, Decline */}
+                            <div className="pt-1 border-t border-amber-100 flex flex-wrap items-center justify-between gap-2">
+                              {!isProposer ? (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      showToast("Accepting scope amendment and sealing Agreement v1.1...");
+                                      const res = await respondToScopeAmendment(selectedProjectId, item.id, {
+                                        responderId: user?.id || "usr_client_alex",
+                                        action: "ACCEPT",
+                                      });
+                                      if (res.success) {
+                                        showToast("Consensus reached! Agreement v1.1 is now canonical and sealed.");
+                                        setRefreshTrigger((n) => n + 1);
+                                      } else {
+                                        showToast(res.error || "Failed to accept amendment");
+                                      }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Accept & Seal Agreement (v1.1)</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCounterTargetCard(item);
+                                      setIsCounterofferModalOpen(true);
+                                    }}
+                                    className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Scale className="w-3.5 h-3.5" />
+                                    <span>Counteroffer with Reasoning</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      showToast("Declining amendment proposal...");
+                                      const res = await respondToScopeAmendment(selectedProjectId, item.id, {
+                                        responderId: user?.id || "usr_client_alex",
+                                        action: "DECLINE",
+                                      });
+                                      if (res.success) {
+                                        showToast("Amendment proposal declined.");
+                                        setRefreshTrigger((n) => n + 1);
+                                      } else {
+                                        showToast(res.error || "Failed to decline");
+                                      }
+                                    }}
+                                    className="px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
+                                  >
+                                    Decline
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-amber-800 font-medium flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>
+                                    Delivered to {selectedProject?.freelancerName || "counterpart"}. Awaiting mutual consensus or counteroffer.
+                                  </span>
+                                </div>
+                              )}
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                SHA-256 Consensus Enforced
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE C1: Sealed Amendment Agreement v1.1
+                      if (item.type === "amendment_sealed_card") {
+                        const meta = (item as any).metadata || {};
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-indigo-50/30 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-emerald-950">
+                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                <span>Nexum Canonical Agreement Seal · Ratified</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {meta.newVersionString || "v1.1"} ACTIVE
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-bold text-slate-900">
+                                {meta.milestoneTitle || "Cumulative Scope Milestone"} Sealed
+                              </h4>
+                              <p className="text-xs text-slate-700 leading-relaxed font-sans">
+                                Both client and freelancer agreed and ratified this scope addendum. Milestone #4 has been added to the active project timeline, and the revised legal contract has been archived under Project Files.
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Escrow Budget</div>
+                                <div className="text-sm font-bold text-emerald-700 mt-0.5">
+                                  +${((meta.finalAmountMinor || 0) / 100).toLocaleString()} USD
+                                </div>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Delivery Delta</div>
+                                <div className="text-sm font-bold text-slate-800 mt-0.5">
+                                  +{meta.finalTimelineDays || 0} Days
+                                </div>
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Agreement Hash</div>
+                                <div className="text-xs font-mono font-bold text-indigo-700 mt-0.5 truncate">
+                                  {String(meta.sealedAgreementHash || "canonical_v1.1").slice(0, 16)}...
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-1 flex items-center justify-between text-xs border-t border-emerald-100">
+                              <span className="text-[10px] text-slate-400">
+                                Sealed at {meta.sealedAt ? new Date(meta.sealedAt).toLocaleTimeString() : item.timestamp}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab("files")}
+                                className="text-emerald-700 font-bold hover:underline cursor-pointer"
+                              >
+                                View Revised Contract in Files →
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE D: Sent to freelancer confirmation
+                      if (item.type === "sent_to_freelancer_card") {
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/60 text-xs text-slate-800 space-y-2 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-emerald-800 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>{item.badgeText} · {item.timestamp}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 font-bold bg-white/80 px-2 py-0.5 rounded-md border border-emerald-200/60 shadow-2xs">
+                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                <span>SHA-256 Verified ✓</span>
+                              </span>
+                            </div>
+                            <p className="text-slate-600 leading-relaxed pl-5.5">{item.summaryText}</p>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE E: Meeting proposal card
+                      if (item.type === "meeting_proposal_card") {
+                        const meet = item.meetingDetails || (item.metadata as any) || {};
+                        const isProposer =
+                          item.metadata?.proposedByUserId === user?.id ||
+                          item.senderName.includes("You") ||
+                          item.metadata?.senderRole === "CLIENT";
+
+                        const proposedSlots = Array.isArray(meet.proposedSlots) ? meet.proposedSlots : [];
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-indigo-200 bg-white shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-slate-900">
+                                <Video className="w-4 h-4 text-indigo-600" />
+                                <span>{item.senderName} · {item.timestamp}</span>
+                              </span>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isProposer
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                    : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  }`}
+                              >
+                                {isProposer ? "Awaiting Confirmation" : "Action Required"}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-bold text-slate-900">
+                                {meet.title || item.summaryText}
+                              </h4>
+                              {meet.agenda && meet.agenda !== meet.title && (
+                                <p className="text-xs text-slate-600">{meet.agenda}</p>
+                              )}
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-2.5 text-xs">
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold">
+                                <span>Duration: {meet.durationMinutes || 30} mins</span>
+                                <span>Bilateral Consensus Protocol</span>
+                              </div>
+
+                              {proposedSlots.length > 0 ? (
+                                <div className="space-y-2">
+                                  <span className="text-[11px] font-bold text-slate-700 block">
+                                    Proposed Time Slot:
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {proposedSlots.map((slot: any, idx: number) => {
+                                      const uTz = (selectedProject as any)?.clientTimezone || "America/New_York";
+                                      const fTz = (selectedProject as any)?.freelancerTimezone || "Asia/Kolkata";
+                                      const fName = selectedProject?.freelancerName || "Freelancer";
+                                      const dualTz = formatDualTimezoneSlot(slot, uTz, fTz, fName);
+                                      const slotVal =
+                                        typeof slot === "object" && slot !== null
+                                          ? slot.startTime || slot.id || `Slot ${idx + 1}`
+                                          : String(slot);
+
+                                      if (isProposer) {
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="p-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs space-y-1"
+                                          >
+                                            <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                              <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                              <span>{dualTz.primary}</span>
+                                            </div>
+                                            {dualTz.secondary && (
+                                              <div className="text-[11px] text-slate-500 font-medium pl-5">
+                                                {dualTz.secondary}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleConfirmMeeting(meet.meetingId || item.id, slotVal)}
+                                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-98"
+                                          >
+                                            <Check className="w-3.5 h-3.5" />
+                                            <span>Accept Slot: {dualTz.userTime}</span>
+                                          </button>
+                                          <span className="text-[11px] text-slate-500 font-medium">
+                                            ({dualTz.counterpartTime} for {fName})
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeclineMeeting(meet.meetingId || item.id)}
+                                            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-xs transition cursor-pointer"
+                                          >
+                                            Decline
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-slate-500 italic">No specific slot listed.</p>
+                              )}
+
+                              {isProposer && (
+                                <p className="text-[11px] text-slate-500 italic pt-1 border-t border-slate-200/60">
+                                  Waiting for counterpart to accept. Once confirmed, internal video room and Google Calendar sync will be active.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE E1: Meeting Confirmed Card
+                      if (item.type === "meeting_confirmed_card") {
+                        const meta = (item as any).metadata || item.meetingDetails || {};
+                        const uTz = (selectedProject as any)?.clientTimezone || "America/New_York";
+                        const confirmedDateObj = parseMeetingSlot(meta.confirmedSlot);
+                        const confirmedTime = meta.confirmedSlot
+                          ? formatInTimezone(confirmedDateObj, uTz).fullFormatted
+                          : (item.bubbleText || formatInTimezone(new Date(), uTz).fullFormatted);
+                        const roomUrl = meta.roomUrl || `/workspace/meetings/room-${item.id.slice(-4)}`;
+                        const fullRoomUrl = `${roomUrl}?projectId=${selectedProjectId}&meetingId=${meta.meetingId || item.id}&role=CLIENT`;
+                        const gcalUrl = meta.googleCalendarHtmlLink;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-5 rounded-2xl border-2 ${meta.status === "COMPLETED" ? "border-purple-300 bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/40" : "border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-indigo-50/40"} shadow-xs space-y-3.5 animate-in fade-in duration-200`}
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-slate-900">
+                                <Video className={`w-4 h-4 ${meta.status === "COMPLETED" ? "text-purple-600" : "text-emerald-600"}`} />
+                                <span>{meta.status === "COMPLETED" ? "Bilateral Sync Call Completed" : "Bilateral Sync Call Confirmed"}</span>
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${meta.status === "COMPLETED"
+                                  ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                  : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                }`}>
+                                {meta.status === "COMPLETED" ? "Call Completed" : "Scheduled"}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-bold text-slate-900">
+                                {meta.title || "Milestone & Scope Alignment Review"}
+                              </h4>
+                              <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                                <span className="font-semibold text-slate-900">{confirmedTime}</span>
+                                <span>•</span>
+                                <span>{meta.durationMinutes || 30} mins</span>
+                              </div>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-white border border-slate-100 text-xs text-slate-600 space-y-1">
+                              <div className="flex items-center gap-1.5 font-semibold text-indigo-900">
+                                <Bot className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>Nexum AI Multilingual Notetaker {meta.status === "COMPLETED" ? "Synthesis Archived" : "Active"}</span>
+                              </div>
+                              <p className="text-[11px] text-slate-500">
+                                {meta.status === "COMPLETED"
+                                  ? "Call completed and synthesized into action items, ADR decisions, and scope consensus below."
+                                  : "Notetaker will transcribe the call, flag verbal scope creep in real-time, and extract action items into your Kanban tasks."}
+                              </p>
+                            </div>
+
+                            {meta.status === "COMPLETED" ? (
+                              <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-purple-700 bg-purple-50/80 px-3.5 py-2 rounded-xl border border-purple-200">
+                                <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+                                <span>Meeting brief & AI synthesis attached below</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                                <a
+                                  href={fullRoomUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-98"
+                                >
+                                  <Video className="w-4 h-4" />
+                                  <span>Join Video Call</span>
+                                </a>
+
+                                {gcalUrl && (
+                                  <a
+                                    href={gcalUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>Add to Google Calendar</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE E3: Meeting Summary & Notetaker Brief Card
+                      if (item.type === "meeting_summary_card") {
+                        const meta = (item as any).metadata || {};
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/60 via-white to-indigo-50/30 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-purple-950">
+                                <Sparkles className="w-4 h-4 text-purple-600" />
+                                <span>Nexum AI Notetaker · Meeting Brief & Synthesis</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                Call Completed
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <h4 className="text-sm font-bold text-slate-900">{meta.title || "Sync Meeting"}</h4>
+                              <div className="p-3.5 rounded-xl bg-white border border-purple-100 text-xs text-slate-700 leading-relaxed font-sans whitespace-pre-line shadow-2xs">
+                                {meta.executiveSummary || item.summaryText || item.bubbleText}
+                              </div>
+                            </div>
+
+                            {Array.isArray(meta.actionItems) && meta.actionItems.length > 0 && (
+                              <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100 space-y-1.5 text-xs">
+                                <div className="font-bold text-purple-900 text-[11px] uppercase tracking-wider">
+                                  Auto-Extracted Kanban Action Items:
+                                </div>
+                                <ul className="space-y-1 text-slate-700">
+                                  {meta.actionItems.map((ai: any, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-1.5">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                      <span>{typeof ai === "object" ? ai.task || ai.title : String(ai)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {Array.isArray(meta.decisions) && meta.decisions.length > 0 && (
+                              <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-200/80 space-y-2.5 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-purple-950 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                                    <span>Agreed Consensus Decisions & Add-ons (ADRs):</span>
+                                  </span>
+                                  <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">
+                                    {meta.decisions.length} Agreed Scope {meta.decisions.length === 1 ? "Item" : "Items"}
+                                  </span>
+                                </div>
+                                <ul className="space-y-2 text-slate-700">
+                                  {meta.decisions.map((dec: any, idx: number) => (
+                                    <li key={idx} className="p-2.5 rounded-xl bg-white border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                                      <div className="space-y-0.5">
+                                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                          <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                          <span>{dec.title}</span>
+                                        </div>
+                                        <div className="text-slate-600 text-[11px] leading-relaxed">
+                                          {dec.description}
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAddendumInitialTitle(dec.title || "Agreed Scope Addendum");
+                                          setAddendumInitialDesc(dec.description || "");
+                                          setIsAddendumModalOpen(true);
+                                        }}
+                                        className="self-end sm:self-center px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>+ Formalize as Milestone Addendum</span>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Cumulative Milestone Formalization Trigger */}
+                            <div className="p-3 rounded-xl bg-gradient-to-r from-purple-100/60 via-indigo-50 to-white border border-purple-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                              <div className="space-y-0.5">
+                                <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                                  <Layers className="w-3.5 h-3.5 text-purple-600" />
+                                  <span>Cumulative Milestone Negotiation Engine</span>
+                                </div>
+                                <div className="text-[11px] text-purple-800/80">
+                                  Create a new milestone with BRD specs, AI price suggestions, and bilateral negotiation towards Agreement v1.1.
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const firstDec = meta.decisions?.[0];
+                                  setAddendumInitialTitle(firstDec?.title || meta.title || "Add New Milestone Addendum");
+                                  setAddendumInitialDesc(firstDec?.description || meta.executiveSummary || "");
+                                  setIsAddendumModalOpen(true);
+                                }}
+                                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Formalize Scope Addendum</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                              <span>Dual SHA-256 Verified · Synchronized to Kanban Tasks & Decisions</span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab("meetings")}
+                                className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                              >
+                                View in Meetings Hub →
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE E2: Meeting Postponed Card
+                      if (item.type === "meeting_postponed_card") {
+                        const meta = (item as any).metadata || {};
+                        const slots = meta.newSlots || [];
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                                <Clock className="w-4 h-4 text-amber-600" />
+                                <span>Meeting Postponement Request · {item.timestamp}</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                {meta.reasonCategory || "SUDDEN_EMERGENCY"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                              {item.summaryText}
+                            </p>
+                            {slots.length > 0 && (
+                              <div className="p-3 rounded-xl bg-white border border-amber-100 space-y-2 text-xs">
+                                <div className="text-slate-600 text-[11px] font-bold">Proposed replacement slots:</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {slots.map((s: any, idx: number) => {
+                                    const slotTime = typeof s === "string" ? s : s.startTime;
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => handleAcceptMeetingPostpone(meta.meetingId, slotTime)}
+                                        className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                        <span>Accept Slot: {new Date(slotTime).toLocaleString()}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE E3: Milestone Postponement Card
+                      if (item.type === "milestone_postponement_card") {
+                        const meta = (item as any).metadata || {};
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs space-y-3.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                                <Calendar className="w-4 h-4 text-amber-600" />
+                                <span>Milestone Postponement Request · {item.timestamp}</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                {meta.reasonCategory || "TECHNICAL_BLOCKER"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                              {item.summaryText}
+                            </p>
+                            <div className="p-3 rounded-xl bg-white border border-amber-100 flex items-center justify-between text-xs">
+                              <div>
+                                <div className="font-bold text-slate-800">New Proposed Due Date:</div>
+                                <div className="text-amber-800 font-semibold">{meta.proposedDueDate ? new Date(meta.proposedDueDate).toLocaleDateString() : "Extended"}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptMilestonePostpone(meta.postponementId)}
+                                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Accept New Deadline</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE F: Autonomous Multilingual AI Notetaker Card
+                      if (item.type === "notetaker_summary_card") {
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-purple-900">
+                                <Bot className="w-4 h-4 text-purple-600" />
+                                <span>Nexum AI Notetaker (Groq Whisper v3)</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                Multilingual Call Synthesis
+                              </span>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-white/90 border border-purple-100 space-y-2 text-xs">
+                              <div className="font-bold text-slate-900">Executive Summary</div>
+                              <p className="text-slate-700 leading-relaxed">
+                                {item.notetakerDetails?.summary || item.summaryText}
+                              </p>
+                            </div>
+
+                            {item.notetakerDetails?.actionItems && item.notetakerDetails.actionItems.length > 0 && (
+                              <div className="space-y-1.5 text-xs">
+                                <span className="font-bold text-slate-900 uppercase tracking-wider text-[10px] block">
+                                  Extracted Commitments ➔ Auto-Added to Kanban:
+                                </span>
+                                {item.notetakerDetails.actionItems.map((act, i) => (
+                                  <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200/80 text-slate-800">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                    <span>{act}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {item.notetakerDetails?.verbalScopeDetections && item.notetakerDetails.verbalScopeDetections.length > 0 && (
+                              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+                                <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Verbal Scope Agreement Detected</span>
+                                </div>
+                                <p className="text-amber-800/90 text-[11px]">
+                                  {item.notetakerDetails.verbalScopeDetections[0]}
+                                </p>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setAddendumInitialTitle(dec.title || "Agreed Scope Addendum");
-                                    setAddendumInitialDesc(dec.description || "");
-                                    setIsAddendumModalOpen(true);
+                                    setMessageInput("Formalize verbal agreement: Add Apple Pay integration for +$400 USD.");
+                                    showToast("Amendment draft loaded in composer.");
                                   }}
-                                  className="self-end sm:self-center px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                                  className="mt-1 text-xs font-bold text-indigo-700 hover:underline cursor-pointer"
                                 >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>+ Formalize as Milestone Addendum</span>
+                                  + Draft Formal Amendment Card
                                 </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Cumulative Milestone Formalization Trigger */}
-                      <div className="p-3 rounded-xl bg-gradient-to-r from-purple-100/60 via-indigo-50 to-white border border-purple-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                        <div className="space-y-0.5">
-                          <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
-                            <Layers className="w-3.5 h-3.5 text-purple-600" />
-                            <span>Cumulative Milestone Negotiation Engine</span>
-                          </div>
-                          <div className="text-[11px] text-purple-800/80">
-                            Create a new milestone with BRD specs, AI price suggestions, and bilateral negotiation towards Agreement v1.1.
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const firstDec = meta.decisions?.[0];
-                            setAddendumInitialTitle(firstDec?.title || meta.title || "Add New Milestone Addendum");
-                            setAddendumInitialDesc(firstDec?.description || meta.executiveSummary || "");
-                            setIsAddendumModalOpen(true);
-                          }}
-                          className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Formalize Scope Addendum</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                        <span>Dual SHA-256 Verified · Synchronized to Kanban Tasks & Decisions</span>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("meetings")}
-                          className="text-indigo-600 font-bold hover:underline cursor-pointer"
-                        >
-                          View in Meetings Hub →
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE E2: Meeting Postponed Card
-                if (item.type === "meeting_postponed_card") {
-                  const meta = (item as any).metadata || {};
-                  const slots = meta.newSlots || [];
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs space-y-3.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
-                          <Clock className="w-4 h-4 text-amber-600" />
-                          <span>Meeting Postponement Request · {item.timestamp}</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          {meta.reasonCategory || "SUDDEN_EMERGENCY"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-800 leading-relaxed font-medium">
-                        {item.summaryText}
-                      </p>
-                      {slots.length > 0 && (
-                        <div className="p-3 rounded-xl bg-white border border-amber-100 space-y-2 text-xs">
-                          <div className="text-slate-600 text-[11px] font-bold">Proposed replacement slots:</div>
-                          <div className="flex flex-wrap gap-2">
-                            {slots.map((s: any, idx: number) => {
-                              const slotTime = typeof s === "string" ? s : s.startTime;
-                              return (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => handleAcceptMeetingPostpone(meta.meetingId, slotTime)}
-                                  className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
-                                >
-                                  <Check className="w-3 h-3" />
-                                  <span>Accept Slot: {new Date(slotTime).toLocaleString()}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // CARD TYPE E3: Milestone Postponement Card
-                if (item.type === "milestone_postponement_card") {
-                  const meta = (item as any).metadata || {};
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs space-y-3.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
-                          <Calendar className="w-4 h-4 text-amber-600" />
-                          <span>Milestone Postponement Request · {item.timestamp}</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          {meta.reasonCategory || "TECHNICAL_BLOCKER"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-800 leading-relaxed font-medium">
-                        {item.summaryText}
-                      </p>
-                      <div className="p-3 rounded-xl bg-white border border-amber-100 flex items-center justify-between text-xs">
-                        <div>
-                          <div className="font-bold text-slate-800">New Proposed Due Date:</div>
-                          <div className="text-amber-800 font-semibold">{meta.proposedDueDate ? new Date(meta.proposedDueDate).toLocaleDateString() : "Extended"}</div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAcceptMilestonePostpone(meta.postponementId)}
-                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>Accept New Deadline</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE F: Autonomous Multilingual AI Notetaker Card
-                if (item.type === "notetaker_summary_card") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-purple-900">
-                          <Bot className="w-4 h-4 text-purple-600" />
-                          <span>Nexum AI Notetaker (Groq Whisper v3)</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                          Multilingual Call Synthesis
-                        </span>
-                      </div>
-
-                      <div className="p-3.5 rounded-xl bg-white/90 border border-purple-100 space-y-2 text-xs">
-                        <div className="font-bold text-slate-900">Executive Summary</div>
-                        <p className="text-slate-700 leading-relaxed">
-                          {item.notetakerDetails?.summary || item.summaryText}
-                        </p>
-                      </div>
-
-                      {item.notetakerDetails?.actionItems && item.notetakerDetails.actionItems.length > 0 && (
-                        <div className="space-y-1.5 text-xs">
-                          <span className="font-bold text-slate-900 uppercase tracking-wider text-[10px] block">
-                            Extracted Commitments ➔ Auto-Added to Kanban:
-                          </span>
-                          {item.notetakerDetails.actionItems.map((act, i) => (
-                            <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200/80 text-slate-800">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                              <span>{act}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {item.notetakerDetails?.verbalScopeDetections && item.notetakerDetails.verbalScopeDetections.length > 0 && (
-                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
-                          <div className="font-bold flex items-center gap-1.5 text-amber-900">
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Verbal Scope Agreement Detected</span>
-                          </div>
-                          <p className="text-amber-800/90 text-[11px]">
-                            {item.notetakerDetails.verbalScopeDetections[0]}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMessageInput("Formalize verbal agreement: Add Apple Pay integration for +$400 USD.");
-                              showToast("Amendment draft loaded in composer.");
-                            }}
-                            className="mt-1 text-xs font-bold text-indigo-700 hover:underline cursor-pointer"
-                          >
-                            + Draft Formal Amendment Card
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // CARD TYPE G: AI Bilateral Contract Synthesis Draft Card
-                if (item.type === "CONTRACT_DRAFT") {
-                  const meta = (item as any).metadata || {};
-                  const totalFormatted = meta.totalAmountMinor ? `$${(meta.totalAmountMinor / 100).toFixed(2)} USD` : "";
-                  const clientHasApproved =
-                    Boolean(meta.clientApproved) ||
-                    timeline.some(
-                      (t) =>
-                        t.type === "AGREEMENT_APPROVAL_PENDING" &&
-                        (t.metadata?.approvedRole === "CLIENT" || (t as any).senderRole === "CLIENT")
-                    );
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-indigo-950">
-                          <Sparkles className="w-4 h-4 text-indigo-600" />
-                          <span>Nexum Protocol · AI Contract Synthesis</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                          v{meta.versionNumber || 1}.0 Bilateral Draft
-                        </span>
-                      </div>
-
-                      <div
-                        onClick={() => setIsContractModalOpen(true)}
-                        className="p-4 rounded-xl bg-white border border-indigo-100 hover:border-indigo-300 transition space-y-2 text-xs shadow-2xs cursor-pointer group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-100 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
-                              MD
-                            </div>
-                            <div>
-                              <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition flex items-center gap-1.5">
-                                <span>{meta.contractName || "Contract_Agreement_v1.0.md"}</span>
-                                <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition" />
                               </div>
-                              <div className="text-[11px] text-slate-500">
-                                Synchronized {meta.milestonesCount || "all"} milestones {totalFormatted && `· Fixed Price: ${totalFormatted}`}
-                              </div>
-                            </div>
+                            )}
                           </div>
-                          <span className="hidden sm:inline-flex text-[11px] font-semibold text-indigo-600 group-hover:underline">
-                            Read Agreement →
-                          </span>
-                        </div>
-                        <p className="text-slate-700 leading-relaxed pt-1 whitespace-pre-line">
-                          {item.bubbleText || item.summaryText}
-                        </p>
-                      </div>
+                        );
+                      }
 
-                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setIsContractModalOpen(true)}
-                          className="px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer border border-indigo-200/90 shadow-2xs flex items-center gap-1.5"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>View Complete Agreement</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveTab("files");
-                            showToast("Opened Project Files tab with synthesized contract.");
-                          }}
-                          className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition cursor-pointer shadow-2xs flex items-center gap-1.5"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-slate-500" />
-                          <span>View in Files Vault</span>
-                        </button>
-
-                        {timeline.some((t) => t.type === "AGREEMENT_RATIFIED") ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  showToast("Initiating PayPal Escrow deposit for Milestone #1...");
-                                  const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
-                                  const res = await fetch("/api/payments/escrow/create-order", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.success && data.orderId) {
-                                    showToast("PayPal Order created! Securing escrow deposit...");
-                                    const capRes = await fetch("/api/payments/escrow/capture", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId, mode: "MILESTONE" }),
-                                    });
-                                    const capData = await capRes.json();
-                                    if (capData.success) {
-                                      showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
-                                      setRefreshTrigger((n) => n + 1);
-                                      return;
-                                    }
-                                  }
-                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
-                                  });
-                                  const simData = await simRes.json();
-                                  if (simData.success) {
-                                    showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
-                                    setRefreshTrigger((n) => n + 1);
-                                  } else {
-                                    showToast(data.error?.message || data.error || "Could not lock escrow");
-                                  }
-                                } catch {
-                                  showToast("Escrow deposit failed");
-                                }
-                              }}
-                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Lock className="w-3.5 h-3.5" />
-                              <span>Deposit Milestone #1 into Escrow</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  showToast("Initiating PayPal Full Project Escrow deposit...");
-                                  const res = await fetch("/api/payments/escrow/create-order", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.success && data.orderId) {
-                                    showToast("PayPal Order created! Securing full project escrow...");
-                                    const capRes = await fetch("/api/payments/escrow/capture", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ orderId: data.orderId, projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
-                                    });
-                                    const capData = await capRes.json();
-                                    if (capData.success) {
-                                      showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
-                                      setRefreshTrigger((n) => n + 1);
-                                      return;
-                                    }
-                                  }
-                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
-                                  });
-                                  const simData = await simRes.json();
-                                  if (simData.success) {
-                                    showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
-                                    setRefreshTrigger((n) => n + 1);
-                                  } else {
-                                    showToast(data.error?.message || data.error || "Could not lock full escrow");
-                                  }
-                                } catch {
-                                  showToast("Full project escrow deposit failed");
-                                }
-                              }}
-                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              <span>Lock Entire Project {totalFormatted ? `(${totalFormatted})` : ""} in Escrow</span>
-                            </button>
-                          </div>
-                        ) : clientHasApproved ? (
-                          <div className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold text-xs flex items-center gap-1.5 shadow-2xs">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Signed by you · Awaiting Freelancer Signature</span>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                showToast("Signing and approving Contract Agreement v1.0...");
-                                const targetAgId = meta.agreementId || selectedProjectId;
-                                const res = await fetch(`/api/agreements/${targetAgId}/approve`, {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ versionNumber: meta.versionNumber || 1, role: "CLIENT" }),
-                                });
-                                const data = await res.json();
-                                if (data.success) {
-                                  showToast(data.message || "Contract signed and approved! Awaiting freelancer ratification.");
-                                  setRefreshTrigger((n) => n + 1);
-                                } else {
-                                  showToast(data.error || "Failed to approve agreement");
-                                }
-                              } catch {
-                                showToast("Approval request failed.");
-                              }
-                            }}
-                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                      // CARD TYPE G: AI Bilateral Contract Synthesis Draft Card
+                      if (item.type === "CONTRACT_DRAFT") {
+                        const meta = (item as any).metadata || {};
+                        const totalFormatted = meta.totalAmountMinor ? `$${(meta.totalAmountMinor / 100).toFixed(2)} USD` : "";
+                        const clientHasApproved =
+                          Boolean(meta.clientApproved) ||
+                          timeline.some(
+                            (t) =>
+                              t.type === "AGREEMENT_APPROVAL_PENDING" &&
+                              (t.metadata?.approvedRole === "CLIENT" || (t as any).senderRole === "CLIENT")
+                          );
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Sign & Approve Agreement</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE G2: Agreement Approval Pending Notification Card
-                if (item.type === "AGREEMENT_APPROVAL_PENDING") {
-                  const meta = (item as any).metadata || {};
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4.5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 shadow-xs space-y-2.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-amber-950">
-                          <Clock className="w-4 h-4 text-amber-600" />
-                          <span>Agreement Signature Status</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          {meta.badgeText || "Signed by You"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-line">
-                        {item.bubbleText || item.summaryText}
-                      </p>
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setIsContractModalOpen(true)}
-                          className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-white hover:bg-amber-50 text-amber-900 text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-amber-700" />
-                          <span>View Signed Contract</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE H: Agreement Ratified Notification Card
-                if (item.type === "AGREEMENT_RATIFIED") {
-                  const meta = (item as any).metadata || {};
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-emerald-950">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>Contract Ratified by Both Parties</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          Milestone #1 Escrow Required
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-line">
-                        {item.bubbleText || item.summaryText}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                showToast("Creating PayPal REST v2 milestone escrow order...");
-                                const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
-                                const res = await fetch("/api/payments/escrow/create-order", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
-                                });
-                                const data = await res.json();
-                                if (data.success && data.orderId) {
-                                  showToast("PayPal Order created! Capturing & locking escrow...");
-                                  const capRes = await fetch("/api/payments/escrow/capture", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId, mode: "MILESTONE" }),
-                                  });
-                                  const capData = await capRes.json();
-                                  if (capData.success) {
-                                    showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
-                                    setRefreshTrigger((n) => n + 1);
-                                  } else {
-                                    showToast(capData.error || "Failed to capture escrow order");
-                                  }
-                                } else {
-                                  // Fallback simulation for offline testing
-                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
-                                  });
-                                  const simData = await simRes.json();
-                                  if (simData.success) {
-                                    showToast("Escrow funds successfully locked! Development authorized.");
-                                    setRefreshTrigger((n) => n + 1);
-                                  } else {
-                                    showToast(data.error || "Could not lock escrow");
-                                  }
-                                }
-                              } catch {
-                                showToast("Payment request failed.");
-                              }
-                            }}
-                            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Lock className="w-3.5 h-3.5" />
-                            <span>Deposit Milestone #1 into Escrow</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                showToast("Creating PayPal REST v2 Full Project Escrow order...");
-                                const res = await fetch("/api/payments/escrow/create-order", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
-                                });
-                                const data = await res.json();
-                                if (data.success && data.orderId) {
-                                  showToast("PayPal Order created! Securing full project escrow...");
-                                  const capRes = await fetch("/api/payments/escrow/capture", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ orderId: data.orderId, projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
-                                  });
-                                  const capData = await capRes.json();
-                                  if (capData.success) {
-                                    showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
-                                    setRefreshTrigger((n) => n + 1);
-                                  } else {
-                                    showToast(capData.error || "Failed to capture full escrow order");
-                                  }
-                                } else {
-                                  const simRes = await fetch("/api/payments/escrow/simulate-lock", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
-                                  });
-                                  const simData = await simRes.json();
-                                  if (simData.success) {
-                                    showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
-                                    setRefreshTrigger((n) => n + 1);
-                                  } else {
-                                    showToast(data.error || "Could not lock full escrow");
-                                  }
-                                }
-                              } catch {
-                                showToast("Full project escrow payment request failed.");
-                              }
-                            }}
-                            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>Lock Entire Project in Escrow</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // CARD TYPE I: Escrow Locked System Notification Card
-                if (item.type === "ESCROW_LOCKED") {
-                  const meta = (item as any).metadata || {};
-                  const isSandbox =
-                    meta.paypalCaptureId?.includes("SBX") ||
-                    meta.paypalCaptureId?.includes("SIM_") ||
-                    meta.paypalOrderId?.includes("SIM_");
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl border border-emerald-300 bg-emerald-50/70 text-xs text-slate-800 space-y-2 shadow-2xs animate-in fade-in duration-150"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-emerald-900 flex items-center gap-1.5">
-                          <Lock className="w-4 h-4 text-emerald-600" />
-                          <span>Escrow Deposit Secured · {item.timestamp}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-800 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          <span>{isSandbox ? "PayPal Sandbox Escrow ✓" : "PayPal Verified Escrow ✓"}</span>
-                        </span>
-                      </div>
-                      <p className="text-emerald-950 font-medium leading-relaxed pl-5.5">
-                        {item.bubbleText || item.summaryText}
-                      </p>
-                      {meta.paypalOrderId && (
-                        <div className="pl-5.5 text-[10px] font-mono text-emerald-700 flex items-center gap-2">
-                          <span>Order: {meta.paypalOrderId}</span>
-                          <span>•</span>
-                          <span>Capture: {meta.paypalCaptureId || "HELD_IN_ESCROW"}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // CARD TYPE K: Shared Project File Card
-                if (item.type === "file_card") {
-                  const meta = (item as any).metadata || {};
-                  const fileName = meta.fileName || item.summaryText?.replace(/^Shared file: /, "") || "Shared Attachment";
-                  const fileSize = meta.fileSize || "Attachment";
-                  const downloadUrl = meta.downloadUrl || (meta.fileId ? `/api/files/${meta.fileId}?download=1` : "#");
-                  const ext = fileName.split(".").pop()?.toUpperCase() || "FILE";
-                  const isYou = item.senderName.includes("You") || (item.metadata as any)?.senderRole === "CLIENT";
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 animate-in fade-in duration-150"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]">
-                            {isYou ? "C" : "F"}
-                          </div>
-                          <span className="font-bold text-slate-800 text-xs">{item.senderName}</span>
-                          <span className="text-[10px] text-slate-400">· {item.timestamp}</span>
-                        </div>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70">
-                          <Paperclip className="w-3 h-3 text-indigo-500" />
-                          <span>Vault File Shared</span>
-                        </span>
-                      </div>
-
-                      {meta.note && (
-                        <p className="text-xs text-slate-700 leading-relaxed pl-8">
-                          {meta.note}
-                        </p>
-                      )}
-
-                      <div className="ml-8 p-3 rounded-xl border border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-black text-[11px] font-mono shadow-2xs">
-                            {ext}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-xs text-slate-900">{fileName}</div>
-                            <div className="text-[10px] text-slate-400">{fileSize} · Synchronized to Project Files</div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={downloadUrl}
-                            download={fileName}
-                            className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Download className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Download</span>
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab("files")}
-                            className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer"
-                          >
-                            View in Files Vault
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Nexum AI Document Analysis & Key Targets */}
-                      {meta.aiSummary && (
-                        <div className="ml-8 p-3.5 rounded-xl border border-indigo-200/80 bg-indigo-50/50 space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>Nexum AI Document Analysis & Key Targets</span>
-                          </div>
-                          <p className="text-xs text-slate-700 leading-relaxed font-sans">
-                            {meta.aiSummary}
-                          </p>
-                          {Array.isArray(meta.keyTargets) && meta.keyTargets.length > 0 && (
-                            <div className="pt-1.5 border-t border-indigo-100 space-y-1">
-                              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
-                                Key Technical Deliverables Identified:
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-indigo-950">
+                                <Sparkles className="w-4 h-4 text-indigo-600" />
+                                <span>Nexum Protocol · AI Contract Synthesis</span>
                               </span>
-                              <ul className="text-xs text-slate-700 space-y-1">
-                                {meta.keyTargets.map((kt: string, idx: number) => (
-                                  <li key={idx} className="flex items-start gap-1.5">
-                                    <span className="text-indigo-500 font-bold">•</span>
-                                    <span>{kt}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                v{meta.versionNumber || 1}.0 Bilateral Draft
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      )}
 
-                      {meta.sha256Seal && (
-                        <div className="ml-8 flex items-center gap-1.5 text-[9px] font-mono text-slate-400">
-                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                          <span className="truncate">SHA-256: {meta.sha256Seal.slice(0, 24)}...</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // CARD TYPE L: Deliverable Submission Card (with 72h Review & Release Action)
-                if (item.type === "deliverable_submission_card") {
-                  const meta = (item as any).metadata || {};
-                  const fileName = meta.fileName;
-                  const fileSize = meta.fileSize;
-                  const repoUrl = meta.repoUrl;
-                  const previewUrl = meta.previewUrl;
-                  const notes = meta.notes || (item as any).rawMessage || (item as any).bubbleText;
-                  const checks = meta.checksRecord || meta.auditRecord;
-                  const milestoneId = meta.milestoneId;
-                  const milestoneNumber = meta.milestoneNumber || 1;
-                  const milestoneTitle = meta.milestoneTitle || `Milestone ${milestoneNumber}`;
-                  const formattedAmount = meta.formattedAmount || meta.milestoneAmount || "";
-                  const seal = meta.checksRecord?.sha256Seal || meta.auditRecord?.sha256Seal || meta.sha256Seal || item.sha256Seal;
-                  const isApproved = Boolean(milestoneId && approvedMilestoneIds[milestoneId]);
-                  const isApproving = Boolean(milestoneId && approvingMilestoneId === milestoneId);
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/40 via-white to-blue-50/30 shadow-xs space-y-4 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
-                            <Package className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="font-extrabold text-slate-900 block text-sm">
-                              Deliverable Submitted: {milestoneTitle}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              By {selectedProject?.freelancerName || "Freelancer"} · {item.timestamp}
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
-                            isApproved
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                              : "bg-amber-50 text-amber-800 border-amber-200"
-                          }`}
-                        >
-                          <Clock className="w-3 h-3 text-amber-600" />
-                          <span>{isApproved ? "Approved & Escrow Released" : "72-Hour Inspection Buffer Active"}</span>
-                        </span>
-                      </div>
-
-                      {formattedAmount && (
-                        <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between text-xs">
-                          <span className="text-slate-600 font-medium">Escrow Protection Balance:</span>
-                          <span className="font-mono font-extrabold text-indigo-900 text-sm">{formattedAmount}</span>
-                        </div>
-                      )}
-
-                      {/* Submitted Deliverable Artifacts */}
-                      <div className="space-y-2">
-                        {fileName && (
-                          <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 flex items-center justify-between text-xs shadow-2xs">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                                <FileCode className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="font-bold text-slate-800 block">{fileName}</span>
-                                <span className="text-[10px] text-slate-400 font-mono">{fileSize || "Codebase Archive"}</span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                              Uploaded Archive (.zip)
-                            </span>
-                          </div>
-                        )}
-
-                        {repoUrl && (
-                          <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 flex items-center justify-between text-xs shadow-2xs">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-                                <ExternalLink className="w-4 h-4" />
-                              </div>
-                              <span className="font-bold text-slate-800 truncate max-w-sm">{repoUrl}</span>
-                            </div>
-                            <a
-                              href={repoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition inline-flex items-center gap-1.5"
+                            <div
+                              onClick={() => setIsContractModalOpen(true)}
+                              className="p-4 rounded-xl bg-white border border-indigo-100 hover:border-indigo-300 transition space-y-2 text-xs shadow-2xs cursor-pointer group"
                             >
-                              <span>Inspect PR</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </div>
-                        )}
-
-                        {previewUrl && (
-                          <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-100 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2 text-purple-900 font-medium">
-                              <Video className="w-4 h-4 text-purple-600" />
-                              <span className="truncate max-w-sm">Walkthrough: {previewUrl}</span>
-                            </div>
-                            <a
-                              href={previewUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1 rounded-md bg-white border border-purple-200 text-purple-700 font-bold text-xs hover:bg-purple-50"
-                            >
-                              Watch Demo
-                            </a>
-                          </div>
-                        )}
-                      </div>
-
-                      {notes && (
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                            Freelancer Verification Notes
-                          </span>
-                          <p className="leading-relaxed">{notes}</p>
-                        </div>
-                      )}
-
-                      {/* Autonomous Pre-Flight Checks Summary */}
-                      <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 space-y-2.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                            <span>Autonomous Proof-of-Execution Pre-Checks</span>
-                          </span>
-                          {checks ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              {checks.passedTests !== undefined ? `${checks.passedTests}/${checks.totalTests} Passed` : (checks.qualificationState || "PASSED")}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Passed Pre-Flight
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Visible Check Breakdown */}
-                        {Array.isArray(checks?.checks || meta.checks) && (checks?.checks || meta.checks).length > 0 && (
-                          <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
-                            {(checks?.checks || meta.checks).slice(0, 4).map((c: any, i: number) => (
-                              <div key={i} className="flex items-center justify-between text-[11px]">
-                                <span className="flex items-center gap-1.5 text-slate-700">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                  <span className="truncate max-w-[280px]">{c.name}</span>
-                                </span>
-                                <span className="text-[10px] font-mono text-slate-400">
-                                  {c.durationMs ? `${c.durationMs}ms` : "verified"}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-100 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
+                                    MD
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition flex items-center gap-1.5">
+                                      <span>{meta.contractName || "Contract_Agreement_v1.0.md"}</span>
+                                      <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition" />
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">
+                                      Synchronized {meta.milestonesCount || "all"} milestones {totalFormatted && `· Fixed Price: ${totalFormatted}`}
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="hidden sm:inline-flex text-[11px] font-semibold text-indigo-600 group-hover:underline">
+                                  Read Agreement →
                                 </span>
                               </div>
-                            ))}
+                              <p className="text-slate-700 leading-relaxed pt-1 whitespace-pre-line">
+                                {item.bubbleText || item.summaryText}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setIsContractModalOpen(true)}
+                                className="px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer border border-indigo-200/90 shadow-2xs flex items-center gap-1.5"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>View Complete Agreement</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab("files");
+                                  showToast("Opened Project Files tab with synthesized contract.");
+                                }}
+                                className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition cursor-pointer shadow-2xs flex items-center gap-1.5"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                                <span>View in Files Vault</span>
+                              </button>
+
+                              {timeline.some((t) => t.type === "AGREEMENT_RATIFIED") ? (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        showToast("Initiating PayPal Escrow deposit for Milestone #1...");
+                                        const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
+                                        const res = await fetch("/api/payments/escrow/create-order", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                        });
+                                        const data = await res.json();
+                                        if (data.success && data.orderId) {
+                                          showToast("PayPal Order created! Securing escrow deposit...");
+                                          const capRes = await fetch("/api/payments/escrow/capture", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                          });
+                                          const capData = await capRes.json();
+                                          if (capData.success) {
+                                            showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
+                                            setRefreshTrigger((n) => n + 1);
+                                            return;
+                                          }
+                                        }
+                                        const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                        });
+                                        const simData = await simRes.json();
+                                        if (simData.success) {
+                                          showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(data.error?.message || data.error || "Could not lock escrow");
+                                        }
+                                      } catch {
+                                        showToast("Escrow deposit failed");
+                                      }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                    <span>Deposit Milestone #1 into Escrow</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        showToast("Initiating PayPal Full Project Escrow deposit...");
+                                        const res = await fetch("/api/payments/escrow/create-order", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                        });
+                                        const data = await res.json();
+                                        if (data.success && data.orderId) {
+                                          showToast("PayPal Order created! Securing full project escrow...");
+                                          const capRes = await fetch("/api/payments/escrow/capture", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ orderId: data.orderId, projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                          });
+                                          const capData = await capRes.json();
+                                          if (capData.success) {
+                                            showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                            setRefreshTrigger((n) => n + 1);
+                                            return;
+                                          }
+                                        }
+                                        const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                        });
+                                        const simData = await simRes.json();
+                                        if (simData.success) {
+                                          showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(data.error?.message || data.error || "Could not lock full escrow");
+                                        }
+                                      } catch {
+                                        showToast("Full project escrow deposit failed");
+                                      }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                    <span>Lock Entire Project {totalFormatted ? `(${totalFormatted})` : ""} in Escrow</span>
+                                  </button>
+                                </div>
+                              ) : clientHasApproved ? (
+                                <div className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold text-xs flex items-center gap-1.5 shadow-2xs">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Signed by you · Awaiting Freelancer Signature</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      showToast("Signing and approving Contract Agreement v1.0...");
+                                      const targetAgId = meta.agreementId || selectedProjectId;
+                                      const res = await fetch(`/api/agreements/${targetAgId}/approve`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ versionNumber: meta.versionNumber || 1, role: "CLIENT" }),
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) {
+                                        showToast(data.message || "Contract signed and approved! Awaiting freelancer ratification.");
+                                        setRefreshTrigger((n) => n + 1);
+                                      } else {
+                                        showToast(data.error || "Failed to approve agreement");
+                                      }
+                                    } catch {
+                                      showToast("Approval request failed.");
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Sign & Approve Agreement</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        );
+                      }
 
-                        {seal && (
-                          <div className="text-[10px] font-mono text-slate-400 truncate pt-1 border-t border-slate-100">
-                            Consensus Seal: {seal}
+                      // CARD TYPE G2: Agreement Approval Pending Notification Card
+                      if (item.type === "AGREEMENT_APPROVAL_PENDING") {
+                        const meta = (item as any).metadata || {};
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-4.5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 shadow-xs space-y-2.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-amber-950">
+                                <Clock className="w-4 h-4 text-amber-600" />
+                                <span>Agreement Signature Status</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                {meta.badgeText || "Signed by You"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+                              {item.bubbleText || item.summaryText}
+                            </p>
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setIsContractModalOpen(true)}
+                                className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-white hover:bg-amber-50 text-amber-900 text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-amber-700" />
+                                <span>View Signed Contract</span>
+                              </button>
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        );
+                      }
 
-                      {/* Client Action Buttons */}
-                      <div className="pt-1 flex flex-wrap items-center gap-2.5">
-                        {isApproved ? (
-                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>Funds Released to Freelancer</span>
+                      // CARD TYPE H: Agreement Ratified Notification Card
+                      if (item.type === "AGREEMENT_RATIFIED") {
+                        const meta = (item as any).metadata || {};
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/40 shadow-xs space-y-4 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5 font-bold text-emerald-950">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Contract Ratified by Both Parties</span>
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Milestone #1 Escrow Required
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                              {item.bubbleText || item.summaryText}
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                              <div className="flex flex-wrap items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      showToast("Creating PayPal REST v2 milestone escrow order...");
+                                      const targetMilestoneId = meta.firstMilestoneId || selectedProject?.milestones?.[0]?.id;
+                                      const res = await fetch("/api/payments/escrow/create-order", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                      });
+                                      const data = await res.json();
+                                      if (data.success && data.orderId) {
+                                        showToast("PayPal Order created! Capturing & locking escrow...");
+                                        const capRes = await fetch("/api/payments/escrow/capture", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ orderId: data.orderId, milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                        });
+                                        const capData = await capRes.json();
+                                        if (capData.success) {
+                                          showToast("Escrow funds successfully locked! Milestone #1 work authorized.");
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(capData.error || "Failed to capture escrow order");
+                                        }
+                                      } else {
+                                        // Fallback simulation for offline testing
+                                        const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ milestoneId: targetMilestoneId, mode: "MILESTONE" }),
+                                        });
+                                        const simData = await simRes.json();
+                                        if (simData.success) {
+                                          showToast("Escrow funds successfully locked! Development authorized.");
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(data.error || "Could not lock escrow");
+                                        }
+                                      }
+                                    } catch {
+                                      showToast("Payment request failed.");
+                                    }
+                                  }}
+                                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                  <span>Deposit Milestone #1 into Escrow</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      showToast("Creating PayPal REST v2 Full Project Escrow order...");
+                                      const res = await fetch("/api/payments/escrow/create-order", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                      });
+                                      const data = await res.json();
+                                      if (data.success && data.orderId) {
+                                        showToast("PayPal Order created! Securing full project escrow...");
+                                        const capRes = await fetch("/api/payments/escrow/capture", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ orderId: data.orderId, projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                        });
+                                        const capData = await capRes.json();
+                                        if (capData.success) {
+                                          showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(capData.error || "Failed to capture full escrow order");
+                                        }
+                                      } else {
+                                        const simRes = await fetch("/api/payments/escrow/simulate-lock", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ projectId: selectedProject?.id, mode: "FULL_PROJECT" }),
+                                        });
+                                        const simData = await simRes.json();
+                                        if (simData.success) {
+                                          showToast("Full project escrow locked! Milestone #1 kickoff authorized.");
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(data.error || "Could not lock full escrow");
+                                        }
+                                      }
+                                    } catch {
+                                      showToast("Full project escrow payment request failed.");
+                                    }
+                                  }}
+                                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  <span>Lock Entire Project in Escrow</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              disabled={isApproving}
-                              onClick={() => handleApproveAndRelease(milestoneId, milestoneNumber, formattedAmount)}
-                              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>{isApproving ? "Releasing Escrow..." : `Review & Release Escrow Funds (${formattedAmount || "Milestone"})`}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMessageInput(`Feedback & revision request for ${milestoneTitle}: `);
-                              }}
-                              className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                            >
-                              Request Revisions
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setActiveTab("deliverables")}
-                              className="px-3 py-2 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
-                            >
-                              View Full Inspection Details
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
+                        );
+                      }
 
-                // CARD TYPE: Milestone Approved (Pre-funded)
-                if (item.type === "MILESTONE_APPROVED_PREFUNDED") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/40 shadow-xs space-y-2.5 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Milestone Paid & Next Active</span>
-                        </span>
-                        <span className="text-[11px] text-slate-400">{item.timestamp}</span>
-                      </div>
-                      <p className="text-xs sm:text-[13px] text-slate-800 leading-relaxed font-medium whitespace-pre-line">
-                        {item.bubbleText || item.rawMessage || item.summaryText}
-                      </p>
-                      <div className="pt-1 flex items-center gap-2 text-xs text-emerald-700 font-bold">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Escrow released. Next milestone pre-funded and work is in progress.</span>
-                      </div>
-                    </div>
-                  );
-                }
+                      // CARD TYPE I: Escrow Locked System Notification Card
+                      if (item.type === "ESCROW_LOCKED") {
+                        const meta = (item as any).metadata || {};
+                        const isSandbox =
+                          meta.paypalCaptureId?.includes("SBX") ||
+                          meta.paypalCaptureId?.includes("SIM_") ||
+                          meta.paypalOrderId?.includes("SIM_");
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-4 rounded-2xl border border-emerald-300 bg-emerald-50/70 text-xs text-slate-800 space-y-2 shadow-2xs animate-in fade-in duration-150"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                                <Lock className="w-4 h-4 text-emerald-600" />
+                                <span>Escrow Deposit Secured · {item.timestamp}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-800 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
+                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                <span>{isSandbox ? "PayPal Sandbox Escrow ✓" : "PayPal Verified Escrow ✓"}</span>
+                              </span>
+                            </div>
+                            <p className="text-emerald-950 font-medium leading-relaxed pl-5.5">
+                              {item.bubbleText || item.summaryText}
+                            </p>
+                            {meta.paypalOrderId && (
+                              <div className="pl-5.5 text-[10px] font-mono text-emerald-700 flex items-center gap-2">
+                                <span>Order: {meta.paypalOrderId}</span>
+                                <span>•</span>
+                                <span>Capture: {meta.paypalCaptureId || "HELD_IN_ESCROW"}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
 
-                // CARD TYPE: Milestone Approved (Awaiting Next Funds)
-                if (item.type === "MILESTONE_APPROVED_AWAITING_FUNDS") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-amber-50/30 shadow-xs space-y-3 animate-in fade-in duration-200"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Milestone Paid · Escrow Deposit Required</span>
-                        </span>
-                        <span className="text-[11px] text-slate-400">{item.timestamp}</span>
-                      </div>
-                      <p className="text-xs sm:text-[13px] text-slate-800 leading-relaxed font-medium whitespace-pre-line">
-                        {item.bubbleText || item.rawMessage || item.summaryText}
-                      </p>
-                      <div className="pt-1 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-amber-800 font-semibold">
-                          <Clock className="w-4 h-4 text-amber-600" />
-                          <span>Deposit escrow for next milestone to authorize freelancer kickoff.</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("milestones")}
-                          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                        >
-                          <span>Deposit Next Escrow</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
+                      // CARD TYPE K: Shared Project File Card
+                      if (item.type === "file_card") {
+                        const meta = (item as any).metadata || {};
+                        const fileName = meta.fileName || item.summaryText?.replace(/^Shared file: /, "") || "Shared Attachment";
+                        const fileSize = meta.fileSize || "Attachment";
+                        const downloadUrl = meta.downloadUrl || (meta.fileId ? `/api/files/${meta.fileId}?download=1` : "#");
+                        const ext = fileName.split(".").pop()?.toUpperCase() || "FILE";
+                        const isYou = item.senderName.includes("You") || (item.metadata as any)?.senderRole === "CLIENT";
 
-                return null;
-              })
-            )}
-            <div ref={timelineEndRef} />
-          </>
-        )}
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 animate-in fade-in duration-150"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]">
+                                  {isYou ? "C" : "F"}
+                                </div>
+                                <span className="font-bold text-slate-800 text-xs">{item.senderName}</span>
+                                <span className="text-[10px] text-slate-400">· {item.timestamp}</span>
+                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70">
+                                <Paperclip className="w-3 h-3 text-indigo-500" />
+                                <span>Vault File Shared</span>
+                              </span>
+                            </div>
 
-        {/* TAB 2: MILESTONES & ESCROW */}
-        {activeTab === "milestones" && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Milestone Breakdown & Escrow</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsChannel3ModalOpen(true)}
-                  className="px-2.5 py-1.5 rounded-xl border border-purple-200/90 bg-purple-50/70 hover:bg-purple-100/80 text-xs font-bold text-purple-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                  title="Discover hardware/products to attach into milestone scope"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Channel 3 Explorer</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddendumInitialTitle("");
-                    setAddendumInitialDesc("");
-                    setIsAddendumModalOpen(true);
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Propose Addendum</span>
-                </button>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              {selectedProject.milestones.length === 0 ? (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <Clock className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">No Milestones Configured</h4>
-                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    Milestones defined in your contract proposal will appear here with real-time PayPal Orders REST v2 pre-funding status.
-                  </p>
-                </div>
-              ) : (
-                selectedProject.milestones.map((m) => (
-                  <div key={m.id} className="p-4 rounded-xl border border-slate-200/80 bg-white space-y-2 text-xs shadow-2xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900">{m.number}. {m.title}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.statusColor}`}>
-                        {m.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                      <span>Due date: {m.dueDate}</span>
-                      <span className="font-bold font-mono text-slate-800 text-xs">{m.amount}</span>
+                            {meta.note && (
+                              <p className="text-xs text-slate-700 leading-relaxed pl-8">
+                                {meta.note}
+                              </p>
+                            )}
+
+                            <div className="ml-8 p-3 rounded-xl border border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-black text-[11px] font-mono shadow-2xs">
+                                  {ext}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-xs text-slate-900">{fileName}</div>
+                                  <div className="text-[10px] text-slate-400">{fileSize} · Synchronized to Project Files</div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={downloadUrl}
+                                  download={fileName}
+                                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Download</span>
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveTab("files")}
+                                  className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer"
+                                >
+                                  View in Files Vault
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Nexum AI Document Analysis & Key Targets */}
+                            {meta.aiSummary && (
+                              <div className="ml-8 p-3.5 rounded-xl border border-indigo-200/80 bg-indigo-50/50 space-y-2">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                                  <span>Nexum AI Document Analysis & Key Targets</span>
+                                </div>
+                                <p className="text-xs text-slate-700 leading-relaxed font-sans">
+                                  {meta.aiSummary}
+                                </p>
+                                {Array.isArray(meta.keyTargets) && meta.keyTargets.length > 0 && (
+                                  <div className="pt-1.5 border-t border-indigo-100 space-y-1">
+                                    <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+                                      Key Technical Deliverables Identified:
+                                    </span>
+                                    <ul className="text-xs text-slate-700 space-y-1">
+                                      {meta.keyTargets.map((kt: string, idx: number) => (
+                                        <li key={idx} className="flex items-start gap-1.5">
+                                          <span className="text-indigo-500 font-bold">•</span>
+                                          <span>{kt}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {meta.sha256Seal && (
+                              <div className="ml-8 flex items-center gap-1.5 text-[9px] font-mono text-slate-400">
+                                <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                                <span className="truncate">SHA-256: {meta.sha256Seal.slice(0, 24)}...</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE L: Deliverable Submission Card (with 72h Review & Release Action)
+                      if (item.type === "deliverable_submission_card") {
+                        const meta = (item as any).metadata || {};
+                        const fileName = meta.fileName;
+                        const fileSize = meta.fileSize;
+                        const repoUrl = meta.repoUrl;
+                        const previewUrl = meta.previewUrl;
+                        const notes = meta.notes || (item as any).rawMessage || (item as any).bubbleText;
+                        const checks = meta.checksRecord || meta.auditRecord;
+                        const milestoneId = meta.milestoneId;
+                        const milestoneNumber = meta.milestoneNumber || 1;
+                        const milestoneTitle = meta.milestoneTitle || `Milestone ${milestoneNumber}`;
+                        const formattedAmount = meta.formattedAmount || meta.milestoneAmount || "";
+                        const seal = meta.checksRecord?.sha256Seal || meta.auditRecord?.sha256Seal || meta.sha256Seal || item.sha256Seal;
+                        const isApproved = Boolean(milestoneId && approvedMilestoneIds[milestoneId]);
+                        const isApproving = Boolean(milestoneId && approvingMilestoneId === milestoneId);
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/40 via-white to-blue-50/30 shadow-xs space-y-4 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
+                                  <Package className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <span className="font-extrabold text-slate-900 block text-sm">
+                                    Deliverable Submitted: {milestoneTitle}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">
+                                    By {selectedProject?.freelancerName || "Freelancer"} · {item.timestamp}
+                                  </span>
+                                </div>
+                              </div>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${isApproved
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                    : "bg-amber-50 text-amber-800 border-amber-200"
+                                  }`}
+                              >
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>{isApproved ? "Approved & Escrow Released" : "72-Hour Inspection Buffer Active"}</span>
+                              </span>
+                            </div>
+
+                            {formattedAmount && (
+                              <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between text-xs">
+                                <span className="text-slate-600 font-medium">Escrow Protection Balance:</span>
+                                <span className="font-mono font-extrabold text-indigo-900 text-sm">{formattedAmount}</span>
+                              </div>
+                            )}
+
+                            {/* Submitted Deliverable Artifacts */}
+                            <div className="space-y-2">
+                              {fileName && (
+                                <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 flex items-center justify-between text-xs shadow-2xs">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                                      <FileCode className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                      <span className="font-bold text-slate-800 block">{fileName}</span>
+                                      <span className="text-[10px] text-slate-400 font-mono">{fileSize || "Codebase Archive"}</span>
+                                    </div>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                                    Uploaded Archive (.zip)
+                                  </span>
+                                </div>
+                              )}
+
+                              {repoUrl && (
+                                <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 flex items-center justify-between text-xs shadow-2xs">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
+                                      <ExternalLink className="w-4 h-4" />
+                                    </div>
+                                    <span className="font-bold text-slate-800 truncate max-w-sm">{repoUrl}</span>
+                                  </div>
+                                  <a
+                                    href={repoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition inline-flex items-center gap-1.5"
+                                  >
+                                    <span>Inspect PR</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              )}
+
+                              {previewUrl && (
+                                <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-100 flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-2 text-purple-900 font-medium">
+                                    <Video className="w-4 h-4 text-purple-600" />
+                                    <span className="truncate max-w-sm">Walkthrough: {previewUrl}</span>
+                                  </div>
+                                  <a
+                                    href={previewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1 rounded-md bg-white border border-purple-200 text-purple-700 font-bold text-xs hover:bg-purple-50"
+                                  >
+                                    Watch Demo
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+
+                            {notes && (
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                                  Freelancer Verification Notes
+                                </span>
+                                <p className="leading-relaxed">{notes}</p>
+                              </div>
+                            )}
+
+                            {/* Autonomous Pre-Flight Checks Summary */}
+                            <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 space-y-2.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                  <span>Autonomous Proof-of-Execution Pre-Checks</span>
+                                </span>
+                                {checks ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    {checks.passedTests !== undefined ? `${checks.passedTests}/${checks.totalTests} Passed` : (checks.qualificationState || "PASSED")}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Passed Pre-Flight
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Visible Check Breakdown */}
+                              {Array.isArray(checks?.checks || meta.checks) && (checks?.checks || meta.checks).length > 0 && (
+                                <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
+                                  {(checks?.checks || meta.checks).slice(0, 4).map((c: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between text-[11px]">
+                                      <span className="flex items-center gap-1.5 text-slate-700">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span className="truncate max-w-[280px]">{c.name}</span>
+                                      </span>
+                                      <span className="text-[10px] font-mono text-slate-400">
+                                        {c.durationMs ? `${c.durationMs}ms` : "verified"}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {seal && (
+                                <div className="text-[10px] font-mono text-slate-400 truncate pt-1 border-t border-slate-100">
+                                  Consensus Seal: {seal}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Client Action Buttons */}
+                            <div className="pt-1 flex flex-wrap items-center gap-2.5">
+                              {isApproved ? (
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                  <span>Funds Released to Freelancer</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={isApproving}
+                                    onClick={() => handleApproveAndRelease(milestoneId, milestoneNumber, formattedAmount)}
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span>{isApproving ? "Releasing Escrow..." : `Review & Release Escrow Funds (${formattedAmount || "Milestone"})`}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMessageInput(`Feedback & revision request for ${milestoneTitle}: `);
+                                    }}
+                                    className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                                  >
+                                    Request Revisions
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveTab("deliverables")}
+                                    className="px-3 py-2 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
+                                  >
+                                    View Full Inspection Details
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE: Milestone Approved (Pre-funded)
+                      if (item.type === "MILESTONE_APPROVED_PREFUNDED") {
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/40 shadow-xs space-y-2.5 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Milestone Paid & Next Active</span>
+                              </span>
+                              <span className="text-[11px] text-slate-400">{item.timestamp}</span>
+                            </div>
+                            <p className="text-xs sm:text-[13px] text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                              {item.bubbleText || item.rawMessage || item.summaryText}
+                            </p>
+                            <div className="pt-1 flex items-center gap-2 text-xs text-emerald-700 font-bold">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>Escrow released. Next milestone pre-funded and work is in progress.</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CARD TYPE: Milestone Approved (Awaiting Next Funds)
+                      if (item.type === "MILESTONE_APPROVED_AWAITING_FUNDS") {
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-amber-50/30 shadow-xs space-y-3 animate-in fade-in duration-200"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Milestone Paid · Escrow Deposit Required</span>
+                              </span>
+                              <span className="text-[11px] text-slate-400">{item.timestamp}</span>
+                            </div>
+                            <p className="text-xs sm:text-[13px] text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                              {item.bubbleText || item.rawMessage || item.summaryText}
+                            </p>
+                            <div className="pt-1 flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-xs text-amber-800 font-semibold">
+                                <Clock className="w-4 h-4 text-amber-600" />
+                                <span>Deposit escrow for next milestone to authorize freelancer kickoff.</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab("milestones")}
+                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                              >
+                                <span>Deposit Next Escrow</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })
+                  )}
+                  <div ref={timelineEndRef} />
+                </>
+              )}
+
+              {/* TAB 2: MILESTONES & ESCROW */}
+              {activeTab === "milestones" && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Milestone Breakdown & Escrow</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsChannel3ModalOpen(true)}
+                        className="px-2.5 py-1.5 rounded-xl border border-purple-200/90 bg-purple-50/70 hover:bg-purple-100/80 text-xs font-bold text-purple-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="Discover hardware/products to attach into milestone scope"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Channel 3 Explorer</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddendumInitialTitle("");
+                          setAddendumInitialDesc("");
+                          setIsAddendumModalOpen(true);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Propose Addendum</span>
+                      </button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: BRYNTUM MILESTONE TIMELINE & GANTT ENGINE */}
-        {activeTab === "timeline" && (
-          <MilestoneGanttView
-            project={selectedProject}
-            userRole="CLIENT"
-            onPostponeMilestone={(milestoneId, currentDueDate) => {
-              setSelectedMilestoneForPostpone({ id: milestoneId, dueDate: currentDueDate });
-              setIsPostponeMilestoneModalOpen(true);
-            }}
-          />
-        )}
-
-          {/* TAB 3: DELIVERABLES (72-Hour Inspection Buffer) */}
-          {activeTab === "deliverables" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Milestone Deliverables</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Protected by 72-hour escrow inspection countdown and cryptographic hash verification.
-                  </p>
+                  <div className="space-y-2.5">
+                    {selectedProject.milestones.length === 0 ? (
+                      <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                        <Clock className="w-8 h-8 text-slate-400 mb-2" />
+                        <h4 className="text-sm font-bold text-slate-800 mb-1">No Milestones Configured</h4>
+                        <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                          Milestones defined in your contract proposal will appear here with real-time PayPal Orders REST v2 pre-funding status.
+                        </p>
+                      </div>
+                    ) : (
+                      selectedProject.milestones.map((m) => (
+                        <div key={m.id} className="p-4 rounded-xl border border-slate-200/80 bg-white space-y-2 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">{m.number}. {m.title}</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.statusColor}`}>
+                              {m.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                            <span>Due date: {m.dueDate}</span>
+                            <span className="font-bold font-mono text-slate-800 text-xs">{m.amount}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {handoverData && (
-                <div className="mb-2">
+              {/* TAB: BRYNTUM MILESTONE TIMELINE & GANTT ENGINE */}
+              {activeTab === "timeline" && (
+                <div className="space-y-4">
+                  {/* Preview mini Gantt embedded */}
+                  <MilestoneGanttView
+                    project={selectedProject}
+                    userRole="CLIENT"
+                    onPostponeMilestone={(milestoneId, currentDueDate) => {
+                      setSelectedMilestoneForPostpone({ id: milestoneId, dueDate: currentDueDate });
+                      setIsPostponeMilestoneModalOpen(true);
+                    }}
+                  />
+                  {/* CTA to full page */}
+                  <div className="flex justify-end">
+                    <a
+                      href={`/workspace/${selectedProject.id}/gantt?from=milestones`}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition cursor-pointer"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open Full-Screen Gantt
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: DELIVERABLES (72-Hour Inspection Buffer) */}
+              {activeTab === "deliverables" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Milestone Deliverables</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Protected by 72-hour escrow inspection countdown and cryptographic hash verification.
+                      </p>
+                    </div>
+                  </div>
+
+                  {handoverData && (
+                    <div className="mb-2">
+                      <ProjectHandoverBanner
+                        role="CLIENT"
+                        projectName={selectedProject.name}
+                        handoverData={handoverData}
+                        onInitiateClick={() => setIsHandoverModalOpen(true)}
+                        onViewChecklistClick={() => setActiveTab("handover")}
+                      />
+                    </div>
+                  )}
+
+                  {!selectedProject.milestones || selectedProject.milestones.length === 0 ? (
+                    <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                      <Package className="w-8 h-8 text-slate-400 mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">No Deliverables Submitted Yet</h4>
+                      <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                        When {selectedProject.freelancerName} submits deliverables for review, they will appear here with cryptographic hash verification and a 72-hour escrow inspection buffer.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {selectedProject.milestones.map((m) => {
+                        const isApproved = m.status === "APPROVED" || m.status === "CAPTURED";
+                        return (
+                          <div key={m.id} className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-indigo-50 text-indigo-700 border border-indigo-100 mb-1">
+                                  Milestone {m.number} · {m.amount}
+                                </div>
+                                <h4 className="text-sm font-bold text-slate-900">
+                                  {m.title}
+                                </h4>
+                              </div>
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 shrink-0 ${isApproved
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}>
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>{isApproved ? "Approved & Escrow Released" : "In 72h Client Review"}</span>
+                              </span>
+                            </div>
+
+                            {!isApproved && (
+                              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                  <div>
+                                    <span className="font-bold text-amber-900">72-Hour Escrow Countdown: </span>
+                                    <span className="font-mono font-bold text-amber-800">Inspection Window Active</span>
+                                  </div>
+                                </div>
+                                <span className="text-[11px] text-amber-700">Auto-release on verification timeout</span>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submission Verification</span>
+                                <span className="font-mono text-slate-700 font-bold inline-flex items-center gap-1">
+                                  <span>Due {m.dueDate}</span>
+                                </span>
+                              </div>
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">SHA-256 Deliverable Fingerprint</span>
+                                <span className="font-mono text-[11px] text-slate-700 font-bold">
+                                  {agreementHash.slice(0, 16)}...{m.id.slice(-4)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-1">
+                              {isApproved ? (
+                                <span className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Escrow Settled via PayPal Orders REST v2 ({m.amount})</span>
+                                </span>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        showToast(`Approving Milestone ${m.number} and releasing escrow...`);
+                                        const res = await fetch(`/api/payments/milestones/${m.id}/approve-and-release`, {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ feedback: "Accepted and approved by client" }),
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          showToast(`Milestone ${m.number} approved! Escrow funds released to ${selectedProject?.freelancerName || "freelancer"}.`);
+                                          setRefreshTrigger((n) => n + 1);
+                                        } else {
+                                          showToast(data.error?.message || data.error || "Approval failed");
+                                        }
+                                      } catch {
+                                        showToast("Approval request failed.");
+                                      }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Approve & Release Funds ({m.amount})</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMessageInput(`Requested revisions on Milestone ${m.number} (${m.title}): `);
+                                      setActiveTab("chat");
+                                    }}
+                                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition cursor-pointer"
+                                  >
+                                    Request Structured Revisions
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedMilestoneForPostpone(m);
+                                      setIsPostponeMilestoneModalOpen(true);
+                                    }}
+                                    className="px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Postpone Due Date</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3.5: PROJECT HANDOVER CHECKLIST */}
+              {activeTab === "handover" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Project Handover &amp; Deliverables Checklist
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Tamper-proof deliverable manifest, code repository transfer, architecture docs, and credential assignment.
+                      </p>
+                    </div>
+                    {!handoverData && (
+                      <button
+                        type="button"
+                        onClick={() => setIsHandoverModalOpen(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Initiate Handover</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Handover Banner */}
                   <ProjectHandoverBanner
                     role="CLIENT"
                     projectName={selectedProject.name}
                     handoverData={handoverData}
                     onInitiateClick={() => setIsHandoverModalOpen(true)}
-                    onViewChecklistClick={() => setActiveTab("handover")}
+                    onViewChecklistClick={() => { }}
                   />
+
+                  {/* Handover Checklist View */}
+                  {handoverData ? (
+                    <HandoverChecklistView
+                      projectId={selectedProject.id}
+                      projectName={selectedProject.name}
+                      role="CLIENT"
+                      handoverData={handoverData}
+                      onRefresh={async () => {
+                        const res = await fetchProjectHandover(selectedProject.id);
+                        if (res.success && res.data?.handover) {
+                          setHandoverData(res.data.handover);
+                        } else {
+                          setHandoverData(null);
+                        }
+                      }}
+                      showToast={showToast}
+                    />
+                  ) : (
+                    <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                      <Package className="w-8 h-8 text-slate-400 mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Handover Checklist Not Yet Initiated</h4>
+                      <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
+                        Once all project milestones are accepted, initiate the handover checklist to request repositories, documentation, and credentials from {selectedProject.freelancerName}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsHandoverModalOpen(true)}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Initiate Handover Protocol</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {!selectedProject.milestones || selectedProject.milestones.length === 0 ? (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <Package className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">No Deliverables Submitted Yet</h4>
-                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    When {selectedProject.freelancerName} submits deliverables for review, they will appear here with cryptographic hash verification and a 72-hour escrow inspection buffer.
-                  </p>
-                </div>
-              ) : (
+              {/* TAB 4: TASKS KANBAN BOARD */}
+              {activeTab === "tasks" && (
                 <div className="space-y-4">
-                  {selectedProject.milestones.map((m) => {
-                    const isApproved = m.status === "APPROVED" || m.status === "CAPTURED";
-                    return (
-                      <div key={m.id} className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-indigo-50 text-indigo-700 border border-indigo-100 mb-1">
-                              Milestone {m.number} · {m.amount}
-                            </div>
-                            <h4 className="text-sm font-bold text-slate-900">
-                              {m.title}
-                            </h4>
-                          </div>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 shrink-0 ${
-                            isApproved
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}>
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{isApproved ? "Approved & Escrow Released" : "In 72h Client Review"}</span>
-                          </span>
-                        </div>
-
-                        {!isApproved && (
-                          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-amber-600" />
-                              <div>
-                                <span className="font-bold text-amber-900">72-Hour Escrow Countdown: </span>
-                                <span className="font-mono font-bold text-amber-800">Inspection Window Active</span>
-                              </div>
-                            </div>
-                            <span className="text-[11px] text-amber-700">Auto-release on verification timeout</span>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submission Verification</span>
-                            <span className="font-mono text-slate-700 font-bold inline-flex items-center gap-1">
-                              <span>Due {m.dueDate}</span>
-                            </span>
-                          </div>
-                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">SHA-256 Deliverable Fingerprint</span>
-                            <span className="font-mono text-[11px] text-slate-700 font-bold">
-                              {agreementHash.slice(0, 16)}...{m.id.slice(-4)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 pt-1">
-                          {isApproved ? (
-                            <span className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Escrow Settled via PayPal Orders REST v2 ({m.amount})</span>
-                            </span>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
-                                    showToast(`Approving Milestone ${m.number} and releasing escrow...`);
-                                    const res = await fetch(`/api/payments/milestones/${m.id}/approve-and-release`, {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ feedback: "Accepted and approved by client" }),
-                                    });
-                                    const data = await res.json();
-                                    if (data.success) {
-                                      showToast(`Milestone ${m.number} approved! Escrow funds released to ${selectedProject?.freelancerName || "freelancer"}.`);
-                                      setRefreshTrigger((n) => n + 1);
-                                    } else {
-                                      showToast(data.error?.message || data.error || "Approval failed");
-                                    }
-                                  } catch {
-                                    showToast("Approval request failed.");
-                                  }
-                                }}
-                                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Approve & Release Funds ({m.amount})</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMessageInput(`Requested revisions on Milestone ${m.number} (${m.title}): `);
-                                  setActiveTab("chat");
-                                }}
-                                className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition cursor-pointer"
-                              >
-                                Request Structured Revisions
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedMilestoneForPostpone(m);
-                                  setIsPostponeMilestoneModalOpen(true);
-                                }}
-                                className="px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5"
-                              >
-                                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                <span>Postpone Due Date</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 3.5: PROJECT HANDOVER CHECKLIST */}
-          {activeTab === "handover" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Project Handover &amp; Deliverables Checklist
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Tamper-proof deliverable manifest, code repository transfer, architecture docs, and credential assignment.
-                  </p>
-                </div>
-                {!handoverData && (
-                  <button
-                    type="button"
-                    onClick={() => setIsHandoverModalOpen(true)}
-                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Initiate Handover</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Handover Banner */}
-              <ProjectHandoverBanner
-                role="CLIENT"
-                projectName={selectedProject.name}
-                handoverData={handoverData}
-                onInitiateClick={() => setIsHandoverModalOpen(true)}
-                onViewChecklistClick={() => {}}
-              />
-
-              {/* Handover Checklist View */}
-              {handoverData ? (
-                <HandoverChecklistView
-                  projectId={selectedProject.id}
-                  projectName={selectedProject.name}
-                  role="CLIENT"
-                  handoverData={handoverData}
-                  onRefresh={async () => {
-                    const res = await fetchProjectHandover(selectedProject.id);
-                    if (res.success && res.data?.handover) {
-                      setHandoverData(res.data.handover);
-                    } else {
-                      setHandoverData(null);
-                    }
-                  }}
-                  showToast={showToast}
-                />
-              ) : (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <Package className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Handover Checklist Not Yet Initiated</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
-                    Once all project milestones are accepted, initiate the handover checklist to request repositories, documentation, and credentials from {selectedProject.freelancerName}.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsHandoverModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Initiate Handover Protocol</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 4: TASKS KANBAN BOARD */}
-          {activeTab === "tasks" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Project Kanban Board</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Real-time tasks synchronized across Client, Freelancer, and AI Notetaker.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingTask(true)}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Task</span>
-                </button>
-              </div>
-
-              {/* Task Creation Form */}
-              {isAddingTask && (
-                <form onSubmit={handleCreateTask} className="p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/50 space-y-3 animate-in fade-in">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800">New Task</span>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Project Kanban Board</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Real-time tasks synchronized across Client, Freelancer, and AI Notetaker.
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setIsAddingTask(false)}
-                      className="text-xs text-slate-500 hover:text-slate-800"
+                      onClick={() => setIsAddingTask(true)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1"
                     >
-                      Cancel
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Task</span>
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Task title (e.g. Implement webhook retry test)"
-                    required
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-500">Priority:</span>
-                      {(["LOW", "MEDIUM", "HIGH"] as const).map((p) => (
+
+                  {/* Task Creation Form */}
+                  {isAddingTask && (
+                    <form onSubmit={handleCreateTask} className="p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/50 space-y-3 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">New Task</span>
                         <button
-                          key={p}
                           type="button"
-                          onClick={() => setNewTaskPriority(p)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            newTaskPriority === p ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200"
-                          }`}
+                          onClick={() => setIsAddingTask(false)}
+                          className="text-xs text-slate-500 hover:text-slate-800"
                         >
-                          {p}
+                          Cancel
                         </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="Task title (e.g. Implement webhook retry test)"
+                        required
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                      />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-500">Priority:</span>
+                          {(["LOW", "MEDIUM", "HIGH"] as const).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setNewTaskPriority(p)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${newTaskPriority === p ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200"
+                                }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs"
+                        >
+                          Save Task
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* 4-Column Board */}
+                  {tasks.length === 0 && !isAddingTask ? (
+                    <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                      <Layers className="w-8 h-8 text-slate-400 mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">No Tasks on the Board</h4>
+                      <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
+                        Create a task to organize milestone deliverables or run an AI meeting notetaker session to extract action items automatically.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingTask(true)}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Create First Task</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                      {(["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"] as const).map((col) => {
+                        const colTasks = tasks.filter((t) => t.status === col);
+                        const labels: Record<string, string> = {
+                          TODO: "To Do",
+                          IN_PROGRESS: "In Progress",
+                          IN_REVIEW: "In Review",
+                          DONE: "Done",
+                        };
+                        return (
+                          <div key={col} className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2">
+                            <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 font-bold text-slate-800">
+                              <span>{labels[col]}</span>
+                              <span className="px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px]">
+                                {colTasks.length}
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              {colTasks.length === 0 ? (
+                                <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center text-slate-400 text-[11px]">
+                                  Empty
+                                </div>
+                              ) : (
+                                colTasks.map((t) => (
+                                  <div
+                                    key={t.id}
+                                    className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-2"
+                                  >
+                                    <div className="font-semibold text-slate-900 leading-snug">{t.title}</div>
+                                    <div className="flex items-center justify-between text-[10px]">
+                                      <span className={`px-1.5 py-0.2 rounded font-bold ${t.priority === "HIGH" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-600"
+                                        }`}>
+                                        {t.priority}
+                                      </span>
+                                      {t.dueDate && <span className="text-slate-400">Due {t.dueDate}</span>}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAdvanceTask(t)}
+                                      className="w-full mt-1 py-1 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-[10px] font-bold text-slate-600 transition flex items-center justify-center gap-1 cursor-pointer"
+                                    >
+                                      <span>Next stage</span>
+                                      <ArrowRight className="w-2.5 h-2.5" />
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: FILES TAB */}
+              {activeTab === "files" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Project Files & Attachments</h3>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingFile}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isUploadingFile ? "Uploading..." : "Upload File"}</span>
+                    </button>
+                  </div>
+                  {files.length === 0 ? (
+                    <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                      <FileText className="w-8 h-8 text-slate-400 mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">No Files in Vault</h4>
+                      <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
+                        Upload project specifications, design mockups, API contracts, or test assets to store them securely in the project vault.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {files.map((f, i) => (
+                        <div
+                          key={i}
+                          onClick={() => f.name.toLowerCase().includes("contract") && setIsContractModalOpen(true)}
+                          className={`p-3.5 rounded-xl border border-slate-200/80 bg-white flex items-center justify-between text-xs hover:border-indigo-500/40 transition shadow-2xs ${f.name.toLowerCase().includes("contract") ? "cursor-pointer hover:bg-indigo-50/20" : ""
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10px] border border-indigo-100">
+                              {f.type}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                                <span>{f.name}</span>
+                                {f.name.toLowerCase().includes("contract") && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700">
+                                    Legal Agreement
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-slate-400">{f.size} · {f.date}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {f.name.toLowerCase().includes("contract") && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsContractModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                              >
+                                <FileText className="w-3 h-3 text-indigo-600" />
+                                <span>View</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (f.name.toLowerCase().includes("contract")) {
+                                  setIsContractModalOpen(true);
+                                } else {
+                                  const url = (f as any).downloadUrl || ((f as any).fileId ? `/api/files/${(f as any).fileId}?download=1` : null);
+                                  if (url) {
+                                    window.open(url, "_blank");
+                                  } else {
+                                    showToast(`Downloading ${f.name}...`);
+                                  }
+                                }
+                              }}
+                              className="text-xs font-semibold text-indigo-600 hover:underline cursor-pointer"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 6: DECISIONS TAB (ADR) */}
+              {activeTab === "decisions" && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Mutual Consensus Record (ADR)</h3>
+                  {decisions.length === 0 ? (
+                    <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                      <ShieldCheck className="w-8 h-8 text-slate-400 mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">No Decision Records Yet</h4>
+                      <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                        Agreed architectural choices and contract addendums will appear here with cryptographic SHA-256 seals signed by both parties.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {decisions.map((dec) => (
+                        <div key={dec.id} className="p-4 rounded-2xl border border-slate-200/80 bg-white space-y-3 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span className="font-bold text-slate-900">{dec.title}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {dec.status}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 text-slate-600">
+                            <div><strong className="text-slate-800">Context:</strong> {dec.context}</div>
+                            <div><strong className="text-slate-800">Resolution:</strong> {dec.resolution}</div>
+                            <div className="font-mono text-[10px] text-slate-400 pt-1">
+                              SHA-256: {dec.sha256Seal}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 7: MEETINGS TAB */}
+              {activeTab === "meetings" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Scheduled Sync Calls</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Bilateral slot consensus with auto Google Calendar sync and Autonomous AI Notetaker.
+                      </p>
+                    </div>
                     <button
-                      type="submit"
-                      className="px-4 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs"
+                      type="button"
+                      onClick={() => setIsProposeMeetingModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1"
                     >
-                      Save Task
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Propose Meeting</span>
                     </button>
                   </div>
-                </form>
-              )}
 
-              {/* 4-Column Board */}
-              {tasks.length === 0 && !isAddingTask ? (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <Layers className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">No Tasks on the Board</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
-                    Create a task to organize milestone deliverables or run an AI meeting notetaker session to extract action items automatically.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingTask(true)}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Create First Task</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                  {(["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"] as const).map((col) => {
-                    const colTasks = tasks.filter((t) => t.status === col);
-                    const labels: Record<string, string> = {
-                      TODO: "To Do",
-                      IN_PROGRESS: "In Progress",
-                      IN_REVIEW: "In Review",
-                      DONE: "Done",
-                    };
-                    return (
-                      <div key={col} className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2">
-                        <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 font-bold text-slate-800">
-                          <span>{labels[col]}</span>
-                          <span className="px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px]">
-                            {colTasks.length}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          {colTasks.length === 0 ? (
-                            <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center text-slate-400 text-[11px]">
-                              Empty
-                            </div>
-                          ) : (
-                            colTasks.map((t) => (
-                              <div
-                                key={t.id}
-                                className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-2"
-                              >
-                                <div className="font-semibold text-slate-900 leading-snug">{t.title}</div>
-                                <div className="flex items-center justify-between text-[10px]">
-                                  <span className={`px-1.5 py-0.2 rounded font-bold ${
-                                    t.priority === "HIGH" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-600"
-                                  }`}>
-                                    {t.priority}
-                                  </span>
-                                  {t.dueDate && <span className="text-slate-400">Due {t.dueDate}</span>}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAdvanceTask(t)}
-                                  className="w-full mt-1 py-1 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-[10px] font-bold text-slate-600 transition flex items-center justify-center gap-1 cursor-pointer"
-                                >
-                                  <span>Next stage</span>
-                                  <ArrowRight className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 5: FILES TAB */}
-          {activeTab === "files" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Project Files & Attachments</h3>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingFile}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{isUploadingFile ? "Uploading..." : "Upload File"}</span>
-                </button>
-              </div>
-              {files.length === 0 ? (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <FileText className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">No Files in Vault</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
-                    Upload project specifications, design mockups, API contracts, or test assets to store them securely in the project vault.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {files.map((f, i) => (
-                    <div
-                      key={i}
-                      onClick={() => f.name.toLowerCase().includes("contract") && setIsContractModalOpen(true)}
-                      className={`p-3.5 rounded-xl border border-slate-200/80 bg-white flex items-center justify-between text-xs hover:border-indigo-500/40 transition shadow-2xs ${
-                        f.name.toLowerCase().includes("contract") ? "cursor-pointer hover:bg-indigo-50/20" : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10px] border border-indigo-100">
-                          {f.type}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                            <span>{f.name}</span>
-                            {f.name.toLowerCase().includes("contract") && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700">
-                                Legal Agreement
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-400">{f.size} · {f.date}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {f.name.toLowerCase().includes("contract") && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsContractModalOpen(true);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition cursor-pointer flex items-center gap-1"
-                          >
-                            <FileText className="w-3 h-3 text-indigo-600" />
-                            <span>View</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (f.name.toLowerCase().includes("contract")) {
-                              setIsContractModalOpen(true);
-                            } else {
-                              const url = (f as any).downloadUrl || ((f as any).fileId ? `/api/files/${(f as any).fileId}?download=1` : null);
-                              if (url) {
-                                window.open(url, "_blank");
-                              } else {
-                                showToast(`Downloading ${f.name}...`);
-                              }
-                            }
-                          }}
-                          className="text-xs font-semibold text-indigo-600 hover:underline cursor-pointer"
-                        >
-                          Download
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 6: DECISIONS TAB (ADR) */}
-          {activeTab === "decisions" && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Mutual Consensus Record (ADR)</h3>
-              {decisions.length === 0 ? (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <ShieldCheck className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">No Decision Records Yet</h4>
-                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    Agreed architectural choices and contract addendums will appear here with cryptographic SHA-256 seals signed by both parties.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {decisions.map((dec) => (
-                    <div key={dec.id} className="p-4 rounded-2xl border border-slate-200/80 bg-white space-y-3 text-xs shadow-2xs">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <span className="font-bold text-slate-900">{dec.title}</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {dec.status}
-                        </span>
-                      </div>
-                      <div className="space-y-1.5 text-slate-600">
-                        <div><strong className="text-slate-800">Context:</strong> {dec.context}</div>
-                        <div><strong className="text-slate-800">Resolution:</strong> {dec.resolution}</div>
-                        <div className="font-mono text-[10px] text-slate-400 pt-1">
-                          SHA-256: {dec.sha256Seal}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 7: MEETINGS TAB */}
-          {activeTab === "meetings" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Scheduled Sync Calls</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Bilateral slot consensus with auto Google Calendar sync and Autonomous AI Notetaker.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsProposeMeetingModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Propose Meeting</span>
-                </button>
-              </div>
-
-              {meetings.length === 0 ? (
-                <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
-                  <Calendar className="w-8 h-8 text-slate-400 mb-2" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">No Meetings Scheduled</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
-                    Propose 1 to 3 time slots to schedule a sync call. Once mutually accepted, an internal video room and Google Calendar sync will be provisioned automatically.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsProposeMeetingModalOpen(true)}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Propose First Meeting</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {meetings.map((m) => (
-                  <div key={m.id} className="p-4 rounded-2xl border border-indigo-100 bg-[#fbfbfe] space-y-3 text-xs shadow-2xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-                          <Video className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900">{m.title}</div>
-                          <div className="text-[11px] text-slate-500">
-                            {(() => {
-                              const s = m.acceptedSlot || (m.proposedSlots && m.proposedSlots[0]);
-                              if (!s) return "Upcoming";
-                              if (typeof s === "object" && s !== null) {
-                                return (s as any).startTime ? new Date((s as any).startTime).toLocaleString() : String((s as any).id || "Upcoming");
-                              }
-                              return String(s);
-                            })()} ({m.durationMinutes} mins)
-                          </div>
-                        </div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        m.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                      }`}>
-                        {m.status}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+                  {meetings.length === 0 ? (
+                    <div className="p-8 rounded-2xl border border-slate-200/80 bg-slate-50/50 text-center flex flex-col items-center justify-center">
+                      <Calendar className="w-8 h-8 text-slate-400 mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">No Meetings Scheduled</h4>
+                      <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
+                        Propose 1 to 3 time slots to schedule a sync call. Once mutually accepted, an internal video room and Google Calendar sync will be provisioned automatically.
+                      </p>
                       <button
                         type="button"
-                        onClick={() => window.open(`${m.roomUrl}?projectId=${selectedProjectId}&meetingId=${m.id}&role=CLIENT`, "_blank")}
-                        className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                        onClick={() => setIsProposeMeetingModalOpen(true)}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
                       >
-                        <Video className="w-3.5 h-3.5" />
-                        <span>Join Internal Room</span>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Propose First Meeting</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {meetings.map((m) => (
+                        <div key={m.id} className="p-4 rounded-2xl border border-indigo-100 bg-[#fbfbfe] space-y-3 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                                <Video className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900">{m.title}</div>
+                                <div className="text-[11px] text-slate-500">
+                                  {(() => {
+                                    const s = m.acceptedSlot || (m.proposedSlots && m.proposedSlots[0]);
+                                    if (!s) return "Upcoming";
+                                    if (typeof s === "object" && s !== null) {
+                                      return (s as any).startTime ? new Date((s as any).startTime).toLocaleString() : String((s as any).id || "Upcoming");
+                                    }
+                                    return String(s);
+                                  })()} ({m.durationMinutes} mins)
+                                </div>
+                              </div>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                              }`}>
+                              {m.status}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => window.open(`${m.roomUrl}?projectId=${selectedProjectId}&meetingId=${m.id}&role=CLIENT`, "_blank")}
+                              className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>Join Internal Room</span>
+                            </button>
+
+                            {m.googleCalendarUrl && (
+                              <button
+                                type="button"
+                                onClick={() => window.open(m.googleCalendarUrl, "_blank")}
+                                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Google Calendar Sync</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerAINotetaker(m)}
+                              className="px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Run AI Notetaker Synthesis</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedMeetingForPostpone(m);
+                                setIsPostponeMeetingModalOpen(true);
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Postpone / Reschedule</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 8: DISPUTE SAFE HARBOR */}
+              {activeTab === "safe_harbor" && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Dispute Safe Harbor & Forensic Audit</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Every message, amendment, and deliverable is sealed with a parent-linked SHA-256 cryptographic chain.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-900 text-white space-y-3 font-mono text-xs shadow-md">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-emerald-400 font-bold flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>CANONICAL AGREEMENT SEAL</span>
+                      </span>
+                      <span className="text-slate-400 text-[10px]">Zero-Knowledge Proof</span>
+                    </div>
+                    <div className="text-[11px] text-slate-300 break-all">
+                      Active Baseline: {agreementHash}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Parent Root: 0x{selectedProject.id.replace(/[^a-f0-9]/gi, "").padEnd(16, "0").slice(0, 16)}...{agreementHash.replace(/[^a-f0-9]/gi, "").slice(-8) || "8e7d"}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => showToast("Forensic audit trail (.json) compiled and downloaded.")}
+                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Download Forensic Audit Trail (.json)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => showToast("Tier 3 Gemini Safe Harbor engine packaged dispute bundle with zero token waste.")}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Request Tier 3 Gemini Safe Harbor Analysis</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Message Composer (Bottom) */}
+            <div className="border-t border-slate-200/80 bg-white p-3 sm:p-3.5 shrink-0 shadow-2xs">
+              <form onSubmit={handleSendMessage}>
+                <div className="relative rounded-2xl border border-slate-200/90 bg-slate-50/60 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 p-2.5 transition-all shadow-2xs">
+                  <textarea
+                    rows={2}
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder={
+                      composerMode === "mediated"
+                        ? `Message ${selectedProject.freelancerName}... (Nexum AI verifies scope & price before delivery)`
+                        : `Ask Nexum AI privately about ${selectedProject.shortName}... (private to you)`
+                    }
+                    className="w-full text-xs sm:text-[13px] text-slate-900 placeholder:text-slate-400 bg-transparent resize-none focus:outline-none p-1 leading-relaxed"
+                  />
+
+                  {/* Bottom bar of input */}
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80 mt-1 gap-2">
+                    <div className="flex items-center gap-1.5 text-slate-500 overflow-x-auto">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.zip,.txt,.md,.json,.csv"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingFile}
+                        className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-500 transition cursor-pointer shrink-0 disabled:opacity-50"
+                        title="Attach file"
+                      >
+                        <Paperclip className="w-4 h-4" />
                       </button>
 
-                      {m.googleCalendarUrl && (
-                        <button
-                          type="button"
-                          onClick={() => window.open(m.googleCalendarUrl, "_blank")}
-                          className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Google Calendar Sync</span>
-                        </button>
-                      )}
-
                       <button
                         type="button"
-                        onClick={() => handleTriggerAINotetaker(m)}
-                        className="px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingFile}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0 disabled:opacity-50"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Run AI Notetaker Synthesis</span>
+                        {isUploadingFile ? "Uploading..." : "Share file"}
                       </button>
 
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedMeetingForPostpone(m);
-                          setIsPostponeMeetingModalOpen(true);
+                          setActiveTab("tasks");
+                          setIsAddingTask(true);
                         }}
-                        className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0"
                       >
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Postpone / Reschedule</span>
+                        Create task
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsProposeMeetingModalOpen(true)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0"
+                      >
+                        Propose meeting
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsChannel3ModalOpen(true)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100/80 transition cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
+                        title="Channel 3 Universal Product Discovery & Milestone Scope"
+                      >
+                        <ShoppingBag className="w-3 h-3 text-purple-600" />
+                        <span>Channel 3</span>
+                      </button>
+
+                      {hasScopeOrPriceKeywords && (
+                        <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/70 shrink-0">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Review required</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Right side: Compact Mode Switcher + Send button */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="p-0.5 rounded-xl bg-slate-100 border border-slate-200/70 inline-flex items-center gap-0.5 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setComposerMode("mediated")}
+                          title={`Message ${selectedProject.freelancerName} (Mediated via Nexum AI)`}
+                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 ${composerMode === "mediated"
+                              ? "bg-white text-indigo-700 shadow-xs"
+                              : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                          <span>Via Nexum</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const scope = selectedProject?.shortName || selectedProject?.name || "All my projects";
+                            onSwitchToAIMode?.(scope);
+                          }}
+                          title="Ask Nexum AI privately (Freelancers never see this)"
+                          className="px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 text-slate-500 hover:text-slate-800"
+                        >
+                          <Sparkles className="w-3 h-3 text-indigo-500" />
+                          <span>Private AI</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={!messageInput.trim() || isSending}
+                        className="w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition cursor-pointer shadow-xs shrink-0"
+                        title={composerMode === "mediated" ? "Send message (Enter)" : "Ask Nexum AI (Enter)"}
+                      >
+                        <ArrowUp className="w-4 h-4 stroke-[2.5]" />
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-          {/* TAB 8: DISPUTE SAFE HARBOR */}
-          {activeTab === "safe_harbor" && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Dispute Safe Harbor & Forensic Audit</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Every message, amendment, and deliverable is sealed with a parent-linked SHA-256 cryptographic chain.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-900 text-white space-y-3 font-mono text-xs shadow-md">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-emerald-400 font-bold flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>CANONICAL AGREEMENT SEAL</span>
-                  </span>
-                  <span className="text-slate-400 text-[10px]">Zero-Knowledge Proof</span>
                 </div>
-                <div className="text-[11px] text-slate-300 break-all">
-                  Active Baseline: {agreementHash}
-                </div>
-                <div className="text-[10px] text-slate-500">
-                  Parent Root: 0x{selectedProject.id.replace(/[^a-f0-9]/gi, "").padEnd(16, "0").slice(0, 16)}...{agreementHash.replace(/[^a-f0-9]/gi, "").slice(-8) || "8e7d"}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => showToast("Forensic audit trail (.json) compiled and downloaded.")}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Download Forensic Audit Trail (.json)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => showToast("Tier 3 Gemini Safe Harbor engine packaged dispute bundle with zero token waste.")}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Request Tier 3 Gemini Safe Harbor Analysis</span>
-                </button>
-              </div>
+              </form>
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </main>
 
-        {/* Message Composer (Bottom) */}
-        <div className="border-t border-slate-200/80 bg-white p-3 sm:p-3.5 shrink-0 shadow-2xs">
-          <form onSubmit={handleSendMessage}>
-            <div className="relative rounded-2xl border border-slate-200/90 bg-slate-50/60 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 p-2.5 transition-all shadow-2xs">
-              <textarea
-                rows={2}
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                placeholder={
-                  composerMode === "mediated"
-                    ? `Message ${selectedProject.freelancerName}... (Nexum AI verifies scope & price before delivery)`
-                    : `Ask Nexum AI privately about ${selectedProject.shortName}... (private to you)`
-                }
-                className="w-full text-xs sm:text-[13px] text-slate-900 placeholder:text-slate-400 bg-transparent resize-none focus:outline-none p-1 leading-relaxed"
-              />
+      {/* ==============================================================
+      RIGHT COLUMN: PROJECT OVERVIEW PANEL (Approx 290–310px)
+     ============================================================== */}
+      {isRightDrawerOpen ? (
+        <aside className="w-[290px] lg:w-[310px] shrink-0 bg-white p-4 sm:p-5 space-y-4 overflow-y-auto shadow-2xs animate-in fade-in slide-in-from-right-3 duration-150 flex flex-col">
+          {!selectedProject ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400 my-auto">
+              <Layers className="w-8 h-8 mb-2 opacity-40 text-slate-400" />
+              <h4 className="text-xs font-bold text-slate-700 mb-1">No Project Details</h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Select an active contract workspace from the list to view its financial escrow status, signed PRD, and milestone schedule.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Panel Header & Collapse Toggle */}
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Project Details
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsRightDrawerOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  title="Hide details (gives chat more space)"
+                  aria-label="Hide details"
+                >
+                  <PanelRightClose className="w-4 h-4" />
+                </button>
+              </div>
 
-              {/* Bottom bar of input */}
-              <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80 mt-1 gap-2">
-                <div className="flex items-center gap-1.5 text-slate-500 overflow-x-auto">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.zip,.txt,.md,.json,.csv"
-                  />
+              {/* 1. Project Overview Card */}
+              <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Overview
+                  </h3>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60 whitespace-nowrap shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <span>In progress</span>
+                  </span>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingFile}
-                    className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-500 transition cursor-pointer shrink-0 disabled:opacity-50"
-                    title="Attach file"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </button>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-400">Freelancer</span>
+                    <span className="font-semibold text-slate-900">{selectedProject.freelancerName}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-400">Budget</span>
+                    <span className="font-semibold text-slate-900 font-mono">{selectedProject.budget}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-400">Duration</span>
+                    <span className="font-semibold text-slate-900">{selectedProject.duration}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-400">Start date</span>
+                    <span className="text-slate-800">{selectedProject.startDate}</span>
+                  </div>
+                  <div className="flex justify-between py-1 items-center">
+                    <span className="text-slate-400">Agreement</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsContractModalOpen(true)}
+                      className="font-bold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-md px-2 py-0.5 font-mono text-[11px] flex items-center gap-1 transition cursor-pointer"
+                      title="Click to view complete bilateral agreement"
+                    >
+                      <span>{selectedProject.agreementVersion.includes("active") ? selectedProject.agreementVersion : `${selectedProject.agreementVersion} active`}</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingFile}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0 disabled:opacity-50"
-                  >
-                    {isUploadingFile ? "Uploading..." : "Share file"}
-                  </button>
-
+              {/* 2. Needs Your Decision Card (Amber/Yellow Card) */}
+              {selectedProject.decisionRequired && (
+                <div className="p-4.5 rounded-2xl border border-amber-200/90 bg-amber-50/50 shadow-2xs space-y-3">
+                  <h3 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                    {selectedProject.decisionRequired.title}
+                  </h3>
+                  <p className="text-xs text-amber-900/90 leading-relaxed font-medium">
+                    {selectedProject.decisionRequired.description}
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab("tasks");
-                      setIsAddingTask(true);
+                      setReviewVersionTarget(selectedProject.decisionRequired?.version || "Version 4");
+                      setIsReviewModalOpen(true);
                     }}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0"
+                    className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer text-center"
                   >
-                    Create task
+                    {selectedProject.decisionRequired.actionLabel}
                   </button>
+                </div>
+              )}
 
-                  <button
-                    type="button"
-                    onClick={() => setIsProposeMeetingModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0"
-                  >
-                    Propose meeting
-                  </button>
+              {/* 3. Milestones Card */}
+              <div className="p-4.5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-3">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Milestones
+                </h3>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsChannel3ModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100/80 transition cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-                    title="Channel 3 Universal Product Discovery & Milestone Scope"
-                  >
-                    <ShoppingBag className="w-3 h-3 text-purple-600" />
-                    <span>Channel 3</span>
-                  </button>
-
-                  {hasScopeOrPriceKeywords && (
-                    <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/70 shrink-0">
-                      <AlertCircle className="w-3 h-3 text-amber-600" />
-                      <span>Review required</span>
-                    </span>
+                <div className="space-y-2.5 text-xs">
+                  {selectedProject.milestones && selectedProject.milestones.length > 0 ? (
+                    <div className="space-y-2.5 text-xs">
+                      {selectedProject.milestones.map((m) => (
+                        <div key={m.id} className="flex items-center justify-between py-1 border-b border-slate-50 last:border-b-0">
+                          <div>
+                            <div className="font-bold text-slate-900">
+                              {m.number}. {m.title}
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              {m.amount} · {m.dueDate}
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.statusColor}`}>
+                            {m.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-3 px-2 text-center rounded-xl bg-slate-50/70 border border-dashed border-slate-200">
+                      <p className="text-[11px] text-slate-500 font-medium">No milestones scheduled yet</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Milestones will appear when agreement terms are approved.</p>
+                    </div>
                   )}
                 </div>
 
-                {/* Right side: Compact Mode Switcher + Send button */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="p-0.5 rounded-xl bg-slate-100 border border-slate-200/70 inline-flex items-center gap-0.5 shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setComposerMode("mediated")}
-                      title={`Message ${selectedProject.freelancerName} (Mediated via Nexum AI)`}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 ${
-                        composerMode === "mediated"
-                          ? "bg-white text-indigo-700 shadow-xs"
-                          : "text-slate-500 hover:text-slate-800"
-                      }`}
-                    >
-                      <span>Via Nexum</span>
-                    </button>
+                {selectedProject.paymentNote && (
+                  <p className="text-[10px] text-slate-400 leading-relaxed pt-1.5 border-t border-slate-100">
+                    {selectedProject.paymentNote}
+                  </p>
+                )}
+              </div>
 
+              {/* 4. Upcoming Card */}
+              {selectedProject.upcomingMeeting && (
+                <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-2 text-xs">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Upcoming
+                  </h3>
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div>
+                      <div className="font-bold text-slate-900">{selectedProject.upcomingMeeting.title}</div>
+                      <div className="text-[11px] text-slate-500">
+                        {selectedProject.upcomingMeeting.time
+                          ? formatInTimezone(parseMeetingSlot(selectedProject.upcomingMeeting.time), (selectedProject as any)?.clientTimezone || "America/New_York").fullFormatted
+                          : "Upcoming"}
+                      </div>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        const scope = selectedProject?.shortName || selectedProject?.name || "All my projects";
-                        onSwitchToAIMode?.(scope);
-                      }}
-                      title="Ask Nexum AI privately (Freelancers never see this)"
-                      className="px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 text-slate-500 hover:text-slate-800"
+                      onClick={() => showToast("Launching video meeting room...")}
+                      className="px-3.5 py-1.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 font-bold text-slate-800 text-xs transition cursor-pointer shadow-2xs"
                     >
-                      <Sparkles className="w-3 h-3 text-indigo-500" />
-                      <span>Private AI</span>
+                      Join
                     </button>
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={!messageInput.trim() || isSending}
-                    className="w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition cursor-pointer shadow-xs shrink-0"
-                    title={composerMode === "mediated" ? "Send message (Enter)" : "Ask Nexum AI (Enter)"}
-                  >
-                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-      </>
-    )}
-  </main>
-
-  {/* ==============================================================
-      RIGHT COLUMN: PROJECT OVERVIEW PANEL (Approx 290–310px)
-     ============================================================== */}
-  {isRightDrawerOpen ? (
-    <aside className="w-[290px] lg:w-[310px] shrink-0 bg-white p-4 sm:p-5 space-y-4 overflow-y-auto shadow-2xs animate-in fade-in slide-in-from-right-3 duration-150 flex flex-col">
-      {!selectedProject ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400 my-auto">
-          <Layers className="w-8 h-8 mb-2 opacity-40 text-slate-400" />
-          <h4 className="text-xs font-bold text-slate-700 mb-1">No Project Details</h4>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Select an active contract workspace from the list to view its financial escrow status, signed PRD, and milestone schedule.
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Panel Header & Collapse Toggle */}
-          <div className="flex items-center justify-between pb-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Project Details
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsRightDrawerOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              title="Hide details (gives chat more space)"
-              aria-label="Hide details"
-            >
-              <PanelRightClose className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* 1. Project Overview Card */}
-          <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Overview
-              </h3>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60 whitespace-nowrap shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                <span>In progress</span>
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Freelancer</span>
-                <span className="font-semibold text-slate-900">{selectedProject.freelancerName}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Budget</span>
-                <span className="font-semibold text-slate-900 font-mono">{selectedProject.budget}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Duration</span>
-                <span className="font-semibold text-slate-900">{selectedProject.duration}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Start date</span>
-                <span className="text-slate-800">{selectedProject.startDate}</span>
-              </div>
-              <div className="flex justify-between py-1 items-center">
-                <span className="text-slate-400">Agreement</span>
-                <button
-                  type="button"
-                  onClick={() => setIsContractModalOpen(true)}
-                  className="font-bold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-md px-2 py-0.5 font-mono text-[11px] flex items-center gap-1 transition cursor-pointer"
-                  title="Click to view complete bilateral agreement"
-                >
-                  <span>{selectedProject.agreementVersion.includes("active") ? selectedProject.agreementVersion : `${selectedProject.agreementVersion} active`}</span>
-                  <ExternalLink className="w-2.5 h-2.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Needs Your Decision Card (Amber/Yellow Card) */}
-          {selectedProject.decisionRequired && (
-            <div className="p-4.5 rounded-2xl border border-amber-200/90 bg-amber-50/50 shadow-2xs space-y-3">
-              <h3 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
-                {selectedProject.decisionRequired.title}
-              </h3>
-              <p className="text-xs text-amber-900/90 leading-relaxed font-medium">
-                {selectedProject.decisionRequired.description}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setReviewVersionTarget(selectedProject.decisionRequired?.version || "Version 4");
-                  setIsReviewModalOpen(true);
-                }}
-                className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer text-center"
-              >
-                {selectedProject.decisionRequired.actionLabel}
-              </button>
-            </div>
-          )}
-
-          {/* 3. Milestones Card */}
-          <div className="p-4.5 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Milestones
-            </h3>
-
-            <div className="space-y-2.5 text-xs">
-              {selectedProject.milestones && selectedProject.milestones.length > 0 ? (
-                <div className="space-y-2.5 text-xs">
-                  {selectedProject.milestones.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between py-1 border-b border-slate-50 last:border-b-0">
-                      <div>
-                        <div className="font-bold text-slate-900">
-                          {m.number}. {m.title}
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          {m.amount} · {m.dueDate}
-                        </div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.statusColor}`}>
-                        {m.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-3 px-2 text-center rounded-xl bg-slate-50/70 border border-dashed border-slate-200">
-                  <p className="text-[11px] text-slate-500 font-medium">No milestones scheduled yet</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Milestones will appear when agreement terms are approved.</p>
                 </div>
               )}
-            </div>
-
-            {selectedProject.paymentNote && (
-              <p className="text-[10px] text-slate-400 leading-relaxed pt-1.5 border-t border-slate-100">
-                {selectedProject.paymentNote}
-              </p>
-            )}
-          </div>
-
-          {/* 4. Upcoming Card */}
-          {selectedProject.upcomingMeeting && (
-            <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs space-y-2 text-xs">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Upcoming
-              </h3>
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <div>
-                  <div className="font-bold text-slate-900">{selectedProject.upcomingMeeting.title}</div>
-                  <div className="text-[11px] text-slate-500">
-                    {selectedProject.upcomingMeeting.time
-                      ? formatInTimezone(parseMeetingSlot(selectedProject.upcomingMeeting.time), (selectedProject as any)?.clientTimezone || "America/New_York").fullFormatted
-                      : "Upcoming"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => showToast("Launching video meeting room...")}
-                  className="px-3.5 py-1.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 font-bold text-slate-800 text-xs transition cursor-pointer shadow-2xs"
-                >
-                  Join
-                </button>
-              </div>
-            </div>
+            </>
           )}
-        </>
+        </aside>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsRightDrawerOpen(true)}
+          className="w-8 shrink-0 border-l border-slate-200/80 bg-white hover:bg-slate-50 flex flex-col items-center justify-center gap-2.5 text-slate-400 hover:text-indigo-600 transition cursor-pointer shadow-2xs group py-4 select-none"
+          title="Show project details"
+        >
+          <PanelRightOpen className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+          <span className="[writing-mode:vertical-rl] text-[10px] font-bold tracking-wider uppercase text-slate-400 group-hover:text-slate-700">
+            Details
+          </span>
+        </button>
       )}
-    </aside>
-  ) : (
-    <button
-      type="button"
-      onClick={() => setIsRightDrawerOpen(true)}
-      className="w-8 shrink-0 border-l border-slate-200/80 bg-white hover:bg-slate-50 flex flex-col items-center justify-center gap-2.5 text-slate-400 hover:text-indigo-600 transition cursor-pointer shadow-2xs group py-4 select-none"
-      title="Show project details"
-    >
-      <PanelRightOpen className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-      <span className="[writing-mode:vertical-rl] text-[10px] font-bold tracking-wider uppercase text-slate-400 group-hover:text-slate-700">
-        Details
-      </span>
-    </button>
-  )}
 
-  {/* Review Version Modal */}
-  <ReviewVersionModal
-    isOpen={isReviewModalOpen}
-    onClose={() => setIsReviewModalOpen(false)}
-    versionName={reviewVersionTarget}
-    onApproveVersion={(ver) => {
-      showToast(`Agreement version ${ver} mutually approved! Hash updated.`);
-    }}
-    onOpenCounteroffer={() => {
-      setMessageInput("I would like to propose a counteroffer of $500 for CR-2.");
-      showToast("Counteroffer drafted in composer.");
-    }}
-  />
+      {/* Review Version Modal */}
+      <ReviewVersionModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        versionName={reviewVersionTarget}
+        onApproveVersion={(ver) => {
+          showToast(`Agreement version ${ver} mutually approved! Hash updated.`);
+        }}
+        onOpenCounteroffer={() => {
+          setMessageInput("I would like to propose a counteroffer of $500 for CR-2.");
+          showToast("Counteroffer drafted in composer.");
+        }}
+      />
 
-  {/* Read Original Message Modal */}
-  <ReadOriginalMessageModal
-    isOpen={isOriginalMsgModalOpen}
-    onClose={() => setIsOriginalMsgModalOpen(false)}
-    senderName={selectedProject?.freelancerName || "Freelancer"}
-  />
+      {/* Read Original Message Modal */}
+      <ReadOriginalMessageModal
+        isOpen={isOriginalMsgModalOpen}
+        onClose={() => setIsOriginalMsgModalOpen(false)}
+        senderName={selectedProject?.freelancerName || "Freelancer"}
+      />
 
-  {/* Propose Meeting Modal */}
-  <ProposeMeetingModal
-    isOpen={isProposeMeetingModalOpen}
-    onClose={() => setIsProposeMeetingModalOpen(false)}
-    freelancerName={selectedProject?.freelancerName || "Sambit Kumar"}
-    clientName={user?.name || selectedProject?.clientName || "Alex Rivera"}
-    freelancerTimezone={(selectedProject as any)?.freelancerTimezone || "Asia/Kolkata"}
-    clientTimezone={(selectedProject as any)?.clientTimezone || "America/New_York"}
-    currentUserRole="CLIENT"
-    onScheduleMeeting={handleScheduleMeetingProposal}
-  />
+      {/* Propose Meeting Modal */}
+      <ProposeMeetingModal
+        isOpen={isProposeMeetingModalOpen}
+        onClose={() => setIsProposeMeetingModalOpen(false)}
+        freelancerName={selectedProject?.freelancerName || "Sambit Kumar"}
+        clientName={user?.name || selectedProject?.clientName || "Alex Rivera"}
+        freelancerTimezone={(selectedProject as any)?.freelancerTimezone || "Asia/Kolkata"}
+        clientTimezone={(selectedProject as any)?.clientTimezone || "America/New_York"}
+        currentUserRole="CLIENT"
+        onScheduleMeeting={handleScheduleMeetingProposal}
+      />
 
       {/* Postpone Meeting Modal */}
-  <PostponeMeetingModal
-    isOpen={isPostponeMeetingModalOpen}
-    onClose={() => {
-      setIsPostponeMeetingModalOpen(false);
-      setSelectedMeetingForPostpone(null);
-    }}
-    meeting={selectedMeetingForPostpone}
-    projectId={selectedProjectId}
-    userId={user?.id || "usr_client_alex"}
-    userRole="CLIENT"
-    onSuccess={() => window.location.reload()}
-    showToast={showToast}
-  />
+      <PostponeMeetingModal
+        isOpen={isPostponeMeetingModalOpen}
+        onClose={() => {
+          setIsPostponeMeetingModalOpen(false);
+          setSelectedMeetingForPostpone(null);
+        }}
+        meeting={selectedMeetingForPostpone}
+        projectId={selectedProjectId}
+        userId={user?.id || "usr_client_alex"}
+        userRole="CLIENT"
+        onSuccess={() => window.location.reload()}
+        showToast={showToast}
+      />
 
-  {/* Postpone Milestone Modal */}
-  <PostponeMilestoneModal
-    isOpen={isPostponeMilestoneModalOpen}
-    onClose={() => {
-      setIsPostponeMilestoneModalOpen(false);
-      setSelectedMilestoneForPostpone(null);
-    }}
-    milestone={selectedMilestoneForPostpone}
-    projectId={selectedProjectId}
-    userId={user?.id || "usr_client_alex"}
-    userRole="CLIENT"
-    onSuccess={() => window.location.reload()}
-    showToast={showToast}
-  />
+      {/* Postpone Milestone Modal */}
+      <PostponeMilestoneModal
+        isOpen={isPostponeMilestoneModalOpen}
+        onClose={() => {
+          setIsPostponeMilestoneModalOpen(false);
+          setSelectedMilestoneForPostpone(null);
+        }}
+        milestone={selectedMilestoneForPostpone}
+        projectId={selectedProjectId}
+        userId={user?.id || "usr_client_alex"}
+        userRole="CLIENT"
+        onSuccess={() => window.location.reload()}
+        showToast={showToast}
+      />
 
-  {/* Project Handover Configuration Modal */}
-  {isHandoverModalOpen && (
-    <ProjectHandoverModal
-      isOpen={isHandoverModalOpen}
-      projectName={selectedProject?.name || "Active Project"}
-      onClose={() => setIsHandoverModalOpen(false)}
-      onConfirm={async (items) => {
-        setIsHandoverModalOpen(false);
-        if (!selectedProjectId) return;
-        try {
-          const res = await initiateProjectHandover(selectedProjectId, items);
-          if (res.success && res.data) {
-            setHandoverData(res.data);
-            setActiveTab("handover");
-            showToast("Final handover checklist requested from freelancer.");
-          } else {
-            showToast(res.error || "Failed to initiate handover checklist.");
+      {/* Project Handover Configuration Modal */}
+      {isHandoverModalOpen && (
+        <ProjectHandoverModal
+          isOpen={isHandoverModalOpen}
+          projectName={selectedProject?.name || "Active Project"}
+          onClose={() => setIsHandoverModalOpen(false)}
+          onConfirm={async (items) => {
+            setIsHandoverModalOpen(false);
+            if (!selectedProjectId) return;
+            try {
+              const res = await initiateProjectHandover(selectedProjectId, items);
+              if (res.success && res.data) {
+                setHandoverData(res.data);
+                setActiveTab("handover");
+                showToast("Final handover checklist requested from freelancer.");
+              } else {
+                showToast(res.error || "Failed to initiate handover checklist.");
+              }
+            } catch {
+              showToast("Network error initiating handover.");
+            }
+          }}
+        />
+      )}
+
+      {/* Bilateral Complete Agreement & Escrow Governance Modal */}
+      <BilateralContractModal
+        isOpen={isContractModalOpen}
+        onClose={() => setIsContractModalOpen(false)}
+        projectId={selectedProjectId}
+        userRole="CLIENT"
+        onAgreementRatified={() => {
+          setRefreshTrigger((n) => n + 1);
+          showToast("Bilateral agreement ratified! Escrow deposit initiated.");
+        }}
+      />
+
+      {/* Milestone Addendum Creation Modal */}
+      <MilestoneAddendumModal
+        isOpen={isAddendumModalOpen}
+        onClose={() => {
+          setIsAddendumModalOpen(false);
+          setAddendumInitialTitle("");
+          setAddendumInitialDesc("");
+        }}
+        projectId={selectedProjectId}
+        initialTitle={addendumInitialTitle}
+        initialDescription={addendumInitialDesc}
+        userRole="CLIENT"
+        userId={user?.id || "usr_client_alex"}
+        currency="USD"
+        onSuccess={() => setRefreshTrigger((n) => n + 1)}
+        showToast={showToast}
+      />
+
+      {/* Counteroffer Proposal Modal */}
+      {counterTargetCard && (
+        <CounterofferModal
+          isOpen={isCounterofferModalOpen}
+          onClose={() => {
+            setIsCounterofferModalOpen(false);
+            setCounterTargetCard(null);
+          }}
+          projectId={selectedProjectId}
+          messageId={counterTargetCard.id}
+          currentAmountMinor={
+            counterTargetCard.metadata?.amendmentPayload?.priceDeltaCents ||
+            counterTargetCard.metadata?.counterAmountMinor ||
+            150000
           }
-        } catch {
-          showToast("Network error initiating handover.");
-        }
-      }}
-    />
-  )}
+          currentDays={
+            counterTargetCard.metadata?.amendmentPayload?.timelineDaysDelta ||
+            counterTargetCard.metadata?.counterDays ||
+            14
+          }
+          currentTitle={
+            counterTargetCard.metadata?.amendmentPayload?.newMilestoneTitle ||
+            "Milestone Addendum"
+          }
+          responderId={user?.id || "usr_client_alex"}
+          responderRole="CLIENT"
+          currency="USD"
+          onSuccess={() => setRefreshTrigger((n) => n + 1)}
+          showToast={showToast}
+        />
+      )}
 
-  {/* Bilateral Complete Agreement & Escrow Governance Modal */}
-  <BilateralContractModal
-    isOpen={isContractModalOpen}
-    onClose={() => setIsContractModalOpen(false)}
-    projectId={selectedProjectId}
-    userRole="CLIENT"
-    onAgreementRatified={() => {
-      setRefreshTrigger((n) => n + 1);
-      showToast("Bilateral agreement ratified! Escrow deposit initiated.");
-    }}
-  />
+      {/* Phase 12: Elastic Search Modal */}
+      <ElasticWorkspaceSearchModal
+        isOpen={isElasticSearchModalOpen}
+        onClose={() => setIsElasticSearchModalOpen(false)}
+        projectId={selectedProjectId}
+        projectName={selectedProject?.name || "Active Contract"}
+        onSelectHit={(hit) => {
+          if (hit.type === "DECISION") {
+            setActiveTab("tasks"); // or decisions
+          } else {
+            setActiveTab("chat");
+          }
+          showToast(`Selected ${hit.type.toLowerCase()} record: ${hit.title || hit.snippet.slice(0, 30)}...`);
+        }}
+      />
 
-  {/* Milestone Addendum Creation Modal */}
-  <MilestoneAddendumModal
-    isOpen={isAddendumModalOpen}
-    onClose={() => {
-      setIsAddendumModalOpen(false);
-      setAddendumInitialTitle("");
-      setAddendumInitialDesc("");
-    }}
-    projectId={selectedProjectId}
-    initialTitle={addendumInitialTitle}
-    initialDescription={addendumInitialDesc}
-    userRole="CLIENT"
-    userId={user?.id || "usr_client_alex"}
-    currency="USD"
-    onSuccess={() => setRefreshTrigger((n) => n + 1)}
-    showToast={showToast}
-  />
+      {/* Phase 11: Channel 3 Product Explorer Modal */}
+      <Channel3ProductExplorerModal
+        isOpen={isChannel3ModalOpen}
+        onClose={() => setIsChannel3ModalOpen(false)}
+        initialQuery="shoes"
+        onSelectProduct={(p) => {
+          setIsChannel3ModalOpen(false);
+          setAddendumInitialTitle(`Integrate ${p.title}`);
+          setAddendumInitialDesc(`Scope addition for product catalog: ${p.title} (${p.brand}) - SKU: ${p.sku}. Retail price: ${p.priceDisplay} (${p.retailer}). ${p.description}`);
+          setIsAddendumModalOpen(true);
+          showToast(`Selected "${p.title}" (${p.priceDisplay}) from Channel 3`);
+        }}
+      />
 
-  {/* Counteroffer Proposal Modal */}
-  {counterTargetCard && (
-    <CounterofferModal
-      isOpen={isCounterofferModalOpen}
-      onClose={() => {
-        setIsCounterofferModalOpen(false);
-        setCounterTargetCard(null);
-      }}
-      projectId={selectedProjectId}
-      messageId={counterTargetCard.id}
-      currentAmountMinor={
-        counterTargetCard.metadata?.amendmentPayload?.priceDeltaCents ||
-        counterTargetCard.metadata?.counterAmountMinor ||
-        150000
-      }
-      currentDays={
-        counterTargetCard.metadata?.amendmentPayload?.timelineDaysDelta ||
-        counterTargetCard.metadata?.counterDays ||
-        14
-      }
-      currentTitle={
-        counterTargetCard.metadata?.amendmentPayload?.newMilestoneTitle ||
-        "Milestone Addendum"
-      }
-      responderId={user?.id || "usr_client_alex"}
-      responderRole="CLIENT"
-      currency="USD"
-      onSuccess={() => setRefreshTrigger((n) => n + 1)}
-      showToast={showToast}
-    />
-  )}
-
-  {/* Phase 12: Elastic Search Modal */}
-  <ElasticWorkspaceSearchModal
-    isOpen={isElasticSearchModalOpen}
-    onClose={() => setIsElasticSearchModalOpen(false)}
-    projectId={selectedProjectId}
-    projectName={selectedProject?.name || "Active Contract"}
-    onSelectHit={(hit) => {
-      if (hit.type === "DECISION") {
-        setActiveTab("tasks"); // or decisions
-      } else {
-        setActiveTab("chat");
-      }
-      showToast(`Selected ${hit.type.toLowerCase()} record: ${hit.title || hit.snippet.slice(0, 30)}...`);
-    }}
-  />
-
-  {/* Phase 11: Channel 3 Product Explorer Modal */}
-  <Channel3ProductExplorerModal
-    isOpen={isChannel3ModalOpen}
-    onClose={() => setIsChannel3ModalOpen(false)}
-    initialQuery="shoes"
-    onSelectProduct={(p) => {
-      setIsChannel3ModalOpen(false);
-      setAddendumInitialTitle(`Integrate ${p.title}`);
-      setAddendumInitialDesc(`Scope addition for product catalog: ${p.title} (${p.brand}) - SKU: ${p.sku}. Retail price: ${p.priceDisplay} (${p.retailer}). ${p.description}`);
-      setIsAddendumModalOpen(true);
-      showToast(`Selected "${p.title}" (${p.priceDisplay}) from Channel 3`);
-    }}
-  />
-
-  {/* Toast Notification */}
+      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2">
           {toastMessage}

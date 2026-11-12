@@ -1579,6 +1579,179 @@ router.post("/projects/:projectId/meetings/:meetingId/respond-postpone", async (
 });
 
 /**
+ * GET /api/workspace/projects/:projectId/milestones
+ * Fetches all milestones for a project with current state, amounts, and postponement history.
+ * Used by the dedicated full-page Gantt chart view.
+ */
+router.get("/projects/:projectId/milestones", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+
+    const sessionUser = (req as any).user;
+    const reqUserId =
+      (req.query.userId as string) ||
+      (req.headers["x-user-id"] as string) ||
+      sessionUser?.id ||
+      sessionUser?.email;
+
+    // Load project + agreement milestones + postponement history
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        client: { select: { id: true, name: true, email: true } },
+        agreement: {
+          include: {
+            milestones: {
+              orderBy: { orderIndex: "asc" },
+              include: {
+                postponements: {
+                  orderBy: { createdAt: "desc" },
+                  take: 5,
+                },
+              },
+            },
+            freelancer: { select: { id: true, name: true, email: true } },
+            versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+          },
+        },
+        projectProposals: {
+          where: { status: "ACCEPTED" },
+          include: { freelancer: { select: { id: true, name: true, email: true } } },
+          take: 1,
+        },
+        projectMilestones: {
+          orderBy: { orderIndex: "asc" },
+        },
+      },
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "NOT_FOUND", message: "Project not found", details: { projectId } },
+      });
+    }
+
+    // Authorization: only client or assigned freelancer
+    if (reqUserId) {
+      const participant = checkProjectParticipant(project, reqUserId, sessionUser?.email);
+      if (!participant.isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Only the client and assigned freelancer can view this project's milestones.",
+            details: { projectId, userId: reqUserId },
+          },
+        });
+      }
+    }
+
+    const rawMilestones =
+      project.agreement?.milestones && project.agreement.milestones.length > 0
+        ? project.agreement.milestones
+        : project.projectMilestones && project.projectMilestones.length > 0
+        ? project.projectMilestones
+        : [];
+
+    const freelancer =
+      project.agreement?.freelancer || project.projectProposals?.[0]?.freelancer || null;
+    const latestVersion = project.agreement?.versions?.[0];
+
+    const milestones = rawMilestones.map((m: any, idx: number) => {
+      const rawState = m.state || m.workStatus || "PENDING";
+      let displayStatus: string;
+      if (rawState === "CAPTURED") displayStatus = "Escrow Funded";
+      else if (rawState === "APPROVED" || rawState === "ACCEPTED") displayStatus = "Accepted";
+      else if (rawState === "READY_FOR_WORK" || rawState === "IN_PROGRESS") displayStatus = "In Progress";
+      else if (rawState === "PENDING_REVIEW") displayStatus = "Under Review";
+      else if (rawState === "PENDING_FUNDING") displayStatus = "Pending Funding";
+      else displayStatus = rawState.charAt(0) + rawState.slice(1).toLowerCase().replace(/_/g, " ");
+
+      const pendingPostponement = (m.postponements || []).find((p: any) => p.status === "PENDING") || null;
+      const lastAcceptedPostponement = (m.postponements || []).find((p: any) => p.status === "ACCEPTED") || null;
+
+      return {
+        id: m.id,
+        number: idx + 1,
+        title: m.title,
+        amountCents: m.amountCents || m.amountMinor || 0,
+        amount: "$" + ((m.amountCents || m.amountMinor || 0) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 }),
+        currency: m.currency || "USD",
+        dueDate: m.deadline
+          ? new Date(m.deadline).toISOString()
+          : m.dueDate
+          ? new Date(m.dueDate).toISOString()
+          : null,
+        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
+        status: displayStatus,
+        rawStatus: rawState,
+        workStatus: m.workStatus || null,
+        orderIndex: m.orderIndex || idx,
+        percentDone:
+          rawState === "APPROVED" || rawState === "ACCEPTED" || rawState === "CAPTURED"
+            ? 100
+            : rawState === "READY_FOR_WORK" || rawState === "IN_PROGRESS"
+            ? 50
+            : rawState === "PENDING_REVIEW"
+            ? 85
+            : 0,
+        pendingPostponement: pendingPostponement
+          ? {
+              id: pendingPostponement.id,
+              proposedDueDate: pendingPostponement.proposedDueDate
+                ? new Date(pendingPostponement.proposedDueDate).toISOString()
+                : null,
+              reasonCategory: pendingPostponement.reasonCategory,
+              reasonDetails: pendingPostponement.reasonDetails,
+              requestedByRole: pendingPostponement.requestedByRole,
+              createdAt: new Date(pendingPostponement.createdAt).toISOString(),
+            }
+          : null,
+        lastPostponement: lastAcceptedPostponement
+          ? {
+              id: lastAcceptedPostponement.id,
+              proposedDueDate: lastAcceptedPostponement.proposedDueDate
+                ? new Date(lastAcceptedPostponement.proposedDueDate).toISOString()
+                : null,
+              status: lastAcceptedPostponement.status,
+            }
+          : null,
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        projectId: project.id,
+        projectName: project.title,
+        startDate: project.createdAt ? new Date(project.createdAt).toISOString() : null,
+        deadline: project.deadline ? new Date(project.deadline).toISOString() : null,
+        budgetCents: project.budgetCents,
+        agreementVersion: latestVersion
+          ? latestVersion.versionNumber === 1
+            ? "v1.0"
+            : `v1.${latestVersion.versionNumber - 1}`
+          : "v1.0",
+        clientName: project.client?.name || "Client",
+        freelancerName: freelancer?.name || "Freelancer",
+        milestones,
+      },
+    });
+  } catch (err: any) {
+    console.error("Fetch workspace milestones error:", err);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: err.message || "Failed to fetch project milestones",
+        details: null,
+      },
+    });
+  }
+});
+
+/**
  * POST /api/workspace/projects/:projectId/milestones/:milestoneId/postpone
  * Formally request milestone deadline postponement with structured reasons
  */

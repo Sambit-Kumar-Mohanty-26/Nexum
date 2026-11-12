@@ -4426,6 +4426,62 @@ export async function fetchWorkspaceProjects(
 }
 
 /**
+ * Fetch real project milestones for the dedicated Gantt page (with postponement history)
+ */
+export async function fetchWorkspaceMilestones(projectId: string): Promise<{
+  success: boolean;
+  data?: {
+    projectId: string;
+    projectName: string;
+    startDate: string | null;
+    deadline: string | null;
+    budgetCents: number;
+    agreementVersion: string;
+    clientName: string;
+    freelancerName: string;
+    milestones: Array<{
+      id: string;
+      number: number;
+      title: string;
+      amountCents: number;
+      amount: string;
+      currency: string;
+      dueDate: string | null;
+      startDate: string | null;
+      status: string;
+      rawStatus: string;
+      workStatus: string | null;
+      orderIndex: number;
+      percentDone: number;
+      pendingPostponement: {
+        id: string;
+        proposedDueDate: string | null;
+        reasonCategory: string;
+        reasonDetails: string;
+        requestedByRole: string;
+        createdAt: string;
+      } | null;
+      lastPostponement: {
+        id: string;
+        proposedDueDate: string | null;
+        status: string;
+      } | null;
+    }>;
+  };
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/workspace/projects/${projectId}/milestones`, {
+      cache: "no-store",
+    });
+    return await res.json();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch milestones";
+    return { success: false, error: msg };
+  }
+}
+
+/**
  * Fetch bilateral workspace state (timeline, meetings, tasks, decisions, agreement hash)
  */
 export async function getWorkspaceTimeline(projectId: string): Promise<{
