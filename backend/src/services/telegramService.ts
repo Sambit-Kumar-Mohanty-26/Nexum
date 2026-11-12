@@ -1067,17 +1067,36 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         return { handled: true, action: "STATUS_EMPTY" };
       }
 
-      // 3d-2. /history or /chat (Recent timeline messages briefing)
-      if (text === "/history" || text === "/chat" || text === "💬 Recent Messages" || text === "💬 History" || /^💬?\s*(history|chat)$/i.test(text)) {
+      // 3d-2. /history or /chat (Recent conversational chat messages)
+      if (
+        text === "/history" ||
+        text === "/chat" ||
+        text === "💬 Recent Messages" ||
+        text === "💬 History" ||
+        /^💬?\s*(history|chat)$/i.test(text)
+      ) {
         const historyBrief = await this.getProjectRecentHistory(targetPrj.id, 5);
         await this.sendMessage(
           chatId,
-          `📬 *Recent Timeline Activity (${targetPrj.title}):*\n\n${historyBrief}\n\n💡 _Type any message below to reply directly to your team!_`,
+          `📬 *Recent Chat & Timeline Activity (${targetPrj.title}):*\n\n${historyBrief}\n\n💡 _Type any message below to reply directly to your team!_`,
           undefined,
           true,
           user.role
         );
         return { handled: true, action: "HISTORY_SENT" };
+      }
+
+      // 3d-3. /timeline (Protocol events, amendments & milestone audit log)
+      if (text === "/timeline" || /^timeline$/i.test(text)) {
+        const timelineBrief = await this.getProjectProtocolTimeline(targetPrj.id, 5);
+        await this.sendMessage(
+          chatId,
+          `📜 *Protocol Timeline & Agreement Log (${targetPrj.title}):*\n\n${timelineBrief}\n\n💡 _Use \`/chat\` or \`/history\` to view direct human conversations._`,
+          undefined,
+          true,
+          user.role
+        );
+        return { handled: true, action: "TIMELINE_SENT" };
       }
 
       // 3e. /status or "📊 Status"
@@ -2016,7 +2035,7 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
   }
 
   /**
-   * Retrieve recent timeline chat history for project catch-up briefings
+   * Retrieve conversational chat messages between client and freelancer (excluding protocol cards)
    */
   async getProjectRecentHistory(projectId: string, limit = 3): Promise<string> {
     try {
@@ -2027,34 +2046,113 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         return "• _No messages recorded yet in this workspace._";
       }
 
-      const msgs = await prisma.workspaceMessage.findMany({
-        where: { conversationId: conv.id },
+      // Query actual conversational chat messages
+      const chatMsgs = await prisma.workspaceMessage.findMany({
+        where: {
+          conversationId: conv.id,
+          OR: [
+            { type: { in: ["client_bubble", "freelancer_bubble"] } },
+            { origin: "TELEGRAM" },
+          ],
+        },
         include: { sender: { select: { name: true, role: true } } },
         orderBy: { createdAt: "desc" },
         take: limit,
       });
 
-      if (msgs.length === 0) {
-        return "• _No messages recorded yet in this workspace._";
+      // Also get the single latest protocol event (milestone action, amendment, deliverable) if available
+      const latestProtocol = await prisma.workspaceMessage.findFirst({
+        where: {
+          conversationId: conv.id,
+          type: { notIn: ["client_bubble", "freelancer_bubble"] },
+          origin: { not: "TELEGRAM" },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const sections: string[] = [];
+
+      if (chatMsgs.length > 0) {
+        const chatLines = chatMsgs
+          .reverse()
+          .map((m) => {
+            const senderName = m.sender?.name || (m.senderRole === "CLIENT" ? "Client" : "Freelancer");
+            const roleBadge = m.senderRole === "CLIENT" ? "Client" : "Freelancer";
+            const timeStr = new Date(m.createdAt).toLocaleDateString([], {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            const clean = m.originalContent.replace(/^\[Voice Memo.*?\]:\s*"?/, "").replace(/"$/, "");
+            const preview = clean.length > 120 ? `${clean.slice(0, 120)}...` : clean;
+            return `• *${senderName} (${roleBadge})* [${timeStr}]:\n  "${preview}"`;
+          })
+          .join("\n\n");
+        sections.push(`💬 *Recent Team Chat Messages:*\n${chatLines}`);
+      } else {
+        sections.push(`💬 *Recent Team Chat:*\n• _No direct chat messages exchanged yet._`);
       }
 
-      return msgs
-        .reverse()
-        .map((m) => {
-          const senderName = m.sender?.name || (m.senderRole === "CLIENT" ? "Client" : "Freelancer");
-          const roleBadge = m.senderRole === "CLIENT" ? "Client" : "Freelancer";
-          const timeStr = new Date(m.createdAt).toLocaleDateString([], {
+      if (latestProtocol) {
+        const pTime = new Date(latestProtocol.createdAt).toLocaleDateString([], {
+          month: "short",
+          day: "numeric",
+        });
+        const pTitle = latestProtocol.type.replace(/_/g, " ").toUpperCase();
+        const pPreview = latestProtocol.originalContent.length > 110
+          ? `${latestProtocol.originalContent.slice(0, 110)}...`
+          : latestProtocol.originalContent;
+        sections.push(`📜 *Latest Protocol Timeline Event* [${pTime}]:\n• *${pTitle}:* ${pPreview}`);
+      }
+
+      return sections.join("\n\n");
+    } catch {
+      return "• _Unable to load prior chat history._";
+    }
+  }
+
+  /**
+   * Retrieve protocol & timeline consensus log (milestones, amendments, seals)
+   */
+  async getProjectProtocolTimeline(projectId: string, limit = 5): Promise<string> {
+    try {
+      const conv = await prisma.workspaceConversation.findUnique({
+        where: { projectId },
+      });
+      if (!conv) {
+        return "• _No timeline events recorded yet._";
+      }
+
+      const events = await prisma.workspaceMessage.findMany({
+        where: {
+          conversationId: conv.id,
+          type: { notIn: ["client_bubble", "freelancer_bubble"] },
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+
+      if (events.length === 0) {
+        return "• _No formal protocol cards or amendments logged yet._";
+      }
+
+      return events
+        .map((e, idx) => {
+          const typeName = e.type.replace(/_/g, " ").toUpperCase();
+          const timeStr = new Date(e.createdAt).toLocaleDateString([], {
             month: "short",
             day: "numeric",
             hour: "2-digit",
             minute: "2-digit",
           });
-          const preview = m.originalContent.length > 110 ? `${m.originalContent.slice(0, 110)}...` : m.originalContent;
-          return `• *${senderName} (${roleBadge})* [${timeStr}]:\n  "${preview}"`;
+          const sealShort = e.sha256Seal ? `\n   Seal: \`${e.sha256Seal.slice(0, 16)}...\`` : "";
+          const preview = e.originalContent.length > 100 ? `${e.originalContent.slice(0, 100)}...` : e.originalContent;
+          return `${idx + 1}. 🏛️ *${typeName}* [${timeStr}]\n   ${preview}${sealShort}`;
         })
         .join("\n\n");
     } catch {
-      return "• _Unable to load prior timeline history._";
+      return "• _Unable to load protocol timeline._";
     }
   }
 
