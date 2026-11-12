@@ -307,10 +307,21 @@ export default function ClientAuditLogsView({
             >
               <option value="ALL">All Actions</option>
               <option value="USER_LOGGED_IN">User Login</option>
+              <option value="USER_AUTHENTICATED_GOOGLE">Google / OAuth Login</option>
               <option value="DELIVERABLE_SUBMITTED">Deliverable Submitted</option>
-              <option value="PAYMENT_CAPTURED">Payment Captured</option>
-              <option value="AGREEMENT_LOCKED">Agreement Locked</option>
+              <option value="MILESTONE_APPROVED">Milestone Approved</option>
+              <option value="PAYMENT_CAPTURED">Payment Captured / Released</option>
               <option value="PAYPAL_ORDER_CREATED">PayPal Order Created</option>
+              <option value="AGREEMENT_LOCKED">Agreement Locked</option>
+              <option value="SCOPE_AMENDMENT_SEALED">Scope Amendment Sealed</option>
+              <option value="AMENDMENT_COUNTEROFFER_SUBMITTED">Amendment Counteroffer</option>
+              <option value="MILESTONE_POSTPONE_REQUESTED">Milestone Extension Requested</option>
+              <option value="MILESTONE_POSTPONE_ACCEPTED">Milestone Extension Approved</option>
+              <option value="MEETING_POSTPONE_REQUESTED">Meeting Postponed</option>
+              <option value="HANDOVER_ITEM_SUBMITTED">Handover Asset Submitted</option>
+              <option value="HANDOVER_ITEM_ACCEPTED">Handover Asset Accepted</option>
+              <option value="TASK_CREATED">Kanban Task Created</option>
+              <option value="TASK_STATUS_CHANGED">Task Status Changed</option>
               <option value="CHANGE_REQUEST">Change Request</option>
             </select>
 
@@ -324,8 +335,15 @@ export default function ClientAuditLogsView({
               <option value="USER">User (Identity)</option>
               <option value="PROJECT">Project</option>
               <option value="MILESTONE">Milestone</option>
+              <option value="PAYMENT">Payment / Escrow</option>
               <option value="PAYMENT_ATTEMPT">Payment Attempt</option>
               <option value="PROPOSAL">Proposal</option>
+              <option value="WORKSPACE_MESSAGE">Protocol Message</option>
+              <option value="WORKSPACE_MEETING">Meeting</option>
+              <option value="MILESTONE_POSTPONEMENT">Postponement</option>
+              <option value="TASK">Kanban Task</option>
+              <option value="ProjectHandover">Handover Package</option>
+              <option value="DECISION_RECORD">Architectural Decision (ADR)</option>
               <option value="PRD">PRD Spec</option>
             </select>
 

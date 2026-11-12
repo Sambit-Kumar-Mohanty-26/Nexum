@@ -3124,6 +3124,7 @@ export class ClientOverviewService {
    * Fetch paginated and filtered audit events from database & ledger log
    */
   public async getAuditLogs(params: {
+    clientId?: string;
     page?: number;
     limit?: number;
     search?: string;
@@ -3144,6 +3145,7 @@ export class ClientOverviewService {
     page: number;
     totalPages: number;
   }> {
+    const targetClient = params.clientId || "usr_client_alex";
     const page = Math.max(1, params.page || 1);
     const limit = Math.max(1, Math.min(params.limit || 10, 100));
     const search = params.search?.toLowerCase().trim() || "";
@@ -3152,28 +3154,107 @@ export class ClientOverviewService {
 
     let dbLogs: any[] = [];
     try {
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: targetClient },
+            { email: targetClient },
+          ],
+        },
+      });
+
+      const candidateIds = user ? [user.id, targetClient] : [targetClient];
+
+      // Find all projects where this user participates (as client, freelancer, or proposer)
+      const userProjects = await prisma.project.findMany({
+        where: {
+          OR: [
+            { clientId: { in: candidateIds } },
+            { agreement: { freelancerId: { in: candidateIds } } },
+            { projectProposals: { some: { freelancerId: { in: candidateIds } } } },
+          ],
+        },
+        include: {
+          projectMilestones: { select: { id: true } },
+          workspaceTasks: { select: { id: true } },
+          payments: { select: { id: true } },
+          agreement: { select: { id: true } },
+          projectProposals: { select: { id: true } },
+          projectDecisions: { select: { id: true } },
+          meetings: { select: { id: true } },
+          milestonePostponements: { select: { id: true } },
+          handover: {
+            select: {
+              id: true,
+              items: { select: { id: true } },
+            },
+          },
+          workspaceConversation: {
+            select: {
+              id: true,
+              messages: { select: { id: true } },
+            },
+          },
+        },
+      }).catch(() => []);
+
+      const userRelatedEntityIds = new Set<string>();
+      for (const p of userProjects) {
+        userRelatedEntityIds.add(p.id);
+        p.projectMilestones?.forEach((m: { id: string }) => userRelatedEntityIds.add(m.id));
+        p.workspaceTasks?.forEach((t: { id: string }) => userRelatedEntityIds.add(t.id));
+        p.payments?.forEach((pay: { id: string }) => userRelatedEntityIds.add(pay.id));
+        if (p.agreement?.id) userRelatedEntityIds.add(p.agreement.id);
+        p.projectProposals?.forEach((prop: { id: string }) => userRelatedEntityIds.add(prop.id));
+        p.projectDecisions?.forEach((dec: { id: string }) => userRelatedEntityIds.add(dec.id));
+        p.meetings?.forEach((mt: { id: string }) => userRelatedEntityIds.add(mt.id));
+        p.milestonePostponements?.forEach((mp: { id: string }) => userRelatedEntityIds.add(mp.id));
+        if (p.handover?.id) userRelatedEntityIds.add(p.handover.id);
+        p.handover?.items?.forEach((it: { id: string }) => userRelatedEntityIds.add(it.id));
+        p.workspaceConversation?.messages?.forEach((msg: { id: string }) => userRelatedEntityIds.add(msg.id));
+      }
+
+      const entityIdList = Array.from(userRelatedEntityIds);
+
+      // Query database for audit events belonging to this user or their workspace entities
       dbLogs = await prisma.auditEvent.findMany({
+        where: {
+          OR: [
+            // User initiated this action
+            { actorId: { in: candidateIds } },
+            // Action directly targets the user
+            { objectId: { in: candidateIds } },
+            // Action belongs to one of user's active projects/contracts/milestones
+            ...(entityIdList.length > 0 ? [{ objectId: { in: entityIdList } }] : []),
+          ],
+          // Strictly exclude other users' private identity events (logins, registrations)
+          NOT: {
+            AND: [
+              { objectType: "USER" },
+              { objectId: { notIn: candidateIds } },
+            ],
+          },
+        },
         orderBy: { timestamp: "desc" },
-        take: 200,
+        take: 500,
       }).catch(() => []);
     } catch {
       dbLogs = [];
     }
 
-    // Merge with any session audit activities
+    // Merge only with THIS client's session audit activities (never leak other clients)
     const sessionLogs: any[] = [];
-    for (const acts of this.auditActivities.values()) {
-      for (const act of acts) {
-        sessionLogs.push({
-          id: act.id,
-          action: act.title,
-          objectType: act.type,
-          objectId: "SESSION_LEDGER",
-          versionHash: "0x" + Math.random().toString(16).substring(2, 10),
-          timestamp: new Date().toISOString(),
-          metadata: { detail: act.detail },
-        });
-      }
+    const clientActs = this.auditActivities.get(targetClient) || [];
+    for (const act of clientActs) {
+      sessionLogs.push({
+        id: act.id,
+        action: act.title,
+        objectType: act.type,
+        objectId: "SESSION_LEDGER",
+        versionHash: "0x" + Math.random().toString(16).substring(2, 10),
+        timestamp: new Date().toISOString(),
+        metadata: { detail: act.detail },
+      });
     }
 
     let all = [...sessionLogs, ...dbLogs];

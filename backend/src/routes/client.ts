@@ -90,6 +90,7 @@ router.post("/change-requests/:id/approve", async (req: Request, res: Response) 
 // GET /api/client/audit-logs - paginated & filtered audit events
 router.get("/audit-logs", async (req: Request, res: Response) => {
   try {
+    const clientId = resolveClientId(req);
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = (req.query.search as string) || undefined;
@@ -97,6 +98,7 @@ router.get("/audit-logs", async (req: Request, res: Response) => {
     const objectType = (req.query.objectType as string) || undefined;
 
     const data = await clientOverviewService.getAuditLogs({
+      clientId,
       page,
       limit,
       search,
@@ -107,7 +109,7 @@ router.get("/audit-logs", async (req: Request, res: Response) => {
     res.json({ success: true, ...data });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to fetch audit logs";
-    res.status(500).json({ success: false, error: msg });
+    res.status(500).json({ error: { code: "AUDIT_LOG_ERROR", message: msg, details: null } });
   }
 });
 
