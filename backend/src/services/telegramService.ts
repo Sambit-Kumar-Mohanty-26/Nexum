@@ -5,6 +5,7 @@ import { workspaceService } from "./workspaceService.js";
 import { groqService } from "./groqService.js";
 import { emailService } from "./emailService.js";
 import { geminiService } from "./geminiService.js";
+import { defaultStorage } from "../lib/files.js";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 dotenv.config({ path: path.resolve(process.cwd(), "backend", ".env") });
@@ -232,6 +233,43 @@ export class TelegramService {
       return { success: data.ok, data };
     } catch (err: any) {
       console.error("[TelegramService] Send error:", err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Send a file / document directly to user via Telegram Bot API
+   */
+  async sendDocument(
+    chatId: string | number,
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType?: string,
+    caption?: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    if (!this.botToken) {
+      return { success: false, error: "TELEGRAM_BOT_TOKEN not configured" };
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("chat_id", String(chatId));
+      const blob = new Blob([fileBuffer], { type: mimeType || "application/octet-stream" });
+      formData.append("document", blob, fileName);
+      if (caption) {
+        formData.append("caption", caption);
+        formData.append("parse_mode", "Markdown");
+      }
+
+      const res = await fetch(`https://api.telegram.org/bot${this.botToken}/sendDocument`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await res.json()) as any;
+      return { success: data.ok, data };
+    } catch (err: any) {
+      console.error("[TelegramService] SendDocument error:", err);
       return { success: false, error: err.message };
     }
   }
@@ -495,6 +533,142 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         }
       }
 
+      // 1d. Switch Active Project via 1-Tap Inline Button
+      if (dataStr.startsWith("switch_prj:")) {
+        const targetId = dataStr.replace("switch_prj:", "").trim();
+        const user = await prisma.user.findFirst({
+          where: { telegramChatId: String(chatId) },
+        });
+
+        if (user) {
+          const projects = await this.getUserProjects(user);
+          const matched = projects.find((p) => p.id === targetId || p.id.includes(targetId));
+          if (matched) {
+            this.userActiveProjects.set(user.id, matched.id);
+            await this.answerCallbackQuery(cq.id, `⭐ Switched to ${matched.title}`);
+            if (chatId) {
+              await this.sendMessage(
+                chatId,
+                `⭐ *Active Project Switched!*\n\nTarget contract is now *${matched.title}* (\`${matched.id}\`).\nIncoming messages, task creation, and file views will now point here.`,
+                undefined,
+                true,
+                user.role
+              );
+            }
+            return { handled: true, action: "PROJECT_SWITCHED" };
+          }
+        }
+        await this.answerCallbackQuery(cq.id, "Project not found or accessible.");
+        return { handled: false, action: "SWITCH_FAILED" };
+      }
+
+      // 1e. Send File Directly to Telegram Chat via sendDocument
+      if (dataStr.startsWith("dl_file:")) {
+        const fileId = dataStr.replace("dl_file:", "").trim();
+        await this.answerCallbackQuery(cq.id, "📦 Uploading file to Telegram...");
+
+        try {
+          const fileRecord = await prisma.file.findUnique({
+            where: { id: fileId },
+          });
+
+          if (!fileRecord) {
+            if (chatId) {
+              await this.sendMessage(chatId, `⚠️ File record \`${fileId}\` not found in workspace repository.`);
+            }
+            return { handled: false, action: "FILE_NOT_FOUND" };
+          }
+
+          let delivered = false;
+          try {
+            const buffer = await defaultStorage.getBuffer(fileRecord.storageKey);
+            if (chatId && buffer) {
+              const sendRes = await this.sendDocument(
+                chatId,
+                buffer,
+                fileRecord.originalName,
+                fileRecord.mime || "application/octet-stream",
+                `📄 *${fileRecord.originalName}*\n📁 Workspace Deliverables Repository`
+              );
+              delivered = sendRes.success;
+            }
+          } catch (storageErr: any) {
+            console.warn("[TelegramService] Direct storage getBuffer failed:", storageErr.message);
+          }
+
+          if (!delivered && chatId) {
+            const appBaseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            await this.sendMessage(
+              chatId,
+              `📥 *${fileRecord.originalName}*\n[Click here to download via Web](${appBaseUrl}/api/files/${fileRecord.id}?download=1)`
+            );
+          }
+
+          return { handled: true, action: "FILE_DELIVERED" };
+        } catch (fileErr: any) {
+          console.error("[TelegramService] Error delivering file:", fileErr);
+          if (chatId) {
+            const appBaseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            await this.sendMessage(
+              chatId,
+              `📥 [Click here to download via Web](${appBaseUrl}/api/files/${fileId}?download=1)`
+            );
+          }
+          return { handled: true, action: "FILE_DELIVERY_FALLBACK" };
+        }
+      }
+
+      // 1f. View Tasks for specific project
+      if (dataStr.startsWith("view_tasks:")) {
+        const targetId = dataStr.replace("view_tasks:", "").trim();
+        const user = await prisma.user.findFirst({
+          where: { telegramChatId: String(chatId) },
+        });
+
+        if (user && chatId) {
+          this.userActiveProjects.set(user.id, targetId);
+          await this.answerCallbackQuery(cq.id, "Loading tasks...");
+          const projects = await this.getUserProjects(user);
+          const prj = projects.find((p) => p.id === targetId) || projects[0];
+          await this.renderKanbanTasks(chatId, prj, projects, user.role);
+          return { handled: true, action: "TASKS_VIEWED" };
+        }
+      }
+
+      // 1g. View Files for specific project
+      if (dataStr.startsWith("view_files:")) {
+        const targetId = dataStr.replace("view_files:", "").trim();
+        const user = await prisma.user.findFirst({
+          where: { telegramChatId: String(chatId) },
+        });
+
+        if (user && chatId) {
+          this.userActiveProjects.set(user.id, targetId);
+          await this.answerCallbackQuery(cq.id, "Loading files...");
+          const projects = await this.getUserProjects(user);
+          const prj = projects.find((p) => p.id === targetId) || projects[0];
+          await this.renderProjectFiles(chatId, prj, projects, user.role);
+          return { handled: true, action: "FILES_VIEWED" };
+        }
+      }
+
+      // 1h. View Milestones for specific project
+      if (dataStr.startsWith("view_ms:")) {
+        const targetId = dataStr.replace("view_ms:", "").trim();
+        const user = await prisma.user.findFirst({
+          where: { telegramChatId: String(chatId) },
+        });
+
+        if (user && chatId) {
+          this.userActiveProjects.set(user.id, targetId);
+          await this.answerCallbackQuery(cq.id, "Loading milestones...");
+          const projects = await this.getUserProjects(user);
+          const prj = projects.find((p) => p.id === targetId) || projects[0];
+          await this.renderProjectMilestones(chatId, prj, projects, user.role);
+          return { handled: true, action: "MILESTONES_VIEWED" };
+        }
+      }
+
       await this.answerCallbackQuery(cq.id);
       return { handled: true, action: "GENERIC_CALLBACK" };
     }
@@ -734,37 +908,107 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
           return { handled: true, action: "PROJECTS_EMPTY" };
         }
 
+        const currentActivePrjId = this.userActiveProjects.get(user.id) || projects[0].id;
+
         const projectListText = projects
           .map((p, idx) => {
             const counterparty =
               user.role === "FREELANCER"
                 ? `Client: ${p.client?.name || "Client"}`
                 : `Contractor: ${(p as any).agreement?.freelancer?.name || (p as any).proposals?.[0]?.freelancer?.name || "Pending"}`;
-            const activeTag =
-              (this.userActiveProjects.get(user.id) || projects[0].id) === p.id ? " ⭐ *[ACTIVE]*" : "";
+            const activeTag = currentActivePrjId === p.id ? " ⭐ *[ACTIVE RELAY]*" : "";
             return `${idx + 1}. *${p.title}*${activeTag}\n   • ID: \`${p.id}\`\n   • Budget: $${(p.budgetCents / 100).toFixed(2)} USD\n   • ${counterparty}\n   • Status: \`${p.state}\``;
           })
           .join("\n\n");
 
+        const switchButtons: TelegramInlineButton[][] = projects.map((p, idx) => [
+          {
+            text: p.id === currentActivePrjId
+              ? `⭐ [Active Relay] #${idx + 1} ${p.title.slice(0, 22)}...`
+              : `🔄 Switch to #${idx + 1}: ${p.title.slice(0, 22)}...`,
+            callback_data: `switch_prj:${p.id}`,
+          },
+        ]);
+
         await this.sendMessage(
           chatId,
-          `📁 *Your Nexum Contracts (${projects.length}):*\n\n${projectListText}\n\n_To switch your active chat relay target: \`/switch <projectId>\`_`,
-          undefined,
-          true
+          `📁 *Your Nexum Contracts (${projects.length}):*\n\n${projectListText}\n\n_Tap a button below or type \`/switch 1\` or \`/switch 2\` to change active relay:_`,
+          switchButtons,
+          true,
+          user.role
         );
         return { handled: true, action: "PROJECTS_LIST" };
       }
 
-      // 3d. /switch <projectId>
+      // 3d. /switch <projectId> or /switch 1 /switch 2
       if (text.startsWith("/switch")) {
-        const targetId = text.replace("/switch", "").trim();
-        const matched = projects.find((p) => p.id === targetId || p.id.includes(targetId));
-        if (!matched) {
+        const rawArg = text.replace(/^\/switch\s*/i, "").trim();
+
+        if (!rawArg) {
+          // Provide interactive buttons to switch if no argument provided
+          const currentActivePrjId = this.userActiveProjects.get(user.id) || projects[0]?.id;
+          const buttons: TelegramInlineButton[][] = projects.map((p, idx) => [
+            {
+              text: p.id === currentActivePrjId
+                ? `⭐ [Active Relay] #${idx + 1} ${p.title.slice(0, 22)}...`
+                : `🔄 Switch to #${idx + 1}: ${p.title.slice(0, 22)}...`,
+              callback_data: `switch_prj:${p.id}`,
+            },
+          ]);
+
           await this.sendMessage(
             chatId,
-            `⚠️ Project ID \`${targetId}\` not found. Use \`/projects\` to view your valid project IDs.`,
+            `💡 *Switch Active Contract Relay*\n\nTap a contract below or type \`/switch <number or ID>\` (e.g. \`/switch 2\`):`,
+            buttons,
+            true,
+            user.role
+          );
+          return { handled: true, action: "SWITCH_USAGE" };
+        }
+
+        // Clean up input: strip <, >, quotes, brackets, #
+        const cleanArg = rawArg
+          .replace(/^<+/, "")
+          .replace(/>+$/, "")
+          .replace(/^\[+/, "")
+          .replace(/\]+$/, "")
+          .replace(/^#+/, "")
+          .replace(/^"+/, "")
+          .replace(/"+$/, "")
+          .trim();
+
+        // 1. Check if user passed a 1-based index (e.g., "1", "2")
+        let matched: any = null;
+        if (/^\d+$/.test(cleanArg)) {
+          const index = parseInt(cleanArg, 10) - 1;
+          if (index >= 0 && index < projects.length) {
+            matched = projects[index];
+          }
+        }
+
+        // 2. Check by project ID or partial project ID
+        if (!matched && cleanArg) {
+          matched = projects.find(
+            (p) => p.id === cleanArg || p.id.toLowerCase() === cleanArg.toLowerCase() || p.id.includes(cleanArg)
+          );
+        }
+
+        // 3. Check by partial project title match
+        if (!matched && cleanArg.length >= 3) {
+          matched = projects.find((p) => p.title.toLowerCase().includes(cleanArg.toLowerCase()));
+        }
+
+        if (!matched) {
+          const validOptions = projects
+            .map((p, idx) => `• #${idx + 1}: *${p.title}* (\`${p.id}\`)`)
+            .join("\n");
+
+          await this.sendMessage(
+            chatId,
+            `⚠️ Contract \`${cleanArg}\` not found.\n\n*Available Contracts:*\n${validOptions}\n\n💡 *Tip:* You can simply type \`/switch 1\` or \`/switch 2\`!`,
             undefined,
-            true
+            true,
+            user.role
           );
           return { handled: true, action: "SWITCH_NOT_FOUND" };
         }
@@ -772,9 +1016,10 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         this.userActiveProjects.set(user.id, matched.id);
         await this.sendMessage(
           chatId,
-          `⭐ *Active Project Switched!*\nTarget contract is now *${matched.title}* (\`${matched.id}\`). Incoming messages will relay here.`,
+          `⭐ *Active Project Switched!*\n\nTarget contract is now *${matched.title}* (\`${matched.id}\`). Incoming messages, tasks, and files will now point here.`,
           undefined,
-          true
+          true,
+          user.role
         );
         return { handled: true, action: "SWITCH_SUCCESS" };
       }
@@ -789,59 +1034,84 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
 
       // 3e. /status or "📊 Status"
       if (text === "/status" || text === "📊 Status") {
-        const milestones = targetPrj.projectMilestones || [];
-        const completedCount = milestones.filter((m) => m.workStatus === "ACCEPTED").length;
-        const totalCount = milestones.length;
+        if (projects.length === 1) {
+          const milestones = targetPrj.projectMilestones || [];
+          const completedCount = milestones.filter((m) => m.workStatus === "ACCEPTED").length;
+          const totalCount = milestones.length;
+          const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-        await this.sendMessage(
-          chatId,
-          `📊 *Active Project Status*\n\n` +
-            `*Project:* ${targetPrj.title}\n` +
-            `*Budget:* $${(targetPrj.budgetCents / 100).toFixed(2)} USD\n` +
-            `*Status:* \`${targetPrj.state}\`\n` +
-            `*Milestones Progress:* ${completedCount}/${totalCount} completed\n` +
-            `*Consensus Seal:* \`SHA-256 Verified\`\n` +
-            `*Role:* ${user.role || "CLIENT"}`,
-          undefined,
-          true
-        );
-        return { handled: true, action: "STATUS_SENT" };
+          await this.sendMessage(
+            chatId,
+            `📊 *Active Project Status*\n\n` +
+              `*Project:* ${targetPrj.title}\n` +
+              `*Budget:* $${(targetPrj.budgetCents / 100).toFixed(2)} USD\n` +
+              `*Status:* \`${targetPrj.state}\`\n` +
+              `*Milestones Progress:* ${completedCount}/${totalCount} completed (${pct}%)\n` +
+              `*Consensus Seal:* \`SHA-256 Verified\`\n` +
+              `*Role:* ${user.role || "CLIENT"}`,
+            undefined,
+            true,
+            user.role
+          );
+          return { handled: true, action: "STATUS_SENT" };
+        }
+
+        // Multiple active projects: Render portfolio view of ALL active projects!
+        let totalBudgetCents = 0;
+        let totalCompletedMilestones = 0;
+        let totalMilestones = 0;
+
+        const projectSections = projects.map((p, idx) => {
+          totalBudgetCents += p.budgetCents || 0;
+          const milestones = p.projectMilestones || [];
+          const completedCount = milestones.filter((m) => m.workStatus === "ACCEPTED").length;
+          const totalCount = milestones.length;
+          totalCompletedMilestones += completedCount;
+          totalMilestones += totalCount;
+
+          const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+          const isRelay = p.id === targetPrj.id;
+          const relayTag = isRelay ? " ⭐ *[ACTIVE RELAY]*" : "";
+          const partnerRole = user.role === "FREELANCER" ? "Client" : "Contractor";
+          const partnerName =
+            user.role === "FREELANCER"
+              ? p.client?.name || "Client"
+              : (p as any).agreement?.freelancer?.name || (p as any).proposals?.[0]?.freelancer?.name || "Pending";
+
+          return (
+            `${idx + 1}. *${p.title}*${relayTag}\n` +
+            `   • Budget: \`$${(p.budgetCents / 100).toFixed(2)} USD\` | Status: \`${p.state}\`\n` +
+            `   • Milestones: ${completedCount}/${totalCount} completed (${pct}%)\n` +
+            `   • ${partnerRole}: ${partnerName}`
+          );
+        });
+
+        const statusMessage = [
+          `📊 *Your Active Contracts (${projects.length} Projects)*\n`,
+          projectSections.join("\n\n"),
+          `\n📈 *Portfolio Summary:*`,
+          `• Total Contracts: ${projects.length} active`,
+          `• Total Portfolio Value: \`$${(totalBudgetCents / 100).toFixed(2)} USD\``,
+          `• Milestones Complete: ${totalCompletedMilestones}/${totalMilestones}`,
+          `• Consensus Seal: \`SHA-256 Verified\``,
+          `• Active Relay Target: *${targetPrj.title}*`,
+          `\n_Tap a button below to switch your chat & voice relay target:_`,
+        ].join("\n");
+
+        const switchButtons: TelegramInlineButton[][] = projects.map((p) => [
+          {
+            text: p.id === targetPrj.id ? `⭐ [Relay Active] ${p.title.slice(0, 22)}...` : `🔄 Switch to: ${p.title.slice(0, 22)}...`,
+            callback_data: `switch_prj:${p.id}`,
+          },
+        ]);
+
+        await this.sendMessage(chatId, statusMessage, switchButtons, true, user.role);
+        return { handled: true, action: "STATUS_ALL_SENT" };
       }
 
       // 3f. /milestones or "📋 Milestones"
       if (text === "/milestones" || text === "📋 Milestones") {
-        const milestones = targetPrj.projectMilestones || [];
-        if (milestones.length === 0) {
-          await this.sendMessage(
-            chatId,
-            `📋 *Milestones for ${targetPrj.title}:*\nNo milestones registered yet.`,
-            undefined,
-            true
-          );
-          return { handled: true, action: "MILESTONES_EMPTY" };
-        }
-
-        const msText = milestones
-          .map((m, idx) => {
-            const statusIcon =
-              m.workStatus === "ACCEPTED"
-                ? "✅"
-                : m.workStatus === "AWAITING_CLIENT_REVIEW"
-                ? "⏳"
-                : m.workStatus === "IN_PROGRESS"
-                ? "🚧"
-                : "⚪";
-            const amt = `$${((m.amountMinor || (m as any).amountCents || 0) / 100).toFixed(2)}`;
-            return `${idx + 1}. ${statusIcon} *${m.title}*\n   • Escrow: ${amt} | Work: \`${m.workStatus}\``;
-          })
-          .join("\n\n");
-
-        await this.sendMessage(
-          chatId,
-          `📋 *Milestone Deliverables (${targetPrj.title}):*\n\n${msText}`,
-          undefined,
-          true
-        );
+        await this.renderProjectMilestones(chatId, targetPrj, projects, user.role);
         return { handled: true, action: "MILESTONES_SENT" };
       }
 
@@ -1013,111 +1283,83 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
 
       // 3h. /tasks or "📋 Tasks" (Kanban Board Inspection)
       if (text === "/tasks" || text === "📋 Tasks") {
-        const tasks = await prisma.workspaceTask.findMany({
-          where: { projectId: targetPrj.id },
-          orderBy: { createdAt: "desc" },
-        });
-
-        if (tasks.length === 0) {
-          await this.sendMessage(
-            chatId,
-            `📋 *Kanban Tasks (${targetPrj.title}):*\n\nNo tasks registered yet.\n\n💡 *Quick add:* Type \`/task add <title>\` to create one directly from Telegram!`,
-            undefined,
-            true
-          );
-          return { handled: true, action: "TASKS_EMPTY" };
-        }
-
-        const todo = tasks.filter((t) => t.status === "TODO");
-        const inProg = tasks.filter((t) => t.status === "IN_PROGRESS");
-        const done = tasks.filter((t) => t.status === "DONE");
-
-        const fmt = (list: typeof tasks, icon: string) =>
-          list.length === 0
-            ? "   _None_"
-            : list
-                .slice(0, 4)
-                .map((t) => `   ${icon} *${t.title}* [${t.priority}]`)
-                .join("\n");
-
-        const taskReport = [
-          `📋 *Kanban Board (${targetPrj.title})*`,
-          `*Total Tasks:* ${tasks.length} synchronized\n`,
-          `📌 *To Do (${todo.length}):*`,
-          fmt(todo, "•"),
-          `\n🚧 *In Progress (${inProg.length}):*`,
-          fmt(inProg, "•"),
-          `\n✅ *Done (${done.length}):*`,
-          fmt(done, "✓"),
-          `\n💡 *Create New Task:* Type \`/task add <title>\``,
-        ].join("\n");
-
-        await this.sendMessage(chatId, taskReport, undefined, true);
+        await this.renderKanbanTasks(chatId, targetPrj, projects, user.role);
         return { handled: true, action: "TASKS_SENT" };
       }
 
       // 3i. /task add <title>
       if (text.startsWith("/task add") || text.startsWith("/task new")) {
-        const title = text.replace(/^\/task\s+(add|new)\s*/i, "").trim();
-        if (!title) {
+        let rawInput = text.replace(/^\/task\s+(add|new)\s*/i, "").trim();
+        if (!rawInput) {
           await this.sendMessage(
             chatId,
-            `💡 *Usage:* \`/task add <title>\`\n\n*Example:* \`/task add Implement Apple Pay webhook idempotency test\``,
+            `💡 *Usage:* \`/task add <title>\`\n\n*Example:* \`/task add Implement Apple Pay webhook idempotency test\`\n\n_If you have multiple projects, you can also specify: \`/task add [2] <title>\`_`,
             undefined,
-            true
+            true,
+            user.role
           );
           return { handled: true, action: "TASK_ADD_EMPTY" };
         }
 
+        // Check if user prefixed project number: e.g. /task add [2] add login, or /task add #2 add login
+        let prjForTask = targetPrj;
+        const projectNumMatch = rawInput.match(/^\[?#?(\d+)\]?\s+(.+)$/);
+        if (projectNumMatch) {
+          const prjIndex = parseInt(projectNumMatch[1], 10) - 1;
+          if (prjIndex >= 0 && prjIndex < projects.length) {
+            prjForTask = projects[prjIndex];
+            rawInput = projectNumMatch[2].trim();
+          }
+        }
+
+        // Strip leading & trailing < and > or quotes so users typing "/task add <my task>" get "my task"
+        const cleanTitle = rawInput
+          .replace(/^<+/, "")
+          .replace(/>+$/, "")
+          .replace(/^"+/, "")
+          .replace(/"+$/, "")
+          .trim();
+
+        if (!cleanTitle) {
+          await this.sendMessage(chatId, `⚠️ Task title cannot be empty.`, undefined, true, user.role);
+          return { handled: true, action: "TASK_ADD_EMPTY" };
+        }
+
         const createdTask = await workspaceService.createTask({
-          projectId: targetPrj.id,
-          title,
+          projectId: prjForTask.id,
+          title: cleanTitle,
           priority: "MEDIUM",
           status: "TODO",
         });
 
+        const taskButtons: TelegramInlineButton[][] = [];
+        if (projects.length > 1) {
+          taskButtons.push([
+            {
+              text: `📋 View Tasks (${prjForTask.title.slice(0, 20)}...)`,
+              callback_data: `view_tasks:${prjForTask.id}`,
+            },
+          ]);
+        }
+
         await this.sendMessage(
           chatId,
-          `✅ *Task Created & Synced to Kanban Board!*\n\n• *Title:* ${createdTask.title}\n• *Project:* ${targetPrj.title}\n• *Column:* \`TODO\`\n• *Priority:* \`MEDIUM\`\n\nVisible to both Client and Freelancer in workspace.`,
-          undefined,
-          true
+          `✅ *Task Created & Synced to Kanban Board!*\n\n` +
+            `• *Title:* ${createdTask.title}\n` +
+            `• *Project:* ${prjForTask.title}\n` +
+            `• *Column:* \`TODO\`\n` +
+            `• *Priority:* \`MEDIUM\`\n\n` +
+            `Visible to both Client and Freelancer in workspace.`,
+          taskButtons.length > 0 ? taskButtons : undefined,
+          true,
+          user.role
         );
         return { handled: true, action: "TASK_CREATED" };
       }
 
       // 3j. /files or "📁 Files"
       if (text === "/files" || text === "📁 Files") {
-        const files = await prisma.projectFile.findMany({
-          where: { projectId: targetPrj.id },
-          include: { file: true, uploader: true },
-          orderBy: { createdAt: "desc" },
-          take: 8,
-        });
-
-        if (files.length === 0) {
-          await this.sendMessage(
-            chatId,
-            `📁 *Project Files & Deliverables (${targetPrj.title}):*\n\nNo files uploaded yet in the workspace repository.`,
-            undefined,
-            true
-          );
-          return { handled: true, action: "FILES_EMPTY" };
-        }
-
-        const fileList = files
-          .map((f, idx) => {
-            const kb = (((f.file?.sizeBytes) || 0) / 1024).toFixed(1);
-            const role = f.uploader?.role || "COLLABORATOR";
-            return `${idx + 1}. 📄 *${f.name}* (${kb} KB)\n   • Uploader: \`${role}\` | Date: ${new Date(f.createdAt).toLocaleDateString()}\n   • Category: \`${f.category}\``;
-          })
-          .join("\n\n");
-
-        await this.sendMessage(
-          chatId,
-          `📁 *Project Deliverables & Repository Files (${targetPrj.title}):*\n\n${fileList}`,
-          undefined,
-          true
-        );
+        await this.renderProjectFiles(chatId, targetPrj, projects, user.role);
         return { handled: true, action: "FILES_SENT" };
       }
 
@@ -1527,6 +1769,189 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
       await this.sendMessage(chatId, `⚠️ Error completing login: ${err.message}`);
       return { handled: false, action: "LOGIN_DB_ERROR" };
     }
+  }
+
+  /**
+   * Render Kanban tasks board for a specific project with 1-tap switcher for other projects
+   */
+  async renderKanbanTasks(chatId: string | number, prj: any, allProjects: any[], userRole?: string | null) {
+    const tasks = await prisma.workspaceTask.findMany({
+      where: { projectId: prj.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const isCurrentActive = (this.userActiveProjects.get(prj.clientId || "") || allProjects[0]?.id) === prj.id;
+    const activeHeaderTag = isCurrentActive ? " ⭐ [ACTIVE]" : "";
+
+    const buttons: TelegramInlineButton[][] = [];
+    if (allProjects.length > 1) {
+      for (const other of allProjects) {
+        if (other.id !== prj.id) {
+          buttons.push([
+            { text: `📋 Switch to: ${other.title.slice(0, 24)}...`, callback_data: `view_tasks:${other.id}` },
+          ]);
+        }
+      }
+    }
+
+    if (tasks.length === 0) {
+      await this.sendMessage(
+        chatId,
+        `📋 *Kanban Tasks (${prj.title})${activeHeaderTag}:*\n\nNo tasks registered yet.\n\n💡 *Quick add:* Type \`/task add <title>\` to create one directly from Telegram!`,
+        buttons.length > 0 ? buttons : undefined,
+        true,
+        userRole
+      );
+      return;
+    }
+
+    const todo = tasks.filter((t) => t.status === "TODO");
+    const inProg = tasks.filter((t) => t.status === "IN_PROGRESS");
+    const done = tasks.filter((t) => t.status === "DONE");
+
+    const fmt = (list: typeof tasks, icon: string) =>
+      list.length === 0
+        ? "   _None_"
+        : list
+            .slice(0, 5)
+            .map((t) => `   ${icon} *${t.title}* [${t.priority}]`)
+            .join("\n");
+
+    const taskReport = [
+      `📋 *Kanban Board (${prj.title})${activeHeaderTag}*`,
+      `*Total Tasks:* ${tasks.length} synchronized\n`,
+      `📌 *To Do (${todo.length}):*`,
+      fmt(todo, "•"),
+      `\n🚧 *In Progress (${inProg.length}):*`,
+      fmt(inProg, "•"),
+      `\n✅ *Done (${done.length}):*`,
+      fmt(done, "✓"),
+      `\n💡 *Create New Task:* Type \`/task add <title>\``,
+      allProjects.length > 1 ? `\n_Tap below to switch project tasks:_` : ``,
+    ].filter(Boolean).join("\n");
+
+    await this.sendMessage(chatId, taskReport, buttons.length > 0 ? buttons : undefined, true, userRole);
+  }
+
+  /**
+   * Render workspace repository files with safe markdown code styling & direct download triggers
+   */
+  async renderProjectFiles(chatId: string | number, prj: any, allProjects: any[], userRole?: string | null) {
+    const files = await prisma.projectFile.findMany({
+      where: { projectId: prj.id },
+      include: { file: true, uploader: true },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    });
+
+    const appBaseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const buttons: TelegramInlineButton[][] = [];
+
+    // Provide 1-tap download buttons for top files
+    for (const f of files.slice(0, 3)) {
+      buttons.push([
+        {
+          text: `📥 Send "${f.name.slice(0, 24)}" to Chat`,
+          callback_data: `dl_file:${f.fileId}`,
+        },
+      ]);
+    }
+
+    if (allProjects.length > 1) {
+      for (const other of allProjects) {
+        if (other.id !== prj.id) {
+          buttons.push([
+            { text: `📁 View Files: ${other.title.slice(0, 24)}...`, callback_data: `view_files:${other.id}` },
+          ]);
+        }
+      }
+    }
+
+    if (files.length === 0) {
+      await this.sendMessage(
+        chatId,
+        `📁 *Project Files & Deliverables (${prj.title}):*\n\nNo files uploaded yet in the workspace repository.`,
+        buttons.length > 0 ? buttons : undefined,
+        true,
+        userRole
+      );
+      return;
+    }
+
+    // Format file names with backticks `file.md` to prevent Telegram auto-linking ".md" to Moldova web domain
+    const fileList = files
+      .map((f, idx) => {
+        const kb = (((f.file?.sizeBytes) || 0) / 1024).toFixed(1);
+        const role = f.uploader?.role || "COLLABORATOR";
+        const downloadUrl = `${appBaseUrl}/api/files/${f.fileId}?download=1`;
+        return (
+          `${idx + 1}. 📄 \`${f.name}\` (${kb} KB)\n` +
+          `   • Uploader: \`${role}\` | Date: ${new Date(f.createdAt).toLocaleDateString()}\n` +
+          `   • Category: \`${f.category}\`\n` +
+          `   • [📥 Download / View via Web](${downloadUrl})`
+        );
+      })
+      .join("\n\n");
+
+    const message = [
+      `📁 *Project Deliverables & Repository Files (${prj.title}):*\n`,
+      fileList,
+      `\n_Tap an inline button below to send the file directly into this Telegram chat:_`,
+    ].join("\n");
+
+    await this.sendMessage(chatId, message, buttons.length > 0 ? buttons : undefined, true, userRole);
+  }
+
+  /**
+   * Render milestone deliverables with 1-tap switchers for other projects
+   */
+  async renderProjectMilestones(chatId: string | number, prj: any, allProjects: any[], userRole?: string | null) {
+    const milestones = prj.projectMilestones || [];
+    const buttons: TelegramInlineButton[][] = [];
+
+    if (allProjects.length > 1) {
+      for (const other of allProjects) {
+        if (other.id !== prj.id) {
+          buttons.push([
+            { text: `📋 View Milestones: ${other.title.slice(0, 24)}...`, callback_data: `view_ms:${other.id}` },
+          ]);
+        }
+      }
+    }
+
+    if (milestones.length === 0) {
+      await this.sendMessage(
+        chatId,
+        `📋 *Milestones for ${prj.title}:*\nNo milestones registered yet.`,
+        buttons.length > 0 ? buttons : undefined,
+        true,
+        userRole
+      );
+      return;
+    }
+
+    const msText = milestones
+      .map((m: any, idx: number) => {
+        const statusIcon =
+          m.workStatus === "ACCEPTED"
+            ? "✅"
+            : m.workStatus === "AWAITING_CLIENT_REVIEW"
+            ? "⏳"
+            : m.workStatus === "IN_PROGRESS"
+            ? "🚧"
+            : "⚪";
+        const amt = `$${((m.amountMinor || (m as any).amountCents || 0) / 100).toFixed(2)}`;
+        return `${idx + 1}. ${statusIcon} *${m.title}*\n   • Escrow: ${amt} | Work: \`${m.workStatus}\``;
+      })
+      .join("\n\n");
+
+    await this.sendMessage(
+      chatId,
+      `📋 *Milestone Deliverables (${prj.title}):*\n\n${msText}`,
+      buttons.length > 0 ? buttons : undefined,
+      true,
+      userRole
+    );
   }
 
 }
