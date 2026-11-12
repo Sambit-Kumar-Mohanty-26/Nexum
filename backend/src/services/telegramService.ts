@@ -185,6 +185,7 @@ export class TelegramService {
         { command: "status", description: "📊 Active contracts, progress & portfolio telemetry" },
         { command: "projects", description: "📁 List all contracts & switch active relay" },
         { command: "switch", description: "⭐ Switch active contract (/switch 1, /switch 2)" },
+        { command: "to", description: "Direct message a collaborator (/to <Name> <msg> or @Name)" },
         { command: "history", description: "💬 Recent workspace messages & catch-up" },
         { command: "milestones", description: "📋 Deliverables, escrow & review window" },
         { command: "escrow", description: "💰 PayPal Orders REST v2 escrow ledger" },
@@ -1671,13 +1672,19 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
             `• \`/task add <title>\` - Create a task instantly on active Kanban board\n` +
             `• \`/task add [2] <title>\` - Create a task directly on project #2\n` +
             `• \`/files\` - Download deliverables or tap to receive them natively in Telegram\n` +
-            `• \`/decisions\` - View sealed ADR architectural consensus log & SHA-256 seals\n`,
+            `• \`/decisions\` - View sealed ADR architectural consensus log & SHA-256 seals\n` +
+            `• \`/timeline\` - Protocol cards (amendments, postponements, deliverables) with SHA-256 seals\n`,
           `*⏳ Postponement & Reschedule Engine:*\n` +
             `• \`/postpone meeting <reason>\` (or \`/postpone mt\`) - Reschedule upcoming call\n` +
             `• \`/postpone milestone <days> <reason>\` (or \`/postpone ms\`) - Request formal due-date extension\n`,
           `*💡 Gemini AI Scope Intelligence:*\n` +
             `• \`/addon <feature>\` (or \`/scope add\`) - Gemini AI evaluates scope impact, fair price delta, timeline delta & drafts amendment\n` +
             `• \`/ai <question>\` (or \`/ask\`) - Private consultation with Nexum AI Copilot\n`,
+          `*📨 Direct Person Routing:*\n` +
+            `• \`@Sambit hii\` or \`@Sambit Kumar Mohanty, hii\` - Route message to that collaborator's project\n` +
+            `• \`/to <Name> <msg>\` - Alternative syntax (e.g. \`/to Rudra please review the brief\`)\n` +
+            `• *Swipe-to-Reply* - Swipe any inbound message to auto-route your reply to the correct project\n` +
+            `• Your active relay auto-switches so follow-up messages continue to the same project\n`,
           `*🎙️ Bilateral Relaying:*\n` +
             `• *Voice Notes* - Speak naturally; transcribed via Groq Whisper & relayed to ${targetPrj.title}\n` +
             `• *Text Messages* - Any regular message is sealed and posted to your workspace timeline\n` +
@@ -1714,25 +1721,79 @@ Click below to digitally sign and bind terms on canonical SHA-256 hash:`;
         return { handled: true, action: "AI_CONSULTED" };
       }
 
-      // 3i. Bi-Directional Message Relay (Telegram -> Web Workspace)
+      // 3i. Intelligent Person & Project Routing (Direct @mentions, /to <person>, and Swipe-to-Reply)
+      let effectivePrj = targetPrj;
+      let effectiveContent = text;
+      let routedPartnerName: string | null = null;
+
+      // Check for "@Sambit hii", "@ Sambit Kumar Mohanty hii", "@Sambit: hii", "/to Sambit hii"
+      const mentionMatch =
+        text.match(/^@\s*([a-zA-Z0-9_\s]+?)\s*[:,\s]\s*(.+)$/s) ||
+        text.match(/^\/to\s+([a-zA-Z0-9_\s]+?)\s*[:,\s]\s*(.+)$/s);
+
+      if (mentionMatch) {
+        const queryName = mentionMatch[1].trim().toLowerCase();
+        const bodyText = mentionMatch[2].trim();
+
+        for (const prj of projects) {
+          const partner =
+            user.role === "FREELANCER"
+              ? prj.client?.name
+              : (prj as any).agreement?.freelancer?.name || (prj as any).proposals?.[0]?.freelancer?.name;
+
+          if (partner) {
+            const pLower = partner.toLowerCase();
+            const pFirst = pLower.split(" ")[0];
+            if (
+              pLower.includes(queryName) ||
+              queryName.includes(pLower) ||
+              queryName.includes(pFirst) ||
+              pFirst.includes(queryName)
+            ) {
+              effectivePrj = prj;
+              effectiveContent = bodyText;
+              routedPartnerName = partner;
+              this.userActiveProjects.set(user.id, prj.id);
+              break;
+            }
+          }
+        }
+      }
+
+      // Check if user used Telegram's native "Swipe to Reply" on an inbound notification
+      if (!routedPartnerName && msg.reply_to_message?.text) {
+        const repliedText = msg.reply_to_message.text;
+        for (const prj of projects) {
+          const partner =
+            user.role === "FREELANCER"
+              ? prj.client?.name
+              : (prj as any).agreement?.freelancer?.name || (prj as any).proposals?.[0]?.freelancer?.name;
+          if (repliedText.includes(prj.title) || (partner && repliedText.includes(partner))) {
+            effectivePrj = prj;
+            routedPartnerName = partner;
+            this.userActiveProjects.set(user.id, prj.id);
+            break;
+          }
+        }
+      }
+
       try {
         const sent = await workspaceService.sendMessage({
-          projectId: targetPrj.id,
+          projectId: effectivePrj.id,
           senderId: user.id,
           senderRole: user.role === "FREELANCER" ? "FREELANCER" : "CLIENT",
-          content: text,
+          content: effectiveContent,
           origin: "TELEGRAM",
         });
 
-        await this.sendMessage(
-          chatId,
-          `✓ *Relayed to ${targetPrj.title}:*\n"${text}"\n_Seal: \`${sent.message.sha256Seal.slice(0, 16)}...\`_`,
-          undefined,
-          true
-        );
+        const routingNotice = routedPartnerName
+          ? `⭐ *Directly Routed to ${routedPartnerName} (${effectivePrj.title}):*\n"${effectiveContent}"\n_Active relay automatically switched here. Seal: \`${sent.message.sha256Seal.slice(0, 16)}...\`_`
+          : `✓ *Relayed to ${effectivePrj.title}:*\n"${effectiveContent}"\n_Seal: \`${sent.message.sha256Seal.slice(0, 16)}...\`_`;
+
+        await this.sendMessage(chatId, routingNotice, undefined, true, user.role);
         return { handled: true, action: "RELAYED_TO_WORKSPACE" };
       } catch (err: any) {
-        await this.sendMessage(chatId, `⚠️ Message delivery failed: ${err.message}`, undefined, true);
+        await this.sendMessage(chatId, `⚠️ Message delivery failed: ${err.message}`, undefined, true, user.role);
         return { handled: false, action: "RELAY_FAILED" };
       }
     }
